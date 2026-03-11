@@ -239,7 +239,7 @@ Progress bars show overall completion:
 
 **Overall progress:**
 ```
-[█░░░░░░░░░] 10%
+[████████░░] 80%
 ```
 
 **Design doc:** `docs/plans/2026-03-10-sms-reflections-design.md` (approved)
@@ -261,19 +261,39 @@ Progress bars show overall completion:
 |------|--------|-------|
 | Define requirements & user flow | ✅ Done | Design doc approved, UX flows documented |
 | Design database changes | ✅ Done | `invitee_phone` + `sms_opt_out` on friend_invitations, new `sms_delivery_log` table |
-| Write implementation plan | 🔄 In progress | |
-| Set up Twilio integration (backend) | ⬜ Not started | New SMS module in murror-api |
-| Database migrations | ⬜ Not started | Add columns + new table |
-| Backend API endpoints | ⬜ Not started | send-takeaway, send-invite, opt-out, resubscribe |
-| Web preview pages (murror-platform) | ⬜ Not started | takeaway preview, invite landing, opt-out page |
-| Mobile UI changes | ⬜ Not started | Replace native SMS, modify share sheet, update connection picker |
-| Test end-to-end | ⬜ Not started | |
+| Write implementation plan | ✅ Done | 10-task plan at `docs/plans/2026-03-10-sms-reflections-implementation.md` |
+| Database migrations | ✅ Done | Manual SQL migration (no local DB) — `20260310000000_add_sms_fields` |
+| Set up Twilio integration (backend) | ✅ Done | `SmsService` with rate limiting, opt-out checks, delivery logging |
+| Backend API endpoints | ✅ Done | 6 endpoints: send-takeaway, send-invite, opt-out, resubscribe, takeaway-preview, invite-preview |
+| Web preview pages (murror-platform) | ✅ Done | Takeaway preview, invite landing, opt-out/resubscribe page |
+| Mobile UI changes | ✅ Done | API client, connection picker with pending/SMS badge, takeaway SMS flow |
+| Code review | ✅ Done | 3 critical, 5 important issues identified (see blockers below) |
+| Fix critical issues | ⬜ Not started | Must fix before production |
+| Test end-to-end | ⬜ Not started | Blocked on Twilio account setup + DB migration on alpha |
+
+**Blockers before production (from code review):**
+
+Critical:
+1. **No authorization on send-takeaway** — Any authenticated user can send SMS for any invitation. Must verify `invitation.inviter_id === req.user.id`
+2. **Opt-out uses GET** — Link preview bots/crawlers could trigger opt-out. Must change to POST with confirmation button
+3. **Takeaway text not stored** — Preview page needs the takeaway text but it's not persisted anywhere retrievable by token
+
+Important:
+4. Rate limiting uses UTC midnight (should use user's timezone or rolling 24h window)
+5. Opt-out is per-invitation, should be per-phone-number across all invitations
+6. No phone number normalization (E.164 format)
+7. Web pages fall back to mock data on API error (should show error state)
+8. `contactName` parameter in send-invite DTO is accepted but unused
 
 **What was done:**
 - 2026-03-10: Brainstormed and approved design (Twilio server-side SMS, web preview pages, compliance)
 - 2026-03-10: Wrote design doc `docs/plans/2026-03-10-sms-reflections-design.md`
 - 2026-03-10: Created `feature/sms-reflections` branch
 - 2026-03-10: Updated UX flows doc with Sections 8, 9, 10 (SMS takeaway, invite, opt-out)
+- 2026-03-11: Implemented all backend (murror-api: SmsModule, SmsService, SmsController, DTOs, Twilio config, migration)
+- 2026-03-11: Implemented all web pages (murror-platform: takeaway preview, invite landing, opt-out/resubscribe)
+- 2026-03-11: Implemented all mobile changes (MurrorMobile: API client, connection picker with pending support, SMS takeaway flow)
+- 2026-03-11: Completed code review — 3 critical issues must be fixed before shipping
 
 ---
 
