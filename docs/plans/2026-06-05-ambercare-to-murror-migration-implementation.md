@@ -64,6 +64,12 @@ Expected: both 200, unchanged.
 
 ---
 
+## Phase 2 — Prod API + AI murror.app aliases (additive, verify parity) — ✅ DONE 2026-06-05
+
+**Executed:** `api.murror.app` + `ai.murror.app` → do-sfo2 `159.89.222.109` (DNS-only, repointed the dead `api.murror.app → 20.46.249.55`). Added both hosts to the live prod ingresses (`murror-api` in nsp-prod-murror, `murror-ai` in nsp-prod-murror-ai) via additive `kubectl patch` (new rule + new tls secret `murror-api-murrorapp-tls` / `murror-ai-murrorapp-tls`). cert-manager `letsencrypt-prod` auto-issued both certs (HTTP-01). Parity verified: both twins return identical 200 to their ambercare originals; originals untouched. Ingress backups at `/tmp/ingress-bak/`.
+**⚠️ Durability follow-up:** changes were live `kubectl patch` (out-of-band). Add `api.murror.app`/`ai.murror.app` to the repo ingress manifests so a future re-apply doesn't drop them.
+
+### (original plan below)
 ## Phase 2 — Prod API + AI murror.app aliases (additive, verify parity)
 
 ### Task 2.1: Add `api.murror.app` + `ai.murror.app` to the live ingress + TLS
