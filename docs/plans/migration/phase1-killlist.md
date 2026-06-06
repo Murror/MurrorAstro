@@ -18,6 +18,8 @@ Legend: **DELETE** = safe now · **PHASE 6** = delete when the vps40 / legacy-pl
 | `alpha-us.ai.api.ambercare.app` | `65.49.60.35` | 404, 0 refs |
 | `alpha-us.murror.api.ambercare.app` | `65.49.60.35` | 404, 0 refs |
 | `auth-ui.ambercare.app` | `65.49.60.35` | 404, 0 refs |
+| `auth.ambercare.app` | `65.49.60.35` | **Verified 2026-06-05:** live auth = Supabase; `auth.ambercare.app` only in abandoned `murror-platform/auth-service`. Not used by live |
+| `notifications.ambercare.app`, `alpha.notifications.ambercare.app` | `65.49.60.35` / OVH | **Verified 2026-06-05:** live push = OneSignal (`ONESIGNAL_APP_ID=6640c83b…` in prod pod, wired in murror-api + viasr); zero `notifications.ambercare.app` refs in live code. Not used by live |
 | `_acme-challenge.mu-{36,59,66,69,70,81,88,102,107}.*` (TXT) | — | Stale DNS-01 challenges for `mu-NN` subdomains that no longer exist |
 
 ## 🟡 PHASE 6 (delete when the legacy platform + vps40 box retire)
