@@ -50,7 +50,7 @@ These point to the abandoned `murror-platform` microservices (still answering on
 | `murror-ai.api.ambercare.app` | LIVE prod AI |
 | `files.ambercare.app` | LIVE R2 storage (Phase 3 → files.murror.app) |
 | `ai.api`, `dev.api`, `inference`, `remote`, `ssh`, `terminal` | Tunnel box (Phase 6 rebuild under murror.app) |
-| `ambercare.app` / `www` (apex) | Decide: redirect to murror.app vs keep |
+| `ambercare.app` / `www` (apex) | ✅ 2026-06-05: Cloudflare Redirect Rule 301s apex + www → murror.app (path/query preserved). Live API/AI/files subdomains unaffected. |
 | `_acme-challenge` apex google-site-verification TXT | Domain verification |
 
 ## Next action
