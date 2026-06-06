@@ -1,5 +1,7 @@
 # Phase 1 — ambercare.app dead-DNS kill-list
 
+> **STATUS: ✅ EXECUTED 2026-06-05.** All 44 dead records deleted via Cloudflare API (Astro confirmed the murror-platform suite is unused). ambercare.app went 58 → 14 records (only live prod API/AI, R2 files, tunnel CNAMEs, apex/www remain). Live prod health verified green (murror.api + murror-ai.api both 200) post-delete. Follow-up: drop `us.kol` from murror-api `cors.util.ts` (now inert).
+
 Generated 2026-06-05 from the DNS export + live verification (HTTP probe + code-ref grep across the Murror umbrella). Live prod = do-sfo2 only runs `murror-api` + `murror-ai`; every other service referenced below lives in the abandoned `murror-platform` apps or legacy boxes.
 
 Legend: **DELETE** = safe now · **PHASE 6** = delete when the vps40 / legacy-platform boxes retire · **DECIDE** = needs Astro (is it still used?) · **KEEP** = live/required.
