@@ -1,5 +1,80 @@
 # Murror Progress
 
+## 2026-06-11 (PDT) — Staging web app: the log view becomes deep chat, 5 QA batches, a backend emotion fix, the voice diary ported, and a persona showcase world
+
+Driver: Astro — iterative QA on the staging web app (`apps/web-client`, staging.app.murror.app). Astro tested in rounds and sent findings with screenshots; each batch was root-caused against the MOBILE source (MurrorMobile is always ground truth), fixed, gate-checked (tsc + full vitest), harness-verified end-to-end against live staging, deployed (CI image -> helm, nsp-staging-murror), and logged (PARITY_LOOP_LOG.md + Notion Engineering Log). Staging only; production untouched. 7 web deploys (helm rev 78-84), 1 viasr backend PR, 4 showcase accounts.
+
+### The headline arc: the journal writer IS the deep chat now (mobile-exact)
+1. **Conversation mode v1** (`staging-09ec8b2`) — Submit sends the entry into the AI conversation; rainbow streaming reply; Save completes through the diary pipeline. Shared settle-hold extracted to `use-streaming-settle` (deep-chat-page refactored onto it).
+2. **Astro: "I still see journaling screen" -> fused screen** (`staging-947a673`) — read mobile's add-log-screen properly: there is NO mode swap. Rebuilt as ONE surface: SEND arrow visible from the start (mobile InputAccessoryView), bubbles grow above the persistent textarea, header Save = mobile's tick (plain journal if you never chatted / complete-conversation if you did).
+3. **Calm pass** (`staging-54f64cc`) — streaming 15->90ms/word (mobile component default is 60), all card chrome removed (only the trust pill remains boxed, like mobile), mic+send as mobile's exact pink/blue radial-gradient circles in a frosted accessory pill, bubbles 13px.
+4. **Polish batch 7** (`staging-70ad660`) — bubble color pinned to the reply's slot (was flipping twice at stream->settle because it derived from messages.length), MurrorIconCircle avatar (exact mobile SVG: white circle/black ring/4-color butterfly) on bubbles + typing indicator, prompt auto-fetches on open + regenerate, EmotionalJourneySection wired on conversation details, header chips to ~80% white / dark glass (readable over artwork heroes).
+5. **Batch 8** (`staging-45fda74`) — voice input continuous + error toasts (was single-shot + silent), invitation dialog opaque (was 10% glass mud), user messages render as PLAIN PAGE TEXT like mobile (no bubble/timestamp - the real spacing fix), header non-sticky, **daily voice diary PORTED to web** (was never built: VoiceSummary entity + getVoiceSummary query + moon card playing narration over the bedtime piano; found+fixed diary-api's split-base routing /v1/connections/* to the dead legacy Supabase host; today-or-yesterday date logic).
+6. **Batch 9** (helm rev 84) — drafts restored (Draft button; X = save-and-leave; restore on return), entrance fades (writer text + Reflection sections), consistency pass (Knowledge -> warm canvas + renamed "Research" + non-sticky; Diary/Reflection headers aligned).
+
+### Cross-cutting fixes
+- **Light-theme contrast sweep** (batch 5, `staging-09ec8b2`+) — built a runtime WCAG scanner (walks every text node, reads the actual painted layer stack via elementsFromPoint, canvas-resolves Tailwind v4's oklch/oklab colors). Confirmed-broken + fixed: settings account form (white labels + invisible typed text), settings premium card, subscription error/loading, home cards (pinned dark - home ignores the theme like mobile; shared cards gained an `appearance` prop), shell chrome on always-dark routes. Light + dark scans clean on 11 routes. Scanner lessons saved to agent memory.
+- **Cold-load routing fix** (`staging-c9f73a8`) — refreshing/deep-linking any inner page bounced to home: one-render race where auth resolves but the profile query hasn't started (RTK initiates in an effect), guard read "uninitialized" as "not onboarded" -> /onboarding -> /. Both profile guards now hold for data-or-error. TDD: regression spec failed on old code, green after; 449/449.
+- **Home background pixelation** — daily watercolor confined to the centered max-w-2xl column (1206px asset downscales instead of stretching) with a radial mask into the dark gradient.
+
+### Backend: conversation emotion gap (viasr-api #446, merged + auto-deployed)
+Completed conversations got empty emotionArc while plain journals were fully analyzed - breaking "emotion detection on every journal entry" for the type the web log flow now creates. Root cause traced 3 layers: murror-api's completion handler accepts+persists the fields and the web renders them, but viasr's rabbitmq_deep_chat completion flow never computed them (the journal pipeline's `conversation_emotion_arc` function - literally named for this - was never wired in). Fix: detect_emotions() in PARALLEL with summary (asyncio.gather - zero added latency), non-fatal, producer carries emotionArc/emotionJourneyText; payload regression tests. **E2E proof**: fresh web conversation -> arc ["anxious","reflective"] + journey on the FIRST poll -> Emotional Journey renders on the detail. Pre-fix conversations keep empty arcs (no backfill).
+
+### Persona showcase world (for website + ads)
+4 staging accounts built through the REAL product APIs (no DB stuffing): Maya Chen (24, marketing), Jaylen Brooks (26, engineer), Ava Reyes (21, student), Noor Rahman (23, nurse) - `*.murror@example.com` / `MurrorPersona2026!`. Higgsfield SOUL portrait avatars (512px via /me/avatar), full onboarding (POST /onboarding/complete), 4-edge friend circle (invitation-link flow), 9 hand-written journals with deliberate emotional arcs, ALL FOUR edges with completed takeaway-reflection loops -> INSIGHT_READY shared insights (titled cards + song suggestions, e.g. "Showing Up for Each Other" + "Lean on Me"), 2 movie invites (Past Lives PENDING for the CTA state, The Farewell ACCEPTED). Mini Challenge waits on the next connections-cron cycle (challenges FK-validate against cron-generated connection insights).
+
+### Verification discipline
+Every batch: tsc + full vitest (440->449 tests grew across the session) -> vite build -> harness E2E against live staging (real sockets, real pipelines) -> CI image -> helm -> live-chunk verification (grep the deployed JS for the new code markers) -> PARITY_LOOP_LOG + Notion. Hidden-tab artifacts (framer freezes, timer clamping, cold-load auth races) documented and worked around rather than trusted.
+
+### Engineering lessons (also in agent memory)
+- **Tailwind v4 computed colors are oklch/oklab** — regex hex/rgb parsers fail silently BOTH ways (false positives AND skipped elements). Canvas fillStyle -> getImageData resolves any CSS color exactly.
+- **RTK Query skip-flip gap** — when `skip` flips false, the fetch starts in an EFFECT; the same render reports isLoading:false with no data. Guards must treat "no data AND no error" as loading.
+- **diary-api split base** — endpoints default to the LEGACY Supabase host unless allowlisted to murror-api; new /v1 endpoints must be added to `isBackendEndpoint` or they silently die.
+- **Takeaways/invites use MODERN connection ids** (cuid), not the legacy relationshipId (uuid) — match partners via connectionDetails userIds. Movie invites need a takeawayId/insightId anchor; challenges FK-validate insightId against cron-generated connection_insights.
+- **Profile rows exist only after onboarding/complete**; /me/avatar is PNG/JPEG-only and the ingress 413s over ~1MB (512px PNGs fit).
+
+---
+
+
+## 2026-06-10/11 (PDT) — murror.app experience overhaul: content engine, cinematic film homepage, living library, trilingual launch
+
+Driver: Astro — build the SEO content engine, then turn the homepage into a cinematic scroll experience (hubtown.co.in reference), the resources hub into a phantom.land-style draggable field, and finally take the whole site trilingual (EN/VI/JA) with automatic language + location routing. All in `apps/marketing` (`murror-platform`, branch `feat/marketing-site`), deployed via wrangler to Cloudflare Pages. Backend/mobile untouched. **Engineering reference for all of these systems now lives at `apps/marketing/README.md`.**
+
+### Shipped & LIVE on murror.app (9 ships, ~8 production deploys)
+1. **/resources content hub (EN)** — content engine (md loader, 3 pillars) + 9 articles, Article/Breadcrumb/FAQPage JSON-LD, canonicals, crisis note (988), immutable `_next/static` caching, hero `fetchPriority`. Merge `1bac76b`+`ba0ffeb`.
+2. **Vietnamese mirror /vi/resources** — locale engine (STRINGS map, shared renderers), 9 VI twins (same slugs), EN|VI toggle, bidirectional hreflang + x-default, VI crisis note (115), +10 sitemap URLs. Merge `45d054b`.
+3. **AI-journaling reframe + verified research** — all 18 articles rewritten around the AI-companion thesis with **13 verified citations** (PubMed/JMIR/Nature/SAGE; adversarial fact-check fixed a ratio-vs-proportion misread before ship) + 5 Higgsfield butterfly-motif illustrations per article (no in-image text — EN/VI share assets). Merge `503ce56`. Editorial serif titles + brand-tint cards on the hub followed (`3a774ee`…`0550c11`).
+4. **Daily article autopilot** — scheduled task (7am PT) drafts one bilingual article/day into the same content system (slug-inventory → research → EN+VI → Higgsfield illustration → cwebp). First scheduled run produced `gratitude-journaling` (EN+VI) on its content branch.
+5. **Cinematic scroll-film homepage** — 7 Higgsfield city-journey scenes (kling3_0 pro 10s → ByteDance 4K upscale → 240 webp frames/scene @24fps; 1920px desktop ~136MB lazy + 960px mobile set ~61MB), canvas player with frame cross-blending, **autoplaying scenes where scroll only turns the page**, blur-materializing copy that holds until the next gesture, sparkle-star/grain/vignette overlays + dark wash, sticky transparent nav, mobile beat mode (long sections as sub-slides), bold-sans stat numerals. Pivot story: started as three.js forest world (`d16a865`…`a0c7374`), Astro redirected to real film. Merge `2f42ad1` + `14d0fca`.
+6. **Phantom-style resources field** — the article library as a draggable infinite card plane above the classic list: real DOM cards (illustration + pillar tint + serif title), rAF drag/momentum/wrap, ambient drift, perspective dome bend, full-opacity cards with a 180px edge fade band. Reduced-motion/crawlers keep the canonical list (zero SEO impact). Merge `187b0be`.
+7. **Page-turn scroll turnstile + 3:3 features** — wheel/touch/keys no longer move the page; they request page turns (gsap scrollTo between act/beat stops). One gesture = exactly one page; momentum tails recognized via 300ms gesture-gap; mid-flight gestures swallowed; a fresh post-arrival gesture queues exactly ONE turn (fixes "feels stuck" without allowing skips). Features grid rewrapped to even 3:3 columns on desktop (was 4:2). Merge `7bcd3a6`.
+
+8. **Chapter rail nav + a critical crash fix** — vertical left rail (xl+) replacing the top nav links: Why Murror / Features / How it works / AI companion / Resources, click-to-glide via the turnstile machinery, scrollspy highlight (theater broadcasts the act on stage), `mix-blend-difference` so labels auto-invert on any background. Shipped with a **critical fix**: ScrollTrigger pin-spacers re-parent the act sections, and React route changes removed DOM before passive cleanups ran → `removeChild` crash → blank site on ANY internal link away from the homepage (live since the film homepage; surfaced as "support is not working"). Theater teardown moved to a mutation-phase layout effect; Theater pinned above the acts in JSX. Merge `81f5b30`.
+
+9. **Trilingual site: English + Vietnamese + Japanese, with language & location routing** — 9 JA articles (translated by 9 parallel agents), full VI+JA homepages (film copy via a locale dictionary, shared `HomeExperience`), locale-aware header/footer/rail, EN|VI|JA switcher, JA crisis line, hreflang across all 42 pages (sitemap 36 URLs). Routing is two-layer: a pre-paint client script (browser language) plus a Cloudflare Pages `_worker.js` scoped by `_routes.json` to the EN entry paths (location: VN→vi, JP→ja; cookie choice > browser vi/ja > geo > en; bots and assets never redirected). Verified: 13/13 browser-language puppeteer checks, 11 live-edge checks, 10/10 unit tests on the shipped worker with mocked countries. Mid-publish race caught: origin gained the Meta Pixel (#52) during the work — merged and redeployed so production has both. Merge `a87e740`.
+
+### Verification
+- **Turnstile gauntlet on LIVE murror.app: 12/12 green** — violent flick = 1 page, continuous grind = 1 page, mid-flight swallowed, post-arrival queues 1, up/keyboard correct, 3:3 columns measured, mobile beats + queue, zero JS errors (desktop + mobile).
+- **Rail + navigation: 13/13** (section glides land pixel-perfect with the right highlight, scrollspy tracks the wheel, cross-page jumps, crash-path round trips clean) and **overlap re-scan at 1366/1440/1512: zero text under the rail**.
+- **Trilingual: 13/13 puppeteer** (overridden `navigator.languages` — JA/VI/EN routing, mixed preferences, remembered choice, lang attributes), **11 live-edge checks on production** (VI/JA browsers 302 to twins; Googlebot, images, film frames untouched; Meta Pixel intact), **10/10 unit tests on the shipped `_worker.js`** with mocked `request.cf.country`.
+- Every deploy live-verified by curl sweep: all pages 200, sitemap correct, prior features intact.
+
+### Engineering lessons (also in agent memory)
+- **GSAP pins vs React teardown**: ScrollTrigger pin-spacers re-parent DOM; route changes remove DOM before passive `useEffect` cleanups → `removeChild` crash → whole app unmounts. Teardown must be a (mutation-phase) layout effect, and the Theater component must precede the pinned sections in JSX.
+- **Cloudflare Pages upload throttle**: bulk frame uploads EPIPE-fail; fix = paced half-scene deploys (~120 files, 150-220s gaps). Production deploys then reuse preview-warmed hashes (3,636 files in 3.5s).
+- **Pages `_worker.js` must be scoped**: `_routes.json` limiting invocation to `/` + `/resources/*` keeps the film's thousands of asset requests off the 100k/day free-tier Functions quota. In-worker guards: never redirect bots, non-GET, or extension paths (article images live under `/resources/*.webp`).
+- **Hidden tabs freeze animation**: scroll/animation behavior must be verified via puppeteer-core headless (rAF runs; `page.mouse.wheel` sends trusted events); the local preview tab can't. Production homepage needs `waitUntil: domcontentloaded` (film frames never go network-idle on cold cache). Prefer full-viewport screenshots (`clip` flakes in headless).
+- **Gauntlet design**: assert landings relative to the previous landing (absolute indices cascade one failure into five); CDP round-trip latency stretches synthetic burst timing; localStorage persists across pages in one puppeteer browser (a stored-preference test can poison the next test — use fresh contexts).
+- **Shared branch hygiene**: fetch origin before deploying — the Meta Pixel (#52) landed mid-rollout and one production deploy briefly shipped without it.
+
+### Open / follow-ups
+- **Astro: review the Vietnamese homepage copy natively** (murror.app/vi/ — my translation); commission a native Japanese pass before any serious JP marketing push.
+- Submit sitemap.xml to Google Search Console (needs Astro's Google login) — now carries all 3 locales.
+- PR #48 (`feat/marketing-site` → dev) repo hygiene; `fix/insights-seo` + viasr-api `fix/ai-docs-noindex` still awaiting their PRs/deploys.
+- VI title capitalization normalization (pending Astro's call); cancel Squarespace site plan (site live + stable since 06-05).
+
+---
+
 ## 2026-06-05 (PDT) — murror.app marketing launch: Cloudflare cutover + SEO + email fix
 
 Driver: Astro — "create a new website for murror.app without Squarespace, save costs," then take it live and harden discovery + email. Marketing site is the new `apps/marketing` static app (Next.js `output: export`) in `murror-platform`, deployed to **Cloudflare Pages (free)**. No backend/mobile touched (continue-never-rebuild; `apps/web` SSR routes left alone).
