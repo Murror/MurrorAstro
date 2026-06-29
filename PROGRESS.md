@@ -1,5 +1,30 @@
 # Murror Progress
 
+## 2026-06-24 to 06-28 (PDT): Voice/Bedtime Story across the stack, mobile polish batch (TestFlight 236-243), Claude/Codex two-agent model
+
+Driver: Astro. Two-agent sprint: Claude on MurrorMobile + murror-api (+ this docs repo), Codex on the murror-platform web client, coordinated via a shared HANDOFF.md operating model (Claude owns mobile truth, Codex owns web implementation, API Lock gates shared contracts). Mobile shipped to staging TestFlight builds 236 through 243; murror-api shipped 4 PRs to staging; the web client reached voice/bedtime + Moments + For Us parity.
+
+### Backend (murror-api, PRs to staging)
+- Daily voice summary is a first-class diary entry (#518); generated same-day on a streak milestone (#520); takeaway "poke" to remind the receiver to reflect back (#519); memories photo uploads allowed through ingress (proxy-body-size 50m); song-invite accept/cancel (#521, additive migration, merged + deployed to staging, API healthy).
+
+### Mobile (MurrorMobile, builds 236-243)
+- Voice/Bedtime Story: render voice_summary entries as a playable bedtime card in the home Journal (was a plain card opening the wrong screen); redesigned with 10 bundled night-sky watercolor backgrounds (date-rotated, FastImage cover, serif title, 260x280 height parity, fixed clipped moon, legibility scrim).
+- Glass toast (frosted pill, web parity); retired the butterfly shimmer loader for a spinner everywhere; voice player now follows the highlighted paragraph + thicker, colorful, scrubbable progress bar (added seek()); Get Help localized JA/VI wired to app language; Thanh Loc persona shown only to Vietnamese users; song-invite accept/cancel receiver UI; fixed a pending challenge mislabeled "NEW".
+- Earlier in the window: Moments to Care rework + slide-to-next + streak milestone wrap-up; takeaway poke UI; relationship-type + privacy port to match web; QA batches 2 and 3.
+
+### Web (murror-platform, Codex, feat/web-app-from-mobile)
+- For Us parity + playable voice/bedtime cards + takeaway songs + Moments parity; toast glass-pill styling + brand alignment; profile loading/date-picker + onboarding signup polish; TikTok pixel + commerce funnel events.
+
+### Operating notes / gotchas
+- iOS build number lives in BOTH project.pbxproj (CURRENT_PROJECT_VERSION, 24 occurrences) AND the per-scheme *-Info.plist CFBundleVersion (staging app reads the plist; OneSignal extension reads pbxproj). Bump BOTH with surgical sed/perl on the plist (not PlistBuddy Set, which reformats). Caught a 240/241 app-vs-extension mismatch. See memory ios_build_number_mechanism.md; an ios-build.md runbook fix is filed.
+- FastImage accepts a local require() webp source; bedtime backgrounds bundled locally (not Supabase) since the app builds artwork URLs from the env-specific Config.SUPABASE_URL.
+- song-invite migration is safe because the new enum values are never used in-file (avoids the Postgres "unsafe use of new enum value" transaction error).
+
+### Verification
+- Builds 236-243 archived + uploaded (app + extension build numbers verified equal before each upload). song-invite PR #521 deployed to staging (CI success, API 200), with Sentinel + Iris pre-build reviews on the final batch.
+
+Doc: docs/plans/2026-06-28-bedtime-voice-story-and-mobile-batch-builds-236-243.md
+
 ## 2026-06-11 (PDT) — Staging web app: the log view becomes deep chat, 5 QA batches, a backend emotion fix, the voice diary ported, and a persona showcase world
 
 Driver: Astro — iterative QA on the staging web app (`apps/web-client`, staging.app.murror.app). Astro tested in rounds and sent findings with screenshots; each batch was root-caused against the MOBILE source (MurrorMobile is always ground truth), fixed, gate-checked (tsc + full vitest), harness-verified end-to-end against live staging, deployed (CI image -> helm, nsp-staging-murror), and logged (PARITY_LOOP_LOG.md + Notion Engineering Log). Staging only; production untouched. 7 web deploys (helm rev 78-84), 1 viasr backend PR, 4 showcase accounts.
