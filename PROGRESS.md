@@ -1,5 +1,27 @@
 # Murror Progress
 
+## 2026-06-28 to 06-30 (PDT): Deep-chat / reflection UX feedback loop (TestFlight 244-247) + AI emotional-safety backend
+
+Driver: Astro. Rapid on-device QA loops on the deep-chat / reflection experience: Astro tested each staging TestFlight build and sent batches of findings (with screenshots); each was root-caused (often via parallel specialist agents), fixed, reviewed, and rolled into the next build (244 through 247). Four backend PRs (3 viasr-api, 1 murror-api) shipped to staging in parallel.
+
+### Mobile (MurrorMobile, builds 244-247)
+- QA243 (244): LockIcon viewBox (was clipping); Journal rail refetch-on-focus so saved entries appear without manual refresh; birth time survives reinstall (rehydrate onboarding store from server /me, never clobbering in-progress input).
+- Deep-chat copy/UX (245-247): connection-picker section title; ALL reflect prompts in second person ("you" not "I", en/vi; ja already second-person); dual privacy copy (original encryption line + the new between-you-and-Murror line) with "Learn more" rewired from CBT to a privacy popup; council attribution dedup; save-draft contrast; reflection-card prompt-subtext removed (was clipping under the CTA); For-Us carousel loop disabled + the care-tip "Reflect" no longer collapses the carousel; CRI "Dive deeper" spinner; tab-switch white-flash killed (neutralBlack scene/card backgrounds); voice Done waits 1s so a trailing word is not clipped; persona attribution confirmed on all 3 summary sections.
+
+### Backend (staging deploys)
+- viasr-api: reflection-card AI meta-leak fix (empty deep_chat summary made the model reply conversationally and that leaked to the receiver's card; input + output guards + warm fallback) [#537]; mood-aware daily care notifications (reads the daily mood check-in, 24h recency, mood-as-floor never crisis-grade, tunes cadence + tone, failure-isolated + fallback bank) [#538]; second-person AI journaling/reflection prompts [#539].
+- murror-api: regenerate legacy connection reflections with empty quote/insight so the CRI "Quote" + "What both can do" sections render [#522].
+
+### Operating notes / gotchas
+- Background agents that die mid-task can leave PARTIALLY committed work; build 245/246 shipped only part of a copy batch because an agent process exited and I built on top without verifying each item. Fix: require every agent to commit + report its hash, and verify the hash AND the actual strings/behavior landed before cutting a build. 247 was verified item-by-item.
+- The reflection-card meta-leak was an emotional-safety bug on the empty-data path (new connections, the most fragile moment). Guard empty inputs AND validate model output before it reaches a human.
+- Japanese second-person: do not mechanically add explicit pronouns; the language already reads second-person and explicit pronouns feel clinical.
+
+### Verification
+- Builds 244-247 archived + uploaded (app + extension build numbers verified equal each time). Build 247 self-reviewed after the review agent died (tsc 0 new errors, 3 locales parse, no first-person left, gating + carousel + nav props confirmed). All 4 backend PRs: passing CI + deploy success; unit tests + compassion-review 10/10 on the two prompt changes.
+
+Doc: docs/plans/2026-06-30-deepchat-reflection-ux-and-ai-safety-builds-244-247.md
+
 ## 2026-06-24 to 06-28 (PDT): Voice/Bedtime Story across the stack, mobile polish batch (TestFlight 236-243), Claude/Codex two-agent model
 
 Driver: Astro. Two-agent sprint: Claude on MurrorMobile + murror-api (+ this docs repo), Codex on the murror-platform web client, coordinated via a shared HANDOFF.md operating model (Claude owns mobile truth, Codex owns web implementation, API Lock gates shared contracts). Mobile shipped to staging TestFlight builds 236 through 243; murror-api shipped 4 PRs to staging; the web client reached voice/bedtime + Moments + For Us parity.
