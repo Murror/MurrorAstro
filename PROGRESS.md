@@ -1,5 +1,24 @@
 # Murror Progress
 
+## 2026-06-30 (PDT): QA248 fix sprint (build 248 review) -> build 249/250 + 5 backend PRs
+
+Driver: Astro. Build 248 QA = 6 issues; live-staging-DB forensics corrected three root causes and surfaced two more bugs (notification spam, bedtime not generating). Shipped build 249 to TestFlight + five backend PRs to staging; build 250 + card optimizations followed. Full detail: `docs/plans/2026-06-30-qa248-sprint.md` + `docs/card-mechanics-audit-2026-06-30.md`.
+
+### Mobile (build 249; 250 in progress)
+- #1 blank prompt pills: removed shake-to-switch (it flipped any card into the prompt view; only surfaced on real devices with an accelerometer). Question view now opens only via the Dive button.
+- #3 voice button un-froze (setLoading moved out of the 1s deferred stop). #4 JED persona on all 3 sections (grounding fallback). #5 "they" -> "your connection" (en/vi/ja). Voice limit -> 120s.
+- Build 250: self-stopping Home feed poll + dead-code removal.
+
+### Backend (staging only; alpha HELD per Astro until beta validated)
+- murror-api #525: #2A health-check regeneration loop (thread dayId so findMissingInsights clears), #2B reflected-today UTC filter, #1 explore-deeper guard. #526: disabled the autoFixMissingInsights cron + suppressed pushes for system-generated insights + closed the normal-path dayId gap.
+- viasr #542/#543/#544: explore-deeper empty/meta guard; eval() removal + connection-insight meta guard + deep-chat nightly bedtime; dive-deeper single-call + model rebalance + reflection-card system prompt.
+
+### Operating notes / gotchas
+- #2 daily-limit block was a 30-min cron regeneration loop (generated insights had dayId=NULL so the day never cleared findMissingInsights), not stuck rows; the same loop fired the spurious "Khanh reflected" push each tick. Only root-caused via the live staging DB.
+- #6 birth time persists fine (was never entered before, not a save bug). Bedtime needed the deep-chat cohort merged into the nightly cron.
+- Journal + deep-chat are ONE (Astro directive): any feature/eligibility keyed on one must apply to both.
+- Session teardowns repeatedly killed background agents mid-run; preserve partial work as WIP commits immediately. A background task hijacked the main MurrorMobile worktree onto a chore branch with cross-session uncommitted files; stashed them to build 250 cleanly (stash: "cross-session wip relationship files").
+
 ## 2026-06-28 to 06-30 (PDT): Deep-chat / reflection UX feedback loop (TestFlight 244-247) + AI emotional-safety backend
 
 Driver: Astro. Rapid on-device QA loops on the deep-chat / reflection experience: Astro tested each staging TestFlight build and sent batches of findings (with screenshots); each was root-caused (often via parallel specialist agents), fixed, reviewed, and rolled into the next build (244 through 247). Four backend PRs (3 viasr-api, 1 murror-api) shipped to staging in parallel.
