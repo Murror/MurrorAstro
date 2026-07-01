@@ -11,31 +11,55 @@
 ```bash
 cd /Users/astro/Projects/murror-transfer/Murror/MurrorMobile
 
-# 1. Bump CURRENT_PROJECT_VERSION in project.pbxproj (4 occurrences for the target scheme)
-sed -i.bak 's/CURRENT_PROJECT_VERSION = 211;/CURRENT_PROJECT_VERSION = 212;/g' \
-  ios/MurrorMobile.xcodeproj/project.pbxproj
-rm ios/MurrorMobile.xcodeproj/project.pbxproj.bak
+# SINGLE BUILD LANE: every TestFlight build archives from `staging-environment-setup`,
+# and the build number is chosen by a script, NEVER by hand. Build numbers are a
+# cross-session shared resource: hand-picking them caused two `251` collisions and a
+# phantom off-repo `253` (Apple rejects the duplicate, so that build's fix silently
+# never shipped). Land your code on staging-environment-setup FIRST, then build from it.
 
-# 2. Commit + push the bump on a chore branch (per CONVENTIONS.md — no direct push to main)
-git checkout -b chore/bump-build-212
-git add ios/MurrorMobile.xcodeproj/project.pbxproj
-git commit -m "chore(ios): bump staging build 211 to 212"
+# 1. Bump the build number with the script. It sets the number to (canonical + 1) and
+#    moves it in the TWO independent places that are NOT derived from each other:
+#      (a) CURRENT_PROJECT_VERSION in project.pbxproj  -> the OneSignal/AppWidgets EXTENSION targets (24)
+#      (b) the CFBundleVersion literal in each per-scheme Info.plist  -> the APP itself (hardcoded)
+#    Bump only (a) and the extension ships at N+1 while the app stays at N, so App Store Connect
+#    rejects the app/extension version mismatch. (That is what produced the bad build 241 on 2026-06-27.)
+#    The script does both, warns if your tree is not canonical content, and verifies all 28 spots.
+./scripts/ios-next-build.sh --dry-run   # preview the number
+./scripts/ios-next-build.sh             # apply the bump
+
+# 2. Commit + PR the bump into staging-environment-setup (per CONVENTIONS.md, no direct push), THEN archive from it.
+NEW=$(grep -m1 -oE 'CURRENT_PROJECT_VERSION = [0-9]+;' ios/MurrorMobile.xcodeproj/project.pbxproj | grep -oE '[0-9]+')
+git checkout -b chore/bump-build-${NEW}
+git add ios/MurrorMobile.xcodeproj/project.pbxproj \
+        ios/MurrorMobile/Info.plist ios/MurrorMobileStaging-Info.plist \
+        ios/MurrorMobileDevelopment-Info.plist ios/MurrorMobileODE-Info.plist
+git commit -m "chore(ios): bump build to ${NEW} (pbxproj + Info.plists)"
+# gh pr create --base staging-environment-setup ... ; merge ; then archive from staging-environment-setup.
 
 # 3. Archive
 xcodebuild archive \
   -workspace ios/MurrorMobile.xcworkspace \
   -scheme MurrorMobileStaging \
   -configuration Release \
-  -archivePath /tmp/MurrorMobileStaging-212.xcarchive \
+  -archivePath /tmp/MurrorMobileStaging-${NEW}.xcarchive \
   -allowProvisioningUpdates \
   -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_GGV7225WH5.p8 \
   -authenticationKeyID GGV7225WH5 \
   -authenticationKeyIssuerID 628f9cc5-6342-4c1d-8a74-3723334b1fc2
 
-# 4. Export + upload to TestFlight
+# 4. VERIFY the archive before spending the ~5-min upload (see "Verify before upload" below).
+#    The app build number AND every embedded .appex build number must equal ${NEW}.
+ARCHIVE=/tmp/MurrorMobileStaging-${NEW}.xcarchive
+/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleVersion" "$ARCHIVE/Info.plist"   # the app
+find "$ARCHIVE/Products/Applications" -name '*.appex' -print \
+  -exec /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" {}/Info.plist \;                       # the extensions
+#  Every number printed above must read ${NEW}. If an .appex differs from the app, STOP:
+#  you bumped only one of the two places. Fix the bump, re-archive, then continue.
+
+# 5. Export + upload to TestFlight
 xcodebuild -exportArchive \
-  -archivePath /tmp/MurrorMobileStaging-212.xcarchive \
-  -exportPath /tmp/MurrorMobileStaging-212-export \
+  -archivePath /tmp/MurrorMobileStaging-${NEW}.xcarchive \
+  -exportPath /tmp/MurrorMobileStaging-${NEW}-export \
   -exportOptionsPlist ios/ExportOptions.plist \
   -allowProvisioningUpdates \
   -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_GGV7225WH5.p8 \
@@ -60,10 +84,47 @@ Wait for `** EXPORT SUCCEEDED **` + `Uploaded MurrorMobileStaging`. Apple's proc
 
 ## Version numbers
 
-- **`MARKETING_VERSION`** — user-facing version (e.g., `2.0.0`). Bump only on major/minor releases.
-- **`CURRENT_PROJECT_VERSION`** — build number (e.g., `212`). **Must increment for every TestFlight upload.** Apple rejects duplicate build numbers per `MARKETING_VERSION`.
+- **`MARKETING_VERSION`** is the user-facing version (e.g., `2.0.0`). Bump only on major/minor releases.
+- **Build number** (e.g., `242`) **must increment for every TestFlight upload.** Apple rejects duplicate build numbers per `MARKETING_VERSION`.
 
-To bump: edit `ios/MurrorMobile.xcodeproj/project.pbxproj`. There are 4 occurrences of `CURRENT_PROJECT_VERSION = N;` for the staging build (one each for MurrorMobileStaging target + OneSignal extension target, in both Debug and Release configurations). Use `sed -i.bak` to bump all four at once.
+### The build number lives in TWO independent places
+
+They are NOT derived from each other. **Bump BOTH every time**, or the upload is rejected:
+
+| Place | Drives | How it's stored |
+|---|---|---|
+| `CURRENT_PROJECT_VERSION` in `ios/MurrorMobile.xcodeproj/project.pbxproj` | The **extension** targets (OneSignal x4 schemes, AppWidgets x2) | 24 occurrences (every target x Debug/Release). The extensions have `GENERATE_INFOPLIST_FILE = YES`, so Xcode derives their `CFBundleVersion` from this build setting. All schemes currently share one number, so a **global** `sed` is correct. |
+| `CFBundleVersion` literal in each per-scheme **app** Info.plist | The **app** itself | A hardcoded `<string>NNN</string>`. Xcode does NOT substitute `CURRENT_PROJECT_VERSION` here, so it must be edited by hand. |
+
+The four per-scheme app Info.plists (bump all four to keep schemes in lockstep, matching commit history):
+
+| Scheme | App Info.plist |
+|---|---|
+| Production | `ios/MurrorMobile/Info.plist` |
+| Staging | `ios/MurrorMobileStaging-Info.plist` |
+| Development | `ios/MurrorMobileDevelopment-Info.plist` |
+| ODE | `ios/MurrorMobileODE-Info.plist` |
+
+> ⚠️ **The 2026-06-27 (build 241) failure:** bumping only `CURRENT_PROJECT_VERSION` moved the extensions to N+1 while the apps stayed at N. App Store Connect's upload validation rejects that app/extension version mismatch. The last two correct bumps (`a176cbf`, `3a962e7`) change pbxproj AND all four Info.plist `CFBundleVersion` lines together.
+
+**How to bump:** use the surgical one-liners in the [TL;DR](#tldr). The `sed` global-replaces the 24 pbxproj occurrences; the `perl -0pi` edits ONLY the `<string>` after each `<key>CFBundleVersion</key>`. **Do NOT use `PlistBuddy -c "Set :CFBundleVersion ..."`** to bump the plists: it rewrites and reformats the entire file, turning a 1-line change into a noisy diff.
+
+### Verify before upload
+
+A ~30-min archive+upload cycle is wasted if ASC rejects on a version mismatch. After archiving and **before** export/upload, confirm the app and its extensions agree on the build number:
+
+```bash
+ARCHIVE=/tmp/MurrorMobileStaging-242.xcarchive   # match your build number
+
+# App build number ASC will read (must equal the intended number):
+/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleVersion" "$ARCHIVE/Info.plist"
+
+# Every embedded extension's build number (each must equal the app's):
+find "$ARCHIVE/Products/Applications" -name '*.appex' -print \
+  -exec /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" {}/Info.plist \;
+```
+
+If any `.appex` number differs from the app's, STOP and re-bump: you moved only one of the two places.
 
 ---
 
@@ -117,7 +178,7 @@ For production builds (scheme `MurrorMobile`, env `.env.production`):
 
 1. ☐ Pass the agent code review gate (see above)
 2. ☐ Promotion PR (staging → production) merged via merge-commit (not squash — see [`CONVENTIONS.md`](../CONVENTIONS.md) §3)
-3. ☐ Bump `CURRENT_PROJECT_VERSION` for the **production** target's 4 occurrences in `project.pbxproj`
+3. ☐ Bump the build number in BOTH places (see [Version numbers](#version-numbers)): the 24 `CURRENT_PROJECT_VERSION` occurrences in `project.pbxproj` AND the `CFBundleVersion` literal in all four app Info.plists. The TL;DR bump block does both; just keep `-scheme MurrorMobile` for the archive/export.
 4. ☐ Archive with `-scheme MurrorMobile`
 5. ☐ Export + upload using the same command as staging but `MurrorMobile` scheme
 6. ☐ Verify in App Store Connect TestFlight tab → External Testing → submit for App Review when ready
