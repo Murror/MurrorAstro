@@ -1,5 +1,25 @@
 # Murror Progress
 
+## 2026-06-30 evening -> 07-01 (PDT): Card system hardening (migration drift, guards, reapers) + curation design + builds 250/251
+
+Continuation of QA248. More card QA surfaced systemic backend gaps, all fixed + deployed to staging. Full detail: `docs/plans/2026-07-01-card-system-hardening-and-curation.md`.
+
+### Backend (staging)
+- viasr #544 (dive-deeper single-call + model rebalance + reflection-card system prompt), #545 (V20 user_profile partial-unique-index repair + universal `safe_validate_suggestion` guard against the provider-failure fallback-string crash), #546 (V21 user_persona column types -> learned-persona writes now succeed + below-baseline hot indexes).
+- murror-api #527 (takeaway stuck-row reaper, mark-FAILED-only, 5-min cron), #528 (care notification default-on: TWO enable_notification columns - app wrote the murror `User` one, viasr read the legacy `public.user_profiles` one; set default true on both + backfilled 143 users, verified 143/143).
+
+### Mobile
+- Build 250: self-stopping Home feed poll + dead-code. Build 251: Challenge card fix (tap -> details popup, body truncated, removed wrong Dive-deeper->CRI, receiver-only Accept; no Decline per Astro, X dismisses).
+
+### Audits + design
+- Card-health audit: 11/14 card types healthy on staging; Takeaway (fixed #527), Challenge (fixed b251), Daily prompt (stale 8 days, kept OFF per Astro).
+- "When to show what" curation panel (Heart/Prism/North/Iris): consensus = ONE hero card (core reflection always shown), everything else EARNED via tiers + state + cooldowns, silence/empty as a feature, never manufacture filler. Build path (Iris): pure `curateCards()` behind a `FEED_CURATION` Statsig flag (flag-off = today), Stage 1 allowlist delivers "suggestions on / daily-prompt off / challenge simplified" now. NOT built - awaiting Astro's direction on the forks.
+
+### Gotchas
+- Flyway baseline-at-V15 means V1-V14 never ran (V7 index + V4 persona types silently missing on staging). Audited V1-V14; only user_persona types + hot indexes (V21) were genuine gaps, rest obsolete.
+- The provider-failure fallback string reaching an unguarded `model_validate_json` crashes the whole insight; guard centrally with a detectable signal.
+- Two `enable_notification` columns (app-facing vs viasr-read); fixing one alone would not work.
+
 ## 2026-06-30 (PDT): QA248 fix sprint (build 248 review) -> build 249/250 + 5 backend PRs
 
 Driver: Astro. Build 248 QA = 6 issues; live-staging-DB forensics corrected three root causes and surfaced two more bugs (notification spam, bedtime not generating). Shipped build 249 to TestFlight + five backend PRs to staging; build 250 + card optimizations followed. Full detail: `docs/plans/2026-06-30-qa248-sprint.md` + `docs/card-mechanics-audit-2026-06-30.md`.
