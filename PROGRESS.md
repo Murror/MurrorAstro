@@ -1,5 +1,23 @@
 # Murror Progress
 
+## 2026-07-02 (PDT): QA258 + QA259 sprints, quiz revamp, two P0 incidents -> build 260
+
+Same-day QA loop: build-258 feedback (7 items, shipped build 259), build-259 feedback (5 items) plus a full quiz-experience revamp (shipped build 260), and two independently-resolved P0 incidents. Full detail: `docs/plans/2026-07-02-qa258-qa259-quiz-revamp-p0-incidents.md`.
+
+### Highlights
+- **QA258**: glass buttons reverted (SHA256-verified byte-identical to pre-glass); the actually-missed "Connection Streak" title surface found + benefit subtext added; unscalable persona chips removed from card titles (both journal + chat); eye-icon bottomsheet reworked from a horizontal slide to expand-in-place; History story-card now uses the same bundled image as Home (was a hardcoded gradient with no image); educational progress-bar copy; connections + button matched to the memory-photo + button.
+- **P0 incident 1 - LLM fallback chain collapse**: 4-rung cascade (Claude truncated at a too-small token budget -> OpenAI wrongly skipped because a renamed status-page component made our health check fail closed -> Groq transiently open -> Gemini disabled). Fixed: status checks are now fail-open (a broken status page can never disable a healthy provider); Claude requests retry once at 4x budget on detected truncation.
+- **P0 incident 2 - staging web/beta auth fully broken**: the rebuilt staging Supabase signs ES256 tokens; the platform relay in front of every Edge Function only accepted HS256, rejecting every web request before our own code (which handles both fine) ever ran. Fixed by deploying with the relay check disabled, after auditing all 28 deployable functions to confirm each authenticates in its own code. Also found + fixed a second, unrelated bug in the same investigation: mobile avatar upload rejected iOS camera photos (mislabeled HEIC).
+- **QA259 + quiz revamp**: fixed a stale-cache bug where a submitted Connection Reflection's "waiting" card never appeared (traced to a query-key migration that missed 3 mutation hooks); added a share confirmation that never existed before completing a reflection from a connection; and rebuilt the quiz feature entirely - the backend always generated 3 real multiple-choice questions but mobile silently discarded 2 of them and routed the first into the plain reflection screen, which is why quizzes felt identical to reflections. Quiz is now its own card with its own in-chat answering experience, fully separate from the reflect-task streak cycle (a cycle-freeze bug was caught and fixed during the build). Quiz questions are now grounded in the users' actual journal/chat history and memories, gated by privacy and filtered for crisis content at the database level.
+- **AI voice fixes**: explore-deeper questions flip from first-person ("I") back to second-person ("you") per direction; shared-reflection cards stop misgendering (pronoun-first resolution, gender only when explicitly known) and a latent crash on missing profile data is fixed. Both verified with live adversarial generations against staging (planted names, romantic-bait phrasing, empty profile rows) since the eval harness turned out to have a silent coverage gap for these suites (now flagged as a follow-up).
+
+### Gotchas
+- Query-key migrations must sweep every mutation hook that invalidates the old key, not just the screens reading the new one.
+- A platform-level auth relay can reject requests before your own middleware runs; fixing the middleware does nothing if the infrastructure in front of it is stricter.
+- Provider status-page health checks must fail open; a broken status page must never disable a healthy provider.
+- HTTP 200 + empty structured output = token-budget truncation, not a real empty response.
+- When two branches rewrite the same function for different reasons, prove the two behaviors compose before trusting a real merge, not just that the diff resolves.
+
 ## 2026-07-01 evening (PDT): QA257 sprint, streak redesign, journal/AI-chat unification -> build 258
 
 Astro's build-257 QA produced 8 feedback items; all fixed/built, plus the streak UX redesign and the "journal and AI chat are ONE, clean this up" mandate - full parity audit + 8 violations fixed across 3 repos. Full detail: `docs/plans/2026-07-01-qa257-sprint-streak-redesign-journal-chat-parity.md`.
