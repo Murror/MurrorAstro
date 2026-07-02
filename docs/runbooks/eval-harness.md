@@ -10,15 +10,28 @@
 ```
 /Users/astro/Projects/murror-transfer/Murror/viasr-api/evals/
 ├── runner.py            # entry point — `poetry run python -m evals.runner`
-├── fixtures/            # YAML test cases per suite
+├── fixtures/            # YAML test cases per suite — discovery is RECURSIVE
 │   ├── crisis_detection.yaml
 │   ├── deep_chat.yaml
 │   ├── emotion_detection.yaml
-│   └── journal_completion.yaml
+│   ├── journal_completion.yaml
+│   ├── memory_recall_quality.yaml
+│   ├── insight_deeper/          # "Dive Deeper" pills (subdirectory suites
+│   ├── new_relationship/        #  are discovered too — do NOT assume a
+│   └── reflection_card/         #  subdirectory hides a fixture from the run)
 ├── graders/             # code + LLM-as-judge graders
 └── reports/
     └── baseline.json    # current accepted baseline (committed)
 ```
+
+⚠️ **Every suite hits a RUNNING viasr-api** (`EVAL_BASE_URL`). There is no
+offline mode: without a reachable target every trial errors out. The
+deterministic guard logic additionally has offline pytest coverage under
+`tests/` (no server, no token spend), and
+`tests/evals/test_runner_discovery.py` enforces that every fixture's `suite:`
+has a registered runner — a fixture can no longer sit silently unrun (that
+happened for months to `insight_deeper/` and `new_relationship/`: the old
+discovery glob was non-recursive and the dispatcher only knew five suites).
 
 ---
 
@@ -55,8 +68,9 @@ poetry run python -m evals.runner --check-baseline --trials 3
 **Suite-toggle env vars** (default all `true`):
 - `EVAL_RUN_CRISIS`
 - `EVAL_RUN_EMOTION`
-- `EVAL_RUN_CHAT`
+- `EVAL_RUN_CHAT` (also gates `memory_recall_quality`)
 - `EVAL_RUN_JOURNAL`
+- `EVAL_RUN_RELATIONSHIP` (gates `insight_deeper`, `new_relationship`, `reflection_card`)
 
 ---
 
@@ -79,8 +93,22 @@ poetry run python -m evals.runner --trials 2
 | `app/services/chat/` | `--suite deep_chat` |
 | Emotion detection / extraction | `--suite emotion_detection` |
 | `app/services/journal/` | `--suite journal_completion` |
+| Memory recall / librarian | `--suite memory_recall` |
+| `app/services/insight_deeper/` or the EXPLORE_INSIGHT_DEEPER prompt | `--suite insight_deeper` |
+| `app/services/new_relationship/` | `--suite new_relationship` |
+| `app/services/reflection_card/` | `--suite reflection_card` |
 | Crisis-related — **always run regardless** | `--suite crisis_detection` |
 | Broad AI changes (model swap, multi-agent prompt restructure) | omit `--suite` (runs all) |
+
+The `--suite` filter matches against the fixture path relative to
+`evals/fixtures/` (so both a subdirectory name and a filename keyword work).
+
+**Perspective note:** the `insight_deeper` suite's `you_voice_perspective`
+grader encodes the you-voice contract from `fix/qa259-voice-and-pronouns`
+(reader = "you"/"your", other person = "them"/"they", no personal names, no
+relationship labels). Against a server still running the older first-person
+prompt, model-generated questions are EXPECTED to fail that grader; the
+warm fallback pairs pass either way (they were always second person).
 
 Per [`../CONVENTIONS.md`](../CONVENTIONS.md) §6 (permanent fixes only): **never disable a failing eval to "make CI pass."** If an eval is failing, either fix the code or decide the new behavior is intended and update the baseline.
 
