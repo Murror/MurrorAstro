@@ -112,6 +112,26 @@ warm fallback pairs pass either way (they were always second person).
 
 Per [`../CONVENTIONS.md`](../CONVENTIONS.md) §6 (permanent fixes only): **never disable a failing eval to "make CI pass."** If an eval is failing, either fix the code or decide the new behavior is intended and update the baseline.
 
+### Local-run caveats for the relationship-family suites (verified 2026-07-02)
+
+Running these three against a **local** viasr-api needs a fully-provisioned
+environment; verify against staging/alpha if a suite fails locally:
+
+| Suite | Endpoint | Runs locally? | Gotcha |
+|---|---|---|---|
+| `insight_deeper` | `/new-relationship/explore-insight-deeper` | ✅ yes | Light; fallback + one model call. Verified 7/7 on staging code. |
+| `reflection_card` | `/reflection/invidual/share` | ✅ yes | One reflection call. Verified 9/9. Run it in isolation. |
+| `new_relationship` | `/new-relationship/extract-insight-relationship` | ⚠️ needs full env | Heavy multi-step LangGraph flow that calls **external services** (a "Suggest location" places lookup) which hang without local config, and reads self-hosted profile columns absent from dev Supabase. Verify on staging. |
+
+Two model/config traps hit locally:
+- The hardcoded default `model_complex_task = "claude-sonnet-4-6-20250929"`
+  (`app/components/environment/config.py`) returns a **live 404** from Anthropic;
+  the heavy flows 404 unless the deployed env overrides
+  `LLM__CLAUDE__LLM_MODEL__MODEL_COMPLEX_TASK`. (Filed as a separate task.)
+- A single orphaned `extract-insight` request blocks the default single uvicorn
+  worker's event loop (its external call is blocking), so **stop a hung run and
+  restart the server before the next suite** or later requests queue and time out.
+
 ---
 
 ## Baseline workflow
