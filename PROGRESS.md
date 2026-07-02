@@ -1,5 +1,23 @@
 # Murror Progress
 
+## 2026-07-01 evening (PDT): QA257 sprint, streak redesign, journal/AI-chat unification -> build 258
+
+Astro's build-257 QA produced 8 feedback items; all fixed/built, plus the streak UX redesign and the "journal and AI chat are ONE, clean this up" mandate - full parity audit + 8 violations fixed across 3 repos. Full detail: `docs/plans/2026-07-01-qa257-sprint-streak-redesign-journal-chat-parity.md`.
+
+### Highlights
+- **Explore-deeper perspective fix deployed** (viasr #553): questions are now perspective-neutral by contract (reader = "I", other person = "them"/"our connection", never a copied name or "your partner"); root cause was name-anchored prompting + empty staging profile names.
+- **Bedtime story, actually fixed this time**: the cron fires at 3:30 UTC but evening-PST users reflect after it; now the story generates on the FIRST reflection of each day (on-demand path un-gated from milestones) + a 30h rolling cron window as backstop + once-per-day push dedupe.
+- **Challenge card "disappearance"**: never left the DB; the paginated feed endpoint didn't fetch challenges (only /latest did). Also found all 4 expiry crons firing at :00 and exhausting the DB pool (challenge expiry had NEVER completed) - staggered.
+- **Streak redesign**: read-path bucketing fixed (canonical streakDay), progress bar, goal-vs-earned butterfly placement corrected, rest-day grace (1 missed day rests, 2 resets), invitation-style evening nudge (Statsig-gated), "Connection Streak"/"History" renames.
+- **Journal==AI-chat unification**: chat completions now send the artwork-ready push, sync keywords to recentInterests, and are counted by weekly themes + ping eligibility + notification input; the QA248 grounding fix finally applied to the chat screen; streak twin use-cases unified (-127 lines, original specs byte-unchanged as behavior lock). Astro ruled chat-joins-History-at-completion LEGIT (pinned in memory).
+- **Build 258** shipped via the lane: 6 mobile branches merged in review-simulated order (zero conflicts, composed-tree tsc green), bump #514, uploaded ~23:32 PDT.
+
+### Gotchas
+- Fixed-time daily crons miss same-day activity created after they run; event-driven + rolling-window backstop is the durable shape.
+- Suppression keys must carry the full identity of what they dedupe (memory-burst key lacked the sender; collapsed two recipients into one window).
+- App-wide component restyles must respect caller overrides on every channel (bg prop, style bg, textColor).
+- Deep-chat prompt rotation ships wired but dormant: the chat wrapup does not generate journaling questions yet (chip task_73dd67d2, needs prompt change + evals).
+
 ## 2026-07-01 (PDT): Single build lane, AI Chat memory + resume, Challenge v1, full card audit + P0 reaper fix, Smarter AI program -> build 257
 
 Continuation of the card-system hardening entry below. Full detail: `docs/plans/2026-07-01-single-build-lane-ai-chat-memory-challenge-v1-card-audit.md`.
