@@ -1,5 +1,38 @@
 # Murror Progress
 
+## 2026-07-01 (PDT): Single build lane, AI Chat memory + resume, Challenge v1, full card audit + P0 reaper fix, Smarter AI program -> build 257
+
+Continuation of the card-system hardening entry below. Full detail: `docs/plans/2026-07-01-single-build-lane-ai-chat-memory-challenge-v1-card-audit.md`.
+
+### Reflection-card + truncation fix (viasr #547)
+- Root cause was NOT one bug: `min_items=3` on `prevQuestionAnswers` 422'd for users with 1-2 prior answers (not 0, not 3+); separately, `MAX_TOKENS=800` with no `stop_reason` check truncated replies mid-word. Both fixed + deployed; mobile got a graceful `REFLECTION_NOT_READY` state instead of a silent no-op.
+
+### Single build lane (the recurring build-number collisions, finally fixed at the root)
+- Build 253 was archived off-repo on another machine and never pushed, so the live TestFlight 253 lacked the challenge fix entirely. Rebuilt as 254 off canonical. Shipped `scripts/ios-next-build.sh` (computes next build = max(canonical, local)+1 across pbxproj + 4 Info.plists) + a documented single-build-lane / single-owner rule in CLAUDE.md and the cross-session web HANDOFF.md.
+
+### AI Chat cross-session memory + resume (build 255)
+- 3-repo "pre-fetch spine": murror-api reads cheap stored memory, hands viasr a capped prose string; viasr injects it and skips its own slow inline retrieval. Mobile "Continue this chat" resume affordance. Gates: memory eval 100%, TTFW **1747ms -> 884ms p50** (faster, not slower).
+
+### Challenge v1: adaptive completion-mode CTA (build 256)
+- Real-world challenges ("cook a meal together") no longer force a Journal CTA. `completionMode` (reflect/do_together/do_solo/quick_gesture) classified by viasr, carried through murror-api metadata, drives a one-tap "We did it"/"Mark as done" on mobile with an optional note. Softened progress dots, warmer copy.
+
+### Full FOR US / Moments-to-Care card audit + P0 data-integrity fix
+- Astro requested a full mechanics audit of both feed surfaces. Found: the takeaway reaper shipped THIS MORNING (#527) had inverted semantics - it was treating the legitimate "waiting for the human partner to reply" state as a stuck job, and had already destroyed 10 staging rows (dead, unactionable cards for both users). Fixed same day (#531): reaper now scans the true stuck window (COMPLETED + no insight yet), a data-repair migration restored all 10 rows, and the fix was proven live (the reaper's next tick left the restored rows untouched).
+- Full P1/P2 hygiene pass followed: reaper pattern rolled out to reflection cards + individual reflections + a genuine journal text-gen stall; challenge/song/place expiry crons; `do_together` completion made atomic; song invite creation + realtime parity; silent-failure mutations now surface a gentle message; Home/FOR US card-rendering drift fixed (2 real gaps, NOT a full builder unification - that was evaluated and rejected as too risky).
+
+### Smarter AI program: thinking-status + connection-aware intelligence + care-ping safety
+- A second session TDD-built 7 branches (independently reviewed for correctness, privacy, and AI-copy compassion); this session merged in the required deploy order, ran the gates, and shipped. AI Chat now shows warm "thinking" status lines (crisis turns show none, verified live via SSE); care tips/insights/reflection cards/MTC chats receive privacy-gated relationship context (viewer-owned only, partner mood behind their own share-level); care pings never surface pure-heavy memories and go quiet on a heavy-mood day.
+- Pre-merge review caught a real gap: the care-tips crisis filter let "suicidal" through at intensity <=7 or null intensity. Fixed same day before merge.
+- Consolidated into **build 257** with all card-hygiene work - the largest single build of the day.
+
+### Live perspective bug, in flight (viasr PR #553)
+- Beta tester saw "Explore deeper" reflect questions written from the WRONG person's perspective (asking her how to support herself). Root cause: name-based perspective anchoring + empty staging profile names. Fix: perspective-neutral, reader-first-person prompt contract ("them"/"our connection", never "your partner", never a name copied from the insight). Awaiting deploy sign-off.
+
+### Gotchas
+- Verify state semantics before writing ANY reaper - a human-wait state (PENDING) is not a stuck-job state. Applied prospectively twice more the same session (declined to build a specified artwork reaper after proving the wedge impossible; declined to heal seed data into COMPLETED without an exact atomic-write fingerprint).
+- Mobile's real-time transport is Supabase Realtime, not the NestJS Socket.IO gateway - confirmed against the movie-invite precedent before wiring new broadcasts.
+- "Your partner" is the wrong generic term for the other person in a connection (friends/family too) - use "your connection" / "them".
+
 ## 2026-06-30 evening -> 07-01 (PDT): Card system hardening (migration drift, guards, reapers) + curation design + builds 250/251
 
 Continuation of QA248. More card QA surfaced systemic backend gaps, all fixed + deployed to staging. Full detail: `docs/plans/2026-07-01-card-system-hardening-and-curation.md`.
