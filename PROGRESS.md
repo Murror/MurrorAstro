@@ -1,5 +1,30 @@
 # Murror Progress
 
+## 2026-07-02 evening (PDT): QA260 -> build 261, then PRODUCTION PROMOTION (staging is now live)
+
+Two things: the QA260 polish sprint (build 261), and the big one - promoting the validated staging codebase to LIVE production, zero downtime. Full detail: `docs/plans/2026-07-02-builds-259-261-and-production-promotion.md`.
+
+### QA260 -> build 261
+- Pending Reflection card: centered body + `connection_reflecting` background artwork + "Remind them" copy (centering was a scoped one-line bug).
+- Share-confirm popup reframed as an invitation ("Invite {name} to reflect on this too?... Your full entry stays yours") + warmer icon (was a red exit-door).
+- Quiz AFTER-flow built (before/during/after rule): anticipation -> no-rush wait -> "you both answered" card -> a COMPARE DETAIL PAGE (reuses the detail-page design system) with both users' answers side-by-side + insight; backend answer-payload privacy-gated to COMPLETED days.
+- History loading card fix (MobX observer read the store only in effects, never render body, on a frozen tab -> never subscribed).
+- PRs #525-#528 -> build 261 (canonical f66ef3e).
+
+### PRODUCTION PROMOTION (get-prod-current on DOKS)
+- CORRECTED premise: live prod is healthy on DOKS (nsp-prod-murror), not the dead Vietnam-k3s env the first scan named. "Move to DOKS" was already done.
+- DIVERGENCE caught pre-write: `production` had 33 murror-api + 6 viasr commits applied DIRECTLY to prod (bypassing staging) - security + prod-data-loss fixes. A naive fast-forward would have dropped them.
+- RECONCILIATION (Opus): staging is a strict SUPERSET (the QA sweep re-implemented every prod hotfix). Reconcile merges tree-identical to staging (0-file diff); DATA-LOSS guard + data-integrity + crisis fixes confirmed surviving; 626+137 tests pass.
+- GATES: 9 migrations proven ADDITIVE (local Postgres dry-run); crisis eval CLEARED fresh 100% (the "0%" was a DNS artifact); crisis-gate fail-open HARDENING added (Statsig error never silently disables 988); restore point = daily backup 2026-07-02 21:35 UTC (PITR held).
+- PROMOTED both (Opus): ff `production` -> reconcile; deployed via workflow_dispatch. murror-api migration Job Complete (9 additive, gated) -> 0.37.0, 131 migrations, RLS verified intact. viasr -> prod-9e9ccb2, Statsig+crisis healthy. ZERO downtime.
+- FOLLOW-UPS: cronjob RBAC fixed (restored a MISSING prod daily-voice-summary CronJob); drift guard merged to staging (#548/#567, merge-tree-based, false-positive-free). OPEN: flip prod `shared_photos_enabled` Statsig gate ON; prod mobile build held; PITR deferred; rotate the pasted Supabase token.
+
+### Lessons
+- Verify LIVE topology before acting on an infra assessment (first scan named the dead cluster).
+- `git rev-list staging..production` before promoting - production had 39 direct hotfixes.
+- Post-merge-promotion, rev-list AND git cherry false-positive; `git merge-tree --write-tree staging production == staging^{tree}` is the accurate in-sync check.
+- Safety feature-flags must fail-open to ON on ANY flag-service error (a Statsig 401 silently disabling 988 is the anti-pattern).
+
 ## 2026-07-02 (PDT): QA258 + QA259 sprints, quiz revamp, two P0 incidents -> build 260
 
 Same-day QA loop: build-258 feedback (7 items, shipped build 259), build-259 feedback (5 items) plus a full quiz-experience revamp (shipped build 260), and two independently-resolved P0 incidents. Full detail: `docs/plans/2026-07-02-qa258-qa259-quiz-revamp-p0-incidents.md`.
