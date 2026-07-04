@@ -357,3 +357,22 @@ Driver: Astro reported "article is not generating." Turned into a full prod-reli
 - Optional: `@@unique([userId, requestedDate])` race-hardening (needs migration); systemic pgbouncer `search_path` fix.
 
 See `~/.claude/.../memory/reference_prod_engineering_lessons_2026_06_04.md` for the recurring patterns (read before any prod / raw-SQL / deploy work).
+
+## 2026-07-04: Builds 264-268, pre-production QA sweep, prod hardening
+
+**Summary:** Four TestFlight builds in one day (264-268) closing QA263/265/266 feedback; the quiz-card-stuck bug fixed for real (4th attempt, proven with live data); challenge feature reshaped end-to-end (single "We did it" CTA + share-a-thought + streak wiring, compact card face + details popup); then a 6-area pre-production QA sweep that found and CLOSED two prod-side gates under approved freeze exceptions.
+
+**Key accomplishments:**
+- Builds 264-268 shipped (single lane): QA263 batch + 429 invalidation coalescing; challenge CTA v2 + Connection Streak wiring (backend #553/#554, streak E2E proven for both test users); QA266 batch (accept-toast double-fire, card chrome unification, stacked-deck removal, prompt name-leak filter) + challenge insight-rotation fix (#555); tilt animation restored + moment prompt single-CTA + compact challenge card.
+- Pre-prod QA sweep (frontend/backend/AI/data/security/privacy, 6 parallel auditors): 1 Critical + 4 High found, 2 prior "launch blockers" retired with evidence (CALLBACK_ALLOWED_HOSTS fails safe; lodash patched).
+- Prod hardening EXECUTED: app_storage RLS lockdown (advisor 6 ERROR -> 1) + murror_api emotional compat (Memory Vault writes were silently failing on prod since image e0678d6 - view over public.emotional_snapshots + new emotional_memory table). Verified live.
+- Hygiene: 8 orphan staging tables classified; murror-api PR #556 removes the 6 dead Prisma models that regrow empty shells (open, unmerged).
+
+**Operating notes:**
+- Always verify against the DEPLOYED IMAGE (`git show <sha>:path`) + live DB, never a checked-out branch tip - the branch lied twice today (viasr production branch behind its own deployed image; a worktree grep on a stale branch).
+- After every promotion: confirm the `staging` branch still exists (delete_branch_on_merge incident).
+- New standing design rule: every design proposal must match the app's existing design language (pill under name, vertically centered card bodies).
+
+**In flight:** build 269 (card flip to dark-glass back + carousel peek), crisis-eval fresh run, prod promotion punch-list in `incident_prod_hardening_2026_07_04.md`.
+
+**Doc:** `docs/plans/2026-07-04-builds-264-268-preprod-sweep-prod-hardening.md`
