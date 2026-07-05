@@ -1,5 +1,25 @@
 # Murror Progress
 
+## 2026-07-05 (PDT): Web mobile parity, default avatars, account controls, and billing portal
+
+The last several days focused on bringing `apps/web-client` closer to mobile staging behavior, then hardening account and subscription flows on both staging and production. Full detail: `murror-web-codex/docs/plans/2026-07-05-web-parity-account-billing-rollup.md`.
+
+### Highlights
+- Web mobile parity refresh: song cards, challenge CTAs, AI Chat resume, quiz compare reveal, CRI detail, home copy, history detail naming, and For Us card behavior were aligned with mobile truth in targeted slices.
+- AI Chat and retired journal cleanup: stale local drafts stopped coming back, prompt-started AI Chat now starts fresh, and old journaling state no longer leaks into the active chat surface.
+- Home and card polish: streak copy and layout were simplified per feedback, duplicate voice story card behavior was removed, voice artwork moved toward mobile, and avatar cropping plus confusing card prompt copy were fixed.
+- Onboarding profile: Date of Birth stayed for the under-16 safety requirement, copy now explains why, and three selectable butterfly placeholder avatars were added for users without uploaded photos.
+- Settings and subscription: family plan was hidden, Manage Account now shows and edits the backend-synced username, cancel subscription works in-app on production, and active users can now open the standard billing portal to manage, resume, upgrade, or downgrade.
+
+### Deploy notes
+- Staging and production web deploys were completed for the subscription cancel and billing portal flows.
+- Latest billing portal deploy anchors: staging image `staging-51bf67a9`, production image `prod-51bf67a9`, both health checked with HTTP 200.
+- Production Helm still has a known image field ownership conflict; the working production path used `kubectl set image`.
+
+### Operating notes
+- The current `murror-web-codex` worktree is on `feat/pixel-scope-down-presignup`; confirm the active branch before making follow-up web-client changes.
+- Token accounting for this writeup used the closest Claude transcript windows, but the implementation was done in Codex, so the numbers are best read as broad work-window volume rather than exact Codex-only effort.
+
 ## 2026-07-02 evening (PDT): QA260 -> build 261, then PRODUCTION PROMOTION (staging is now live)
 
 Two things: the QA260 polish sprint (build 261), and the big one - promoting the validated staging codebase to LIVE production, zero downtime. Full detail: `docs/plans/2026-07-02-builds-259-261-and-production-promotion.md`.
