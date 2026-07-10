@@ -396,3 +396,40 @@ See `~/.claude/.../memory/reference_prod_engineering_lessons_2026_06_04.md` for 
 **In flight:** build 269 (card flip to dark-glass back + carousel peek), crisis-eval fresh run, prod promotion punch-list in `incident_prod_hardening_2026_07_04.md`.
 
 **Doc:** `docs/plans/2026-07-04-builds-264-268-preprod-sweep-prod-hardening.md`
+
+## 2026-07-05: Builds 271-276, backend challenge-cancel + milestone fix, analytics buildout
+
+**Summary:** Six TestFlight builds (271-276) closing rounds of Astro's app-review feedback, plus two backend features (challenge cancel/decline endpoint, milestone de-dup bug fix), the onboarding web-parity port, and a full mobile+web analytics buildout (PostHog + Mixpanel across both platforms, identity-merge bug fixes, ad-pixel FTC-pattern scope-down). Capped by root-causing and fixing the dead voice-dictate button (old library incompatible with RN New Architecture).
+
+**Key accomplishments:**
+- Builds 271-276 shipped (single lane): 271 app-review flip/card fixes; 272 sync consolidation + challenge-decline wiring + onboarding port; 273 milestone bug + streak unify + We-did-it idempotency + Read More scroll; 274 Share-a-thought tap (real fix, build-271's zIndex was 3 levels too deep) + streak goal regression + upcoming-milestone calendar ladder; 275 reflect-card overlap + CR responder popup + voice diagnostics; 276 voice New-Arch library swap.
+- Backend: challenge cancel/decline endpoint (murror-api #560, schema migration + first-ever challenge notification); milestone de-dup bug (all-time lockout since 2026-03-19, ~8 prod users) scoped to current run (#561); onboarding-complete avatar URL + preset hosting (#559).
+- Analytics: mobile PostHog (fanned from single dispatcher, no autocapture/replay; reverted once on a Metro bundle break then re-fixed via scoped deep import); web Mixpanel (5th fan-out); identity-merge bugs fixed on mobile PostHog + web Mixpanel (were orphaning all events as anonymous); ad-pixel scope-down (OnboardingCompleted + StartTrial moved off Meta/TikTok/CAPI to internal-only, compile-enforced type split).
+- Voice: root-caused visible-but-dead mic to `@react-native-voice/voice@3.2.4` (legacy RCTEventEmitter dropping events under New Arch); swapped to New-Arch fork `@dev-amirzubair/react-native-voice@1.0.4`; build 276 archive succeeded (TurboModule compiled+linked = native verification).
+
+**Operating notes:**
+- Verification discipline tightened: SDK/native-dep changes now require a REAL Metro bundle preflight + a REAL archive as the compile/link gate (tsc/lint alone missed the PostHog bundle break). objectVersion-70 pod-install failures in worktrees are env artifacts; main checkout is fine.
+- Ad-pixel scope for this mental-health-adjacent app is Astro's explicit per-case call, not an automatic "close every leak" rule (the 3 TikTok purchase pixels are intentionally kept).
+
+**Doc pointers:** `Murror/docs/plans/2026-07-05-builds-271-276-analytics.md`; memory `incident_voice_newarch_library_swap`, `incident_sgp1_migration_2026_07_04`, `feedback_tiktok_purchase_pixels_intentional`, `feedback_ui_visual_loop`, `project_mobile_prod_release_v200`.
+
+---
+
+## 2026-07-10: Onboarding v2 ships (five-day sprint 07-05 to 07-10)
+
+**Summary:** The orbital onboarding went from approved prototype to the OFFICIAL onboarding on web production (100% of new users) and a device-polished mobile TestFlight (nine builds, 284-292). Along the way: a prod split-brain incident found and fixed, real AI their-side guess live on prod, crisis-safety client nets on both platforms, a founder's letter with rainbow streaming, a large device-QA fix train, and a new hard blast-radius process rule.
+
+**Key accomplishments:**
+- Web v2 LIVE at 100% (PostHog flag `onboarding_funnel_v2`, control preserved at 0% for one-call rollback). Act 2/3 chromeless redesign + Codex refinements + signup handoff stabilization.
+- Mobile port: core verbatim + Skia orbital; builds 284-292 through rapid Astro device-QA loops (entry gating, web fidelity, z-order/avatar/keyboard fixes, founder letter + rainbow chat-renderer reveal, soft fade system, v2 sign-in screen + auth scaffold, voice locale/punctuation/audio-session fixes, persona persistence, streak/chart/prompt/challenge-card fixes).
+- Prod: split-brain resolved (rogue sfo2 image + partial DNS flip), api.murror.app -> sgp1 via Cloudflare API, viasr+murror-api their-side deployed, sfo2 scaled to 0.
+- Crisis-safety client net on web (Codex) + mobile: no AI guess ever shown for crisis input, offline-safe, reduced-motion race closed.
+- Gesture redesign approved (new 6-palette + 3 mechanics); backend personalized bilingual push MERGED to staging (found: live app's gesture send never fired a push - legacy endpoint).
+- VI/JA translations: onboardingV2 namespace (102 keys) PR #620 awaiting Astro's native review; memories namespace in flight.
+
+**Operating notes:**
+- New HARD RULE + commit hook: blast-radius protocol (map callers, gate shared changes, prove untouched, verify, adversarial review, report). Born from repeated shared-code regressions; first real test passed (the 289 two-session combined build, zero-overlap proof, 130/130 specs).
+- Build-lane gotchas now recorded: envfile pin before CLI archives; yarn install in build lane after patch/dep merges; verify patched source pre-archive.
+- murror-api/viasr PR base must be `staging` (develop deploys nowhere).
+
+**Doc pointers:** `Murror/docs/plans/2026-07-10-onboarding-v2-ship-five-day-sprint.md`; memory `project_orbital_onboarding_funnel` (the full build-by-build log), `feedback_no_regressions_blast_radius`, `infra_cloudflare_domain`.
