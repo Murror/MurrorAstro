@@ -433,3 +433,41 @@ See `~/.claude/.../memory/reference_prod_engineering_lessons_2026_06_04.md` for 
 - murror-api/viasr PR base must be `staging` (develop deploys nowhere).
 
 **Doc pointers:** `Murror/docs/plans/2026-07-10-onboarding-v2-ship-five-day-sprint.md`; memory `project_orbital_onboarding_funnel` (the full build-by-build log), `feedback_no_regressions_blast_radius`, `infra_cloudflare_domain`.
+
+---
+
+## 2026-07-11 — Personal Note polish: card redesign, Letter, Home envelope badge (builds 298 + 299)
+
+Astro design + QA pass over the received-note feature. Three feedback rounds, each
+built behind the agent-panel + mockup-confirm flow and adversarial review, shipped as
+TestFlight builds 298 (note card redesign) and 299 (Letter + Home badge).
+
+**Key accomplishments:**
+- Note card no longer black glass: artwork background (same bundled pool + 24% scrim as
+  Connection Reflection cards, seeded by message id, never note content) + a "candlelit"
+  cream glow that breathes behind the pill; sibling-consistent `"A note ✉️"` pill with the
+  sender name in a `"From {name} · Tap to open"` footer; the Letter opens onto the same
+  artwork. Gesture icon above the avatar pair breathes at 2% scale (size unchanged). Crisis
+  notes keep the calm dark wash everywhere, byte-identical. (mobile PR #635)
+- Letter text vertically centered + serif center-aligned; the previously-dead bottom CTA now
+  lands the user in the note composer (new `popTo` nav helper; plain stack-v7 push made a
+  phantom duplicate detail). (mobile PR #637)
+- Home ring shows an envelope badge on a connection who sent an unopened note, cleared by the
+  same per-note opened flag the Letter writes; badge state kept out of the entrance-animation
+  path so it never re-fades the ring. (mobile PR #638)
+- Backend: `latestNote {id, createdAt}` on the friends payload (one batched DISTINCT ON query,
+  id + timestamp only for privacy) + composite `(relationship_id, created_at DESC)` index.
+  (murror-api PRs #582/#583/#584, deployed `0.203.0-staging`.)
+
+**Operating notes:**
+- Cross-session conflict sweep is now a standing rule (Astro runs a parallel onboarding
+  session): before merging to a shared branch or bumping a build, check other sessions' open
+  PRs / bump PRs / file overlap. Memory `feedback_cross_session_conflict_check`.
+- Scope `eslint --fix <files>` explicitly; a repo-wide `--fix` swept another session's files
+  into commits twice.
+- Every design round went agent-panel -> animated mockup -> Astro pick -> build -> review, per
+  the visual-loop + brainstorm-first rules.
+
+**Doc pointers:** `Murror/docs/plans/2026-07-11-personal-note-polish-and-home-badge.md`;
+memories `project_gesture_send_redesign`, `feedback_cross_session_conflict_check`,
+`feedback_no_regressions_blast_radius`.
