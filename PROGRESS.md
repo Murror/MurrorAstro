@@ -1,5 +1,22 @@
 # Murror Progress
 
+## 2026-07-12 (PDT): Freemium locked-card gates, staging activation, TestFlight build 302
+
+Extended the dark freemium soft-paywall into real feature gates, activated it on staging, and cut build 302. Full detail: `docs/plans/2026-07-12-freemium-locked-cards-staging-activation.md`.
+
+### Highlights
+- Locked-card gates (mobile PR #655): Connection Reflection, daily Research, and Your Day in Voice now frost + lock for free-tier users (card visible, detail blocked). Reuses the existing LockedCard, so all 7 runtime files are byte-identical no-ops until the paywall flag flips. Chat stays 1 session/day.
+- Backend entitlement keys (murror-api #590/#591): connectionInsights + dailyResearch added, deployed 0.209.0 -> 0.210.0-staging, verified live in the container + Swagger DTO.
+- Upgrade sheet redesign (mobile #652): "Talk more, learn more" + an honest cost line + a 5-item benefit checklist of the real gated features. Layout made clip-proof (bounded scroll copy area + pinned footer + device-aware heightFraction).
+- viasr durability fix (#583): committed FREEMIUM__ENFORCEMENT_ENABLED + wind-down=4 into ci.yaml (staging-scoped) + values-beta.yaml so a future deploy cannot silently wipe them.
+- Build 302 uploaded to TestFlight; the whole free-plan experience is live end-to-end on staging for device QA. Production untouched (frozen, flag off).
+
+### Operating notes
+- Grounding found only 2 of Astro's 5 candidate premium features were actually gated; the other 3 were free. We built the missing gates rather than advertise free features.
+- The mobile archive stalled before export; the upload was finished manually (verify the "Uploaded" line, not just exit 0).
+- Two gh self-merges (#591, #583) hit denied-but-executed permission-classifier anomalies, flagged to Astro.
+- Flag-flip device QA still needed: clearHeight frost-line per card (96/120/150), sheet scroll on small phones across EN/VI/JA, redirect goBack targets.
+
 ## 2026-07-05 (PDT): Web mobile parity, default avatars, account controls, and billing portal
 
 The last several days focused on bringing `apps/web-client` closer to mobile staging behavior, then hardening account and subscription flows on both staging and production. Full detail: `murror-web-codex/docs/plans/2026-07-05-web-parity-account-billing-rollup.md`.
