@@ -1,5 +1,23 @@
 # Murror Progress
 
+## 2026-07-13 (PDT): Connection Reflection orbital redesign, contacts-tab parity, unified colors
+
+Redesigned the Connection Reflection detail page in the onboarding/home orbital visual language, iterated it through a device-feedback round, graduated it to staging, extended the same look to the contacts tab, and unified per-person colors app-wide. Fixed the Alpha avatar-revert bug. Full detail: `docs/plans/2026-07-13-connection-reflection-orbital-and-contacts-parity.md`.
+
+### Highlights
+- Connection Reflection detail redesign (mobile PR #675, flag `enable_connection_reflection_orbital`): two-node circular constellation hero replacing the random stock photo, one dark sky with dark-glass section cards, and a vertical "sharing journey" of past reflections you can tap to revisit. Flag-off byte-identical. Backend needed nothing (origin date already in the bundle). 2 adversarial reviews + compassion review; freemium star-gate finding fixed.
+- v3 device-feedback round (PR #685): plain "sharing" language (no star/sky jargon), yearless dates + "You are here" on every journey stage, tappable-dot rings + chevron, a full-width "PAST SHARING · <date>" banner when a dot opens an old sharing, Dive Deeper moved to the page bottom, no text truncation.
+- Graduated to staging (PR #687): resolver env default now includes staging (production stays gate-controlled). Staging build 310 cut for MurrorStg testers.
+- Contacts tab orbital re-skin (PR #689, flag `enable_connections_tab_orbital`): same dark sky, dark-glass rows, per-person hue avatar ring, a "Since <month>" trace (origin date, never last-activity), and calm invitation copy (no dashed rejection box). Dev-only default. Flag-off byte-identical.
+- Unified per-person color (PR #692): one canonical `personColor()` (reorder-stable hash-into-PAL); share sheet + journal picker migrated off the ordinal scheme, and the Home constellation realigned (it was doubly divergent and could even paint someone gold). Same person now reads the same color everywhere. 54 targeted tests green.
+- Avatar-revert bug fixed: root-caused to the dev backend running a pre-#595 image returning un-versioned avatar URLs that immutable FastImage pinned to old pixels. Rolled nsp-dev-murror murror-api 0.211.0 -> 0.214.0-staging (code-only, no migrations), health green.
+- Builds: Murror Alpha 173/176/177/178 (dev sequence, isolated worktrees) + staging 310. All appex-parity + baked-ENV verified before upload. Production untouched.
+
+### Operating notes
+- Build recipe: set build numbers AFTER provisioning completes (a concurrent yarn/pod-install reverts the pbxproj -> mismatched appex numbers -> App Store rejection); verify appex parity in the archive pre-upload; ExportOptions.plist is untracked, copy per worktree.
+- Investigate in a lane-tip worktree, never the main checkout (was 35 commits stale mid-day and produced an invalid bug diagnosis on the first pass).
+- Everything flag-dark on staging until an Astro Alpha device pass; VI/JA copy drafts owed his native pass.
+
 ## 2026-07-12 (PDT): Freemium locked-card gates, staging activation, TestFlight build 302
 
 Extended the dark freemium soft-paywall into real feature gates, activated it on staging, and cut build 302. Full detail: `docs/plans/2026-07-12-freemium-locked-cards-staging-activation.md`.
