@@ -506,3 +506,46 @@ TestFlight builds 298 (note card redesign) and 299 (Letter + Home badge).
 **Doc pointers:** `Murror/docs/plans/2026-07-11-personal-note-polish-and-home-badge.md`;
 memories `project_gesture_send_redesign`, `feedback_cross_session_conflict_check`,
 `feedback_no_regressions_blast_radius`.
+
+## 2026-07-13 — Round 12 device fixes → staging build 311; Codex handoff
+
+Round 12 of the staging device-feedback loop: six tracks built (each by a dedicated
+subagent with tsc/eslint/jest gates + blast-radius proof), merged to
+`staging-environment-setup`, shipped as TestFlight build 311. Also produced the Codex
+handoff docs as Astro moves the streak wrap-up testing + a mobile-debug lane to Codex.
+
+**Key accomplishments:**
+- Manage Account: added a Username field (reads/edits `preferredName`; First Name decoupled
+  from it) and removed Time of Birth (date-only payload; partial PATCH preserves server
+  birthTime). (mobile #690)
+- Share/add sheets: fixed the CTA crop + hard edge above the keyboard (static backdrop,
+  bottom-anchored sheet, keyboard avoidance as a content inset via `useKeyboardHeight`) and
+  removed the title/date fields from add-memory. (mobile #691)
+- Two-way comments on shared memories: append-only thread on the Our Memories detail sheet,
+  both sides post back and forth, optimistic append, no counts. New append-only
+  `shared_photo_comments` table + `POST .../memories/:pid/comments`, comments inline on the
+  wall GET, notifies the other participant; heart path + Moments untouched. (mobile #693,
+  murror-api #596 deployed to staging + dev.)
+- Connection Reflection card body tap: root-caused as a New-Architecture touch-layering bug
+  (a last-painted animated sibling stealing the tap despite zIndex), NOT the freemium lock;
+  fixed by rendering the tap target as the last child so paint order wins. (mobile #694)
+- Cut staging TestFlight build 311 (bump #695) carrying all six tracks; app + appex both 311,
+  staging host verified (no dev leak), uploaded.
+
+**Operating notes:**
+- Archive gotcha: the first archive failed on `react-native-image-crop-picker` unresolved
+  in the Bundle-RN phase. The build checkout's `node_modules` was stale after fast-forwarding
+  the git tree (a new native dep had landed). Run `yarn install` before `pod install`
+  whenever `package.json` changed since the last local install; re-archive verified clean.
+- Codex handoff: `Murror/CODEX_HANDOFF.md` (master onboarding + section 3.1 mobile-debug
+  split: Claude finishes round 12 + owns the build lane, Codex takes new/separate bugs off
+  the in-flight files) and `Murror/HANDOFF-streak-wrapup-testing.md` (staging streak-voice
+  testing playbook; seed pre-approved; narration from Astro's real journals). Memory
+  `project_streak_wrapup_testing_handoff`.
+- Cross-session: 311 is cumulative on the other session's 310 (Connection Reflection redesign
+  + connections-tab re-skin); that session cut 312/313 afterward. Coordinate the next bump
+  against the latest `CURRENT_PROJECT_VERSION`.
+
+**Doc pointers:** `Murror/docs/plans/2026-07-13-round-12-build-311.md`; memories
+`project_moments_presence_layer`, `project_streak_wrapup_testing_handoff`,
+`feedback_cross_session_conflict_check`.
