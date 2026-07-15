@@ -549,3 +549,51 @@ handoff docs as Astro moves the streak wrap-up testing + a mobile-debug lane to 
 **Doc pointers:** `Murror/docs/plans/2026-07-13-round-12-build-311.md`; memories
 `project_moments_presence_layer`, `project_streak_wrapup_testing_handoff`,
 `feedback_cross_session_conflict_check`.
+
+## 2026-07-14: Mobile staging review loop, builds 312 to 324
+
+**Summary:** A two-day mobile staging loop moved through rapid TestFlight builds from
+312 to 324. The work focused on visible product polish: insight persona voices,
+voice input clarity, keyboard-safe share/comment flows, memory detail actions and
+reporting, reflection streak visibility, guided MTC onboarding, black-card visual
+direction, Polaroid memory treatments, MTC carousel bleed, and For Us card body
+centering. Final build: 324, App Store Connect `VALID`.
+
+**Key accomplishments:**
+- Restored the persona/advisor voice under insight cards and added tests that keep
+  the source labels wired to the intended card contrast treatment.
+- Fixed share/comment and memory-detail keyboard behavior so input fields and CTAs
+  stay usable above the keyboard instead of being cropped.
+- Added compact memory actions plus private content reporting, backed by new
+  staging `murror-api` reporting support.
+- Restored Reflection connection streak visibility and added an explicit error state
+  so the section no longer looks silently empty.
+- Tuned shared chrome and visual direction: darker nav/FAB treatment, black-card
+  surfaces, smoother tab-header gradients, softer bottom sheets, and filled white
+  heart affordances.
+- Added guided MTC onboarding on Home so people get a prompt-library-backed starting
+  card before sharing.
+- Polished memories into larger Polaroid treatments with better spacing, edge bleed,
+  and non-tilted detail presentation.
+- Fixed the MTC carousel so card frames remain visible while horizontal scrolling can
+  bleed to the screen edge without cropping.
+- Centered For Us card body copy vertically between the pill title and footer CTA,
+  matching the Connection Reflection card rhythm.
+- Cut and uploaded build 324. Archive verified `app.murror.mobile.stg 2.1.0 (324)`,
+  notification extension `2.1.0 (324)`, staging endpoint present, dev endpoint absent,
+  App Store Connect state `VALID`.
+
+**Operating notes:**
+- The July 14 Codex loop was not visible to the Claude Code token-accounting script.
+  The script counted available July 13 Claude transcripts, but the Codex-internal
+  build train should be treated as an accounting gap, not a zero-effort result.
+- The relationship next-step prototype exists on its prototype branch, but it was
+  not found on `origin/staging-environment-setup`, so it is intentionally excluded
+  from the shipped TestFlight list.
+- The active marketing source for the public progress page is the
+  `murror-platform-progress` worktree on `feat/marketing-site`, not the stale path in
+  the main `murror-platform` checkout.
+
+**Doc pointers:** `Murror/docs/plans/2026-07-14-builds-312-324-mobile-polish.md`;
+mobile PRs #704 through #709, #710, #712, #714, #717 through #728; murror-api
+reporting commits `8edb972`, `918216a`, `2976e2c`.
