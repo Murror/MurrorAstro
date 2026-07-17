@@ -597,3 +597,59 @@ centering. Final build: 324, App Store Connect `VALID`.
 **Doc pointers:** `Murror/docs/plans/2026-07-14-builds-312-324-mobile-polish.md`;
 mobile PRs #704 through #709, #710, #712, #714, #717 through #728; murror-api
 reporting commits `8edb972`, `918216a`, `2976e2c`.
+
+## July 16, 2026 — Together plans (Duo/Circle) backend + the cost pipeline that had never recorded a cost
+
+**Summary:** Two threads with one root cause. Astro asked for couples/family plans and, separately,
+"what should the product cost?" Every pricing answer so far rested on an ESTIMATE of AI cost per user.
+Chasing the real number found the LLM cost pipeline had been a shell since it was built, so we wired it,
+measured for the first time, and then answered pricing from data instead of guesses.
+
+**Key accomplishments:**
+- **murror-api #605 MERGED (`7002678`), alpha live + seeded.** Multi-seat plans were NOT greenfield: a
+  full `family-plan` module already existed (plan/seat/minor-consent schema, claim flow with auto-connect,
+  webhook reconcile, entitlement union). Duo = that module with `seatCount=2` via a new
+  `REVENUECAT_FAMILY_PRODUCT_SEAT_MAP`. Also fixed a real race: the invite seat-cap counted then inserted
+  in two queries, so concurrent invites could both pass the cap. Now row-locks the plan and does
+  lock-count-insert in one transaction. 214 targeted tests, no migrations.
+- **End-to-end verified on alpha** with simulated RevenueCat webhooks (RC is not in dev/alpha): purchase
+  created a `seat_count=2` plan (the map beat the default 5), cancellation preserved the period with the
+  member still entitled, uncancellation restored. Astro's account holds an ACTIVE Duo plan with a dummy
+  member seated.
+- **murror-platform #179 OPEN, cost pipeline LIVE.** viasr always emitted a token record per LLM call;
+  cost-service had ClickHouse AND RabbitMQ unconfigured, so it booted degraded and every event expired
+  unread after 24h, while the reporting view summed a literal `0 AS total_cost`. Now: in-cluster
+  single-node ClickHouse, real per-model pricing (env-overridable via `MODEL_PRICING_JSON`), the missing
+  cost column, and the daily rollup rebuilt to sum it. 62 real events priced within minutes, queue drained
+  to zero, **zero rows with zero cost**.
+- **First real numbers:** claude-haiku-4-5 = **$0.0034/call**. Median prod chat user ~= **$0.01/month**;
+  heaviest ~= $0.43; all production AI chat ~= $0.53/month. The $5-12/heavy-user estimate that pricing had
+  been designed around was ~100x too conservative.
+- **Two documents produced for Astro:** a confidential burn + pricing memo, and a team-safe version with
+  infrastructure and AI costs only (no salaries, no company financials).
+
+**Operating notes:**
+- Two adversarial reviews earned their keep. murror-api: the raw invite lock hardcoded the `murror_api`
+  schema but the `family_plan` migration DDL is unqualified, so the table lives wherever search_path
+  pointed; and a Circle->Duo downgrade stranded over-cap members on premium forever. cost-service: **BLOCK**
+  because viasr had already declared the DLQ as a quorum queue, so a bare `assertQueue` would have
+  crashlooped the pod on boot. All fixed before deploy.
+- **Downgrade policy decided by Astro: grace to period end**, then the organizer chooses who stays. The
+  interim code detects and logs over-capacity but deliberately never auto-revokes, because yanking a
+  member's access mid-period violates the locked product rails. The grace flow is a Milestone C build.
+- The freemium deploy-seam repeated exactly: alpha deploys are `kubectl set image` only and never apply
+  manifests, so ConfigMap keys never reach the pod. Verify the POD's resolved env with `printenv`.
+- `build-dashboard-images.yml` had `ref: feat/prod-deploy-hardening` hardcoded, so every dispatch silently
+  built the wrong branch, and it pushed the shared mutable `dashboard-mvp` tag that live deploys pull with
+  pullPolicy Always. Feature branches now push immutable `<branch>-<sha>` tags only.
+- Real spend from Mercury (90d): infrastructure **$219/mo** exactly; AI vendors $643/mo of which Anthropic
+  $484/mo is mostly Claude Code dev tooling, not user serving. June burn was $13,156 with 76% people.
+  Runway ~35 months against $450k in reserves held outside Mercury.
+- Correction worth remembering: never state a runway conclusion from Mercury alone. It cannot see reserves
+  held elsewhere, and neither can the internal dashboard's runway widget.
+- The cost pipeline currently consumes STAGING viasr's vhost. Prod is additive (rows carry `environment`)
+  but sits under the production freeze.
+
+**Doc pointers:** `Murror/docs/plans/2026-07-16-together-plans-and-cost-truth.md`;
+murror-api PR #605 (merged `7002678`); murror-platform PR #179 (`b5c20fc5`, `67f7e311`, `019f4f26`,
+`fa72f826`, `a81666a4`); `apps/cost-service/DEPLOY.md`.
