@@ -25,7 +25,7 @@
 |---|---|---|
 | Data model + repository | (none) | #609 (merged) |
 | **Settings + Signal publication** | `GET/PUT /settings`, `GET/POST /signals`, `PATCH /signals/:id`, `POST /signals/:id/withdraw` | **this PR** |
-| Field + private decisions | `GET /field`, heart/listen/pass + `DELETE pass`, not-interested, hide, block, report | planned |
+| **Field + private decisions** | `GET /field`, heart/listen/pass + `DELETE pass`, not-interested, hide-person, block, report | **this PR** |
 | Exchanges + orbits | resonances, exchanges, orbits | planned |
 
 Endpoints marked _(planned)_ below are frozen in the contract but implemented in a later PR.
@@ -81,7 +81,7 @@ Every JSON response is wrapped by the global `HttpResponseTransformerInterceptor
 
 1. **Block is SIGNAL-scoped.** `POST /galaxy/signals/:signalId/block`. The server resolves the Signal's author and records a user-to-user block; the client never sees an author/profile identifier. (The mobile `block(profileId)` call is reconciled to this in the client-swap PR.)
 2. **Two distinct reason enums.**
-   - **Card relevance** `reasonCode` (why a card is shown): `SHARED_INTENTION`, `SHARED_LANGUAGE`, `SHARED_TIMEZONE`, `FRESH`, `UNDEREXPOSED`. Never a match score.
+   - **Card relevance** `reasonCode` (why a card is shown): `SHARED_INTENTION` (intent overlaps the viewer's) or `NEW_SIGNAL` (fallback). Never a match score.
    - **Report** `reasonCode` (safety): `SPAM`, `HARASSMENT`, `SEXUAL_CONTENT`, `SELF_HARM`, `SCAM_OR_PAYMENT`, `IMPERSONATION`, `OTHER`.
 
 ---
@@ -159,13 +159,40 @@ Edits an ACTIVE Signal owned by the caller. Any subset of `text`,`intentions`,`b
 #### `POST /api/v1/galaxy/signals/:signalId/withdraw`
 Idempotent. Withdrawing an already-withdrawn Signal still returns the (withdrawn) Signal. `404` only when the Signal does not exist or is not owned.
 
-### Field & decisions _(planned)_
+### Field
 
-- `GET /field` — finite, non-paginated, server-issued list of `GalaxySignalCard`s + completion metadata. Excludes self, blocked pairs (either direction), passed Signals, non-ACTIVE, expired.
-- `POST /signals/:id/heart` — private, count-free.
-- `POST /signals/:id/listen` — creates a pending consent request (LISTEN_OFFERED).
-- `POST /signals/:id/pass` / `DELETE /signals/:id/pass` — suppress this exact Signal (no author notification, no ranking penalty); DELETE undoes only the caller's PASS within the brief Undo window.
-- `POST /signals/:id/not-interested`, `POST /people/:profileId/hide`, `POST /signals/:signalId/block`, `POST /signals/:signalId/report`.
+#### `GET /api/v1/galaxy/field`
+Finite, non-paginated, server-issued. Excludes self, blocked pairs (either direction), passed Signals, hidden-person authors, not-interested topics, non-ACTIVE, expired, active-exchange counterparts, and already-resonated/reported Signals. Ordered by declared-intent match DESC then freshness DESC, and **capped at 12** for the pilot. No infinite scroll, no automatic refill.
+
+```json
+{
+  "cards": [
+    {
+      "id": "…", "alias": "QuietOrbit", "avatarKey": "nebula-04",
+      "text": "…", "intentions": ["FRIENDSHIP"], "boundary": null,
+      "language": "en", "broadTimezone": "Americas", "expiresAt": "…",
+      "reasonCode": "SHARED_INTENTION"
+    }
+  ],
+  "completionState": "COMPLETE"
+}
+```
+
+`completionState` is `COMPLETE` when the eligible pool is exhausted (≤ cap) and `MORE_COMING` otherwise. `reasonCode` is `SHARED_INTENTION` when the card's intentions overlap the viewer's declared intentions, else `NEW_SIGNAL`.
+
+### Decisions
+
+All decisions are private and server-authoritative; none notifies or penalizes the author, none mutates the Signal row, and no response returns author identity.
+
+- `POST /signals/:signalId/heart` — private, count-free resonance. Idempotent (composite unique + P2002 fallback).
+- `POST /signals/:signalId/listen` — creates a `PENDING` resonance (a consent request). Idempotent.
+- `POST /signals/:signalId/pass` — suppress this exact Signal. `DELETE /signals/:signalId/pass` removes ONLY the caller's Pass (the short client-side Undo window; a re-issued Field then restores eligibility).
+- `POST /signals/:signalId/not-interested` — topic suppression (excludes Signals sharing those intentions from the Field).
+- `POST /signals/:signalId/hide-person` — resolves the author server-side and hides all their Signals. The author id is never returned.
+- `POST /signals/:signalId/block` — signal-scoped; resolves the author server-side, records a bidirectional-effect block. Idempotent.
+- `POST /signals/:signalId/report` — body `{reasonCode}` (report enum). Snapshots the Signal text server-side at report time; the snapshot is never returned or logged. Also suppresses the Signal from the reporter's Field.
+
+**Eligibility.** heart / listen / pass / not-interested / hide-person require the Signal to be ACTIVE, not expired, not the viewer's own, and not blocked either direction (`404` for missing/own/blocked to avoid revealing a block; `409 GALAXY_SIGNAL_NOT_AVAILABLE` for expired/withdrawn). block / report only require the Signal to exist (safety must work after a Signal lapses); `404` on missing/own.
 
 ### Resonances / exchanges / orbits _(planned)_
 
@@ -188,7 +215,11 @@ Idempotent. Withdrawing an already-withdrawn Signal still returns the (withdrawn
 | Invalid alias / intent / expiry (DTO) | `400` with a `message[]` |
 | Gate off (prod) | `403` |
 | Unauthenticated | `401` |
-| Duplicate pass _(planned)_ | idempotent `200` (one decision per viewer+signal+type) |
-| Blocked counterpart _(planned)_ | excluded from Field; heart/listen forbidden |
+| Duplicate pass | idempotent `200` (one decision per viewer+signal+type) |
+| Duplicate heart/listen (double-tap) | idempotent `200` (composite unique + P2002 fallback returns the existing row) |
+| Blocked counterpart | excluded from Field; heart/listen/pass/etc `404` (privacy) |
+| Expired/withdrawn signal decision | `409 GALAXY_SIGNAL_NOT_AVAILABLE` (heart/listen/pass/not-interested/hide); block/report still allowed |
+| Field cap | never exceeds 12; `completionState` = `MORE_COMING` when the pool is larger, else `COMPLETE` |
+| Report | `200 {reportId, status}`; snapshot captured server-side, never echoed; Signal suppressed from reporter's Field |
 | Recipient declines a listen _(planned)_ | resonance `DECLINED`/`CLOSED`; no exchange created |
 | Stale exchange transition _(planned)_ | `409`/`404`; no duplicate exchange; race between two listen taps resolves to one |
