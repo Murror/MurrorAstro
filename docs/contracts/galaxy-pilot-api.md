@@ -187,7 +187,7 @@ All decisions are private and server-authoritative; none notifies or penalizes t
 - `POST /signals/:signalId/heart` — private, count-free resonance. Idempotent (composite unique + P2002 fallback).
 - `POST /signals/:signalId/listen` — creates a `PENDING` resonance (a consent request). Idempotent.
 - `POST /signals/:signalId/pass` — suppress this exact Signal. `DELETE /signals/:signalId/pass` removes ONLY the caller's Pass (the short client-side Undo window; a re-issued Field then restores eligibility).
-- `POST /signals/:signalId/not-interested` — topic suppression (excludes Signals sharing those intentions from the Field).
+- `POST /signals/:signalId/not-interested` — a reversible, time-bounded topic preference: for **14 days** it reduces the category by excluding Field Signals sharing those intentions, after which the topic returns. It never notifies or affects the author. (Contrast: Pass is a permanent per-Signal suppression.)
 - `POST /signals/:signalId/hide-person` — resolves the author server-side and hides all their Signals. The author id is never returned.
 - `POST /signals/:signalId/block` — signal-scoped; resolves the author server-side, records a bidirectional-effect block. Idempotent.
 - `POST /signals/:signalId/report` — body `{reasonCode}` (report enum). Snapshots the Signal text server-side at report time; the snapshot is never returned or logged. Also suppresses the Signal from the reporter's Field.
