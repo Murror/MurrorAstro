@@ -6,7 +6,14 @@
 
 **Auth:** every endpoint requires a Supabase JWT (`Authorization: Bearer <token>`) via `AuthGuard`. Unauthenticated => `401`.
 
-**Feature gate:** the whole controller is behind `GalaxyFeatureGuard` (Statsig `galaxy_enabled`, default-off). Non-production tiers default ON for QA; production is DARK until the gate is enabled for the verified 18+ cohort. Gate off => `403` (`ForbiddenException`).
+**Feature gate:** the whole controller is behind `GalaxyFeatureGuard` (Statsig `galaxy_enabled`, default-off). Gate off => `403` (`ForbiddenException`). The tier default is deliberately NOT the SharedPhotos pattern: only the dev/alpha test bed defaults ON; staging stays DARK per the standing "Alpha-2 is the test bed" rule, so a staging graduation is a deliberate Statsig flip, not a code deploy.
+
+| Tier (`ENVIRONMENT`) | Galaxy access |
+|---|---|
+| `dev` / `development` / `local` / `alpha` | **ON** by default (env default) |
+| `staging` | follows `galaxy_enabled` (default **OFF** → 403) |
+| `production` | follows `galaxy_enabled` (default **OFF** → 403) |
+| unset / unknown | fail-safe **OFF** → 403 |
 
 **Rate limits:** global `short`/`medium`/`long` apply to all routes. Publish/withdraw add the `galaxyPublish` tier (10/min); settings PUT adds `galaxySettings` (20/min).
 
