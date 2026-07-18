@@ -26,7 +26,7 @@
 | Data model + repository | (none) | #609 (merged) |
 | **Settings + Signal publication** | `GET/PUT /settings`, `GET/POST /signals`, `PATCH /signals/:id`, `POST /signals/:id/withdraw` | **this PR** |
 | **Field + private decisions** | `GET /field`, heart/listen/pass + `DELETE pass`, not-interested, hide-person, block, report | **this PR** |
-| Exchanges + orbits | resonances, exchanges, orbits | planned |
+| **Exchanges + orbits** | resonances, accept/close, thread, messages, continue, orbits | **this PR** |
 
 Endpoints marked _(planned)_ below are frozen in the contract but implemented in a later PR.
 
@@ -194,11 +194,26 @@ All decisions are private and server-authoritative; none notifies or penalizes t
 
 **Eligibility.** heart / listen / pass / not-interested / hide-person require the Signal to be ACTIVE, not expired, not the viewer's own, and not blocked either direction (`404` for missing/own/blocked to avoid revealing a block; `409 GALAXY_SIGNAL_NOT_AVAILABLE` for expired/withdrawn). block / report only require the Signal to exist (safety must work after a Signal lapses); `404` on missing/own.
 
-### Resonances / exchanges / orbits _(planned)_
+### Resonances, exchanges, Orbits
 
-- `GET /resonances`, `POST /resonances/:id/accept`, `POST /resonances/:id/close`.
-- `POST /exchanges/:id/continue` (both participants must independently continue before an Orbit exists).
-- `GET /orbits`.
+**`GET /api/v1/galaxy/resonances`** returns `{sent, received}`.
+- `sent` (outgoing): `{resonanceId, type, state, signalId, exchangeId?, createdAt}` where `state` is only ever **`PENDING` or `ACCEPTED`** (with `exchangeId`). A recipient's decline is **never** surfaced: it renders as `PENDING` (quiet) and simply drops out of the list when the Signal expires. This is the decline representation.
+- `received` (incoming pending Listens to the caller's Signals): `{resonanceId, signalId, createdAt}` — never carries the sender's identity.
+
+**`POST /resonances/:resonanceId/accept`** (recipient/author only). Opens an `ACTIVE` exchange (transaction; idempotent on the unique `resonanceId`, so an Orbit's parent exchange is created exactly once). Every failure mode (not the recipient, not a pending Listen, blocked, expired Signal) collapses to one `409 GALAXY_RESONANCE_NOT_ACTIONABLE` so a non-recipient can't probe. Returns `{exchangeId}`.
+
+**`POST /resonances/:resonanceId/close`** (recipient only) quietly declines; returns `{acknowledged: true}`. Idempotent.
+
+#### Round + continuation model
+
+The exchange is a guided, turn-taking thread. A **round** is one message from each side. Up to **3 rounds each** in the guided phase; the same thread is unbounded once it becomes an Orbit.
+
+- **`GET /exchanges/:exchangeId`** (participants only; non-participant => `404 GALAXY_EXCHANGE_NOT_FOUND`, indistinguishable). Returns `{exchangeId, state, prompt, roundIndex, canPostMessage, continuationAvailable, continuationMandatory, myContinuation, messages}`. `messages` are `{id, mine, text, roundIndex, createdAt}` (mine/theirs; the raw sender id is never leaked). `myContinuation` is `NONE | CONTINUED | DECLINED` — the caller's OWN choice only; the counterpart's pending choice is NEVER exposed. `prompt` is a static per-intention string (keys: `galaxy.exchange.prompt.{friendship|romance|collaboration|open}`).
+- **`POST /exchanges/:exchangeId/messages`** `{text}` (participants only). Enforces one message per side per round (`409 GALAXY_OUT_OF_TURN`), the 3-round guided cap (`409 GALAXY_ROUND_LIMIT`), and message-accepting state. Every message passes the contact/link + crisis validator BEFORE it is stored: crisis => `400 CRISIS_SUPPORT` (draft preserved client-side, never distributed, exchange NOT closed); contact/link/handle => `400 DISALLOWED_CONTENT`. Completing round 3 moves the exchange to `WAITING_FOR_CONTINUATION`.
+- **`POST /exchanges/:exchangeId/continue`** `{continue: boolean}` (participants only). Available from the end of round one, mandatory once `WAITING_FOR_CONTINUATION`. Each participant independently posts a choice (set-once). Both `true` => `ORBIT_CREATED` (exactly once under concurrency). Either `false` => `CLOSED`. Returns `{state}` only — the **identical neutral shape** for both parties; no field ever distinguishes who closed vs who was closed.
+- **`GET /orbits`** returns `{orbits: [{exchangeId, prompt, createdAt}]}` (the caller's `ORBIT_CREATED` exchanges).
+
+A blocked pair freezes a shared exchange: messages/continue return `404` (indistinguishable). No typing indicators, read receipts, or presence anywhere.
 
 ---
 
@@ -221,5 +236,15 @@ All decisions are private and server-authoritative; none notifies or penalizes t
 | Expired/withdrawn signal decision | `409 GALAXY_SIGNAL_NOT_AVAILABLE` (heart/listen/pass/not-interested/hide); block/report still allowed |
 | Field cap | never exceeds 12; `completionState` = `MORE_COMING` when the pool is larger, else `COMPLETE` |
 | Report | `200 {reportId, status}`; snapshot captured server-side, never echoed; Signal suppressed from reporter's Field |
-| Recipient declines a listen _(planned)_ | resonance `DECLINED`/`CLOSED`; no exchange created |
-| Stale exchange transition _(planned)_ | `409`/`404`; no duplicate exchange; race between two listen taps resolves to one |
+| Recipient declines a Listen | quiet `200 {acknowledged}`; never surfaced to the sender (shows `PENDING` until the Signal expires) |
+| Accept (non-recipient / not pending / blocked / expired) | one `409 GALAXY_RESONANCE_NOT_ACTIONABLE` (indistinguishable) |
+| Double-accept | idempotent `200 {exchangeId}` (unique `resonanceId`; exchange created exactly once) |
+| Message out of turn | `409 GALAXY_OUT_OF_TURN` |
+| 4th guided round pre-Orbit | `409 GALAXY_ROUND_LIMIT`; post-Orbit unbounded |
+| Message once `WAITING_FOR_CONTINUATION` / `CLOSED` | `409 GALAXY_EXCHANGE_NOT_ACTIONABLE` |
+| Crisis in a message | `400 CRISIS_SUPPORT`; not stored, not distributed, exchange stays open |
+| Contact/link in a message | `400 DISALLOWED_CONTENT` |
+| Continue before round one complete | `409 GALAXY_CONTINUATION_NOT_AVAILABLE` |
+| Both continue | `ORBIT_CREATED` exactly once (state-guarded, concurrency-safe) |
+| Either false | `CLOSED`; identical neutral `{state}` for both; who-chose-what never revealed |
+| Non-participant / blocked-pair on an exchange | `404 GALAXY_EXCHANGE_NOT_FOUND` (indistinguishable) |
