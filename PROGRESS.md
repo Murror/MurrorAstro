@@ -669,3 +669,52 @@ measured for the first time, and then answered pricing from data instead of gues
 **Doc pointers:** `Murror/docs/plans/2026-07-16-together-plans-and-cost-truth.md`;
 murror-api PR #605 (merged `7002678`); murror-platform PR #179 (`b5c20fc5`, `67f7e311`, `019f4f26`,
 `fa72f826`, `a81666a4`); `apps/cost-service/DEPLOY.md`.
+
+## July 18, 2026 — Galaxy: design doc to a navigable 3D Discovery on TestFlight
+
+**Summary:** Took the Codex Galaxy handoff (approved 2026-07-09 design + 12-task plan) and built the
+whole opt-in discovery layer for the Alpha app, then reworked it three times against Astro's on-device
+feedback. Six specialist agents brainstormed before any code; Astro locked four decisions, then drove
+five device passes that turned a working-but-raw feature into a navigable 3D star field. 21 PRs across
+`murror-api` and `MurrorMobile`, 6 Alpha builds (342, 343, 344, 345, 347), everything flag-dark and
+gate-dark. Prod and staging were never exposed.
+
+**Key accomplishments:**
+- **Backend complete, gate-dark (7 PRs, #609 to #615).** Isolated Galaxy domain in
+  `schema.murror.prisma` (8 tables, never touching relationship or journal tables), allowlisted card
+  projections, finite Field, the full decision set, and the consent state machine ending in an Orbit.
+  Guard tiers: dev/alpha ON by env default, staging and production dark behind the default-off Statsig
+  gate, so a staging graduation is a deliberate flip rather than a deploy.
+- **Mobile complete on fixtures (14 PRs, #762 to #780).** Mock-first paid off: the entire flow was
+  feelable on device before the backend was wired. Foundation, orbit view with continuous zoom-out and
+  a first-crossing threshold, signal card and accessible list, composer with a mandatory preview gate,
+  Resonances, guided exchange, Orbit graduation, activity feed, and a 3D Discovery galaxy with
+  spherical camera, golden-spiral placement, depth fog, nebula parallax, and per-type connection lines.
+- **"My Space is not a redesign" enforced structurally.** At rest the flag-on home renders the ORIGINAL
+  `HomeOrbitalView` component (proven by spec: the composite module is never even constructed), so any
+  future home work stays correct automatically. Only addition at rest is one small header toggle.
+- **Every merge gated.** Each PR got an adversarial review plus independent verification before merge.
+  Reviews caught two HIGH privacy leaks (a declined sender learning they were declined; a participant
+  inferring their counterpart's continuation vote), a blocker inside a bug fix, and a wrong-person tap
+  bug in the 3D field. All fixed pre-merge.
+
+**Operating notes:**
+- **The veil bug is the lesson of the session.** Two root causes, and the first fix was wrong. The real
+  one: `getFromLocal` JSON-parses every read, so the stored string `'1'` returns as the number `1` and
+  `value === '1'` is false forever. Read-side fix retroactively honors already-committed devices.
+  Repo-wide trap for any numeric-looking string in that wrapper. The composite spec mocked the
+  persistence module wholesale, so nothing crossed the real storage path.
+- **Native hit-testing is invisible to jest.** Build 343's toggle rendered perfectly and was dead: the
+  transparent header at `zIndex: 99` ate every tap. Same class killed the 3D gestures (`box-none` on
+  the gesture detector's child). RNTL fires presses at components directly, so only a device catches
+  these. Z-order contracts now have pinned constant specs.
+- **Two stacked RN Modals do not present on iOS**, and anything absolutely positioned inside the
+  `fixedOrbital` band gets clipped to mid-screen. The 3D scene needed a full-bleed layer at `fixedRoot`.
+- **Build numbers:** memory said Alpha ran its own sequence from 178; ASC showed 341. Always query ASC.
+  With a concurrent session active, `scripts/ios-next-build.sh` plus a merged bump PR before archiving
+  reserves the number remotely and makes collisions impossible. Check `pgrep xcodebuild` before writing
+  `/tmp/envfile`, which is a shared global.
+
+**Doc pointers:** `Murror/docs/plans/2026-07-18-galaxy-alpha-pilot-build.md` (full writeup),
+`2026-07-17-galaxy-alpha-pilot-addendum.md` (scope), `docs/contracts/galaxy-pilot-api.md` (frozen
+contract), `docs/runbooks/galaxy-dev-enablement.md` (the still-gated dev enablement steps).
