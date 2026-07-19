@@ -1,5 +1,21 @@
 # Murror Progress
 
+## 2026-07-18 (PDT): Alpha Duo goes purchasable (RevenueCat) + the "Alpha is the dev backend" correction
+
+Took Together Duo on Alpha from UI-only to a real sandbox purchase, stood up the RevenueCat store side in the correct project, and corrected a stale infra assumption that had sent a session chasing a dead cluster. Full detail: `docs/plans/2026-07-18-alpha-duo-revenuecat-and-infra-truth.md`.
+
+### Highlights
+- Mobile Duo Milestone B, builds 174 -> 346 (dev scheme, flag-dark): first Duo UI (picker, invite, joined pop-up, stop-sharing), a Home crash fix (unwrap the murror-api envelope), a stale-plan-card fix (focus refresh), device-feedback rounds (night-sky Settings card, no stock photo/butterfly, right-side stop-sharing, honest Manage Subscription), and finally real RevenueCat sandbox purchases (PR #778 + bump #779). Duo matcher fixed to the real custom-package shape; buy path wired purchase -> refresh -> invite. 53 tests green, sentinel review = SHIP.
+- RevenueCat store side complete in project MurrorDev (projb32bb370): two Duo products attached to the Premium entitlement + custom packages in the current offering; matching App Store Connect subscriptions readied via the ASC API. Earlier RC work in the PROD project was the wrong project and is orphaned (a prod launch-gate risk noted below).
+- Seat map corrected on the real dev backend (nsp-dev-murror, sfo2): was phantom ids (app.murror.mobile.duo.*), now app.murror.premium.duo.{monthly,yearly}:2; rolled out on image staging-effdd8a which carries the seat-count code.
+- Infra correction: "Alpha" is the dev backend (dev.api.murror.app = nsp-dev-murror on DigitalOcean sfo2), NOT the retired self-managed sg3 cluster (nsp-alpha-murror / alpha.murror.api.ambercare.app, HTTP 000). The alpha-testing-guide skill doc still points at the dead env and misled a session; corrected across five memory files + a new reference_alpha_env_decoder.
+
+### Operating notes
+- RC project projb32bb370 is shared by dev AND staging; RC fans webhooks to every configured URL, so make webhook changes additive.
+- OPEN blocker for a fully end-to-end purchase test: the RC webhook still points at the dead ambercare host, so real purchases reconcile nowhere until a dev.api.murror.app webhook is added (Astro-gated). The purchase + premium unlock work without it; only the invite/plan step needs it.
+- Prod launch gate: the mobile Duo buy path is not env-gated and an orphaned Duo package sits in the live prod offering, so never flip ENABLE_TOGETHER_DUO in prod before the prod webhook->plan pipeline is verified.
+- Production untouched throughout.
+
 ## 2026-07-13 (PDT): Connection Reflection orbital redesign, contacts-tab parity, unified colors
 
 Redesigned the Connection Reflection detail page in the onboarding/home orbital visual language, iterated it through a device-feedback round, graduated it to staging, extended the same look to the contacts tab, and unified per-person colors app-wide. Fixed the Alpha avatar-revert bug. Full detail: `docs/plans/2026-07-13-connection-reflection-orbital-and-contacts-parity.md`.
