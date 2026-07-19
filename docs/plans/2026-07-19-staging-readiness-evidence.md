@@ -73,6 +73,13 @@ remains a device-local retention decision. Before production, define a user
 facing retention policy and whether the app should show an explicit "saved on
 this device" notice.
 
+### P1: keep Galaxy disabled outside development
+
+The mobile Galaxy API provider is currently backed by an in-memory fixture
+client. The existing feature gate is dark in staging and production by default,
+but a future flag change must not enable the surface until the real API path is
+implemented and verified. Treat the flag as a release gate, not a preview switch.
+
 ### P1: complete independent review and staging validation
 
 At the time of this record, API PR checks beyond lint/type formatting were still
