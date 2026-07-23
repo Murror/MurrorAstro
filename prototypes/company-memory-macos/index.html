@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="High-fidelity clickable prototype for Murror Company Memory."
+    />
+    <title>Murror Company Memory · Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to workspace</a>
+
+    <main class="stage" aria-label="Murror Company Memory prototype">
+      <section class="mac-window" aria-label="Murror native macOS window">
+        <header class="titlebar">
+          <div class="traffic-lights" aria-hidden="true">
+            <span class="traffic-light close"></span>
+            <span class="traffic-light minimize"></span>
+            <span class="traffic-light expand"></span>
+          </div>
+          <button class="window-title" data-action="open-today" type="button">
+            <span class="murror-mark" aria-hidden="true">M</span>
+            <span>Murror</span>
+          </button>
+          <div class="titlebar-actions">
+            <button
+              class="icon-button status-trigger"
+              data-action="open-states"
+              type="button"
+              aria-label="Open prototype lifecycle states"
+            >
+              <span class="status-dot working" aria-hidden="true"></span>
+              <span>States</span>
+            </button>
+            <button
+              class="icon-button command-trigger"
+              data-action="open-command"
+              type="button"
+              aria-label="Open command menu"
+            >
+              <span aria-hidden="true">⌘</span><span>K</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="app-grid">
+          <aside class="sidebar" aria-label="Primary navigation">
+            <div class="workspace-switcher">
+              <div class="workspace-avatar">MM</div>
+              <div>
+                <strong>My Murror</strong>
+                <span>Company memory</span>
+              </div>
+              <button class="quiet-button" type="button" aria-label="Workspace options">•••</button>
+            </div>
+
+            <nav class="nav-stack" aria-label="Workspace">
+              <button class="nav-item is-active" data-screen="today" type="button">
+                <span class="nav-symbol sun-symbol" aria-hidden="true"></span>
+                <span>Today</span>
+                <span class="nav-badge amber">3</span>
+              </button>
+              <button class="nav-item" data-screen="inbox" type="button">
+                <span class="nav-symbol inbox-symbol" aria-hidden="true"></span>
+                <span>Inbox</span>
+                <span class="nav-badge">2</span>
+              </button>
+            </nav>
+
+            <section class="nav-section" aria-labelledby="dm-heading">
+              <header class="nav-section-header">
+                <h2 id="dm-heading">Direct messages</h2>
+                <button data-action="new-message" type="button" aria-label="New direct message">＋</button>
+              </header>
+              <button class="nav-item" data-screen="dm" type="button">
+                <span class="person-avatar cyan">T</span>
+                <span class="nav-copy"><strong>Thanh</strong><small>API notes are ready</small></span>
+                <span class="presence-dot" aria-label="Available"></span>
+              </button>
+              <button class="nav-item" data-screen="dm" type="button">
+                <span class="person-avatar violet">M</span>
+                <span class="nav-copy"><strong>Mona</strong><small>Design review today</small></span>
+              </button>
+              <button class="nav-item agent-nav" data-screen="agent-private" type="button">
+                <span class="person-avatar agent">C</span>
+                <span class="nav-copy"><strong>Claude</strong><small>Private session</small></span>
+                <span class="agent-glyph" aria-label="Agent">✦</span>
+              </button>
+            </section>
+
+            <section class="nav-section" aria-labelledby="channels-heading">
+              <header class="nav-section-header">
+                <h2 id="channels-heading">Channels</h2>
+                <button data-action="new-channel" type="button" aria-label="Create channel">＋</button>
+              </header>
+              <button class="nav-item channel-item" data-screen="company" type="button">
+                <span aria-hidden="true">#</span><span>company</span>
+              </button>
+              <button class="nav-item channel-item" data-screen="channel" type="button">
+                <span aria-hidden="true">#</span><span>product</span>
+                <span class="nav-badge cyan">4</span>
+              </button>
+              <button class="nav-item channel-item" data-screen="engineering" type="button">
+                <span aria-hidden="true">#</span><span>engineering</span>
+              </button>
+              <button class="nav-item channel-item" data-screen="design" type="button">
+                <span aria-hidden="true">#</span><span>design</span>
+              </button>
+            </section>
+
+            <section class="nav-section work-section" aria-labelledby="work-heading">
+              <header class="nav-section-header">
+                <h2 id="work-heading">Work</h2>
+              </header>
+              <button class="nav-item" data-screen="company-map" type="button">
+                <span class="nav-symbol map-symbol" aria-hidden="true"></span><span>Company map</span>
+              </button>
+              <button class="nav-item" data-screen="missions" type="button">
+                <span class="nav-symbol mission-symbol" aria-hidden="true"></span><span>Missions</span>
+              </button>
+              <button class="nav-item" data-screen="knowledge" type="button">
+                <span class="nav-symbol knowledge-symbol" aria-hidden="true"></span><span>Knowledge</span>
+              </button>
+              <button class="nav-item" data-screen="agents" type="button">
+                <span class="nav-symbol agents-symbol" aria-hidden="true"></span><span>Agents</span>
+                <span class="working-count">2</span>
+              </button>
+            </section>
+
+            <button class="profile-chip" type="button" data-action="open-profile">
+              <span class="person-avatar pearl">A</span>
+              <span><strong>Astro</strong><small>Founder · available</small></span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+          </aside>
+
+          <section id="workspace" class="workspace" tabindex="-1" aria-live="polite"></section>
+          <aside id="inspector" class="inspector" aria-label="Context inspector"></aside>
+        </div>
+
+        <div id="connection-banner" class="connection-banner" role="status" hidden>
+          <span class="status-dot offline"></span>
+          You’re offline. Messages will send when Murror reconnects.
+          <button data-action="restore-connection" type="button">Reconnect</button>
+        </div>
+      </section>
+    </main>
+
+    <div id="sheet-root" aria-live="polite"></div>
+    <div id="command-root"></div>
+    <div id="toast-root" class="toast-region" aria-live="polite"></div>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
