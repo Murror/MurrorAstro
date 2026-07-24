@@ -13,6 +13,7 @@ const sheetRoot = document.querySelector("#sheet-root");
 const commandRoot = document.querySelector("#command-root");
 const toastRoot = document.querySelector("#toast-root");
 const connectionBanner = document.querySelector("#connection-banner");
+const appGrid = document.querySelector(".app-grid");
 
 const people = {
   astro: { name: "Astro", initial: "A", tone: "pearl" },
@@ -25,8 +26,8 @@ const commandItems = [
   { label: "Today", meta: "Overview", screen: "today", symbol: "◉" },
   { label: "# product", meta: "Channel", screen: "channel", symbol: "#" },
   { label: "Thanh", meta: "Direct message", screen: "dm", symbol: "T" },
-  { label: "Company map", meta: "Work", screen: "company-map", symbol: "⌘" },
-  { label: "Mac client mission", meta: "Mission map", screen: "mission-map", symbol: "◇" },
+  { label: "Company progress", meta: "Work", screen: "company-map", symbol: "↗" },
+  { label: "Company Memory alpha", meta: "Mission progress", screen: "mission-map", symbol: "◇" },
   { label: "Company Memory", meta: "Knowledge", screen: "knowledge", symbol: "◌" },
   { label: "Claude", meta: "Agent", screen: "agents", symbol: "✦" },
 ];
@@ -53,7 +54,7 @@ function renderToday() {
       ${screenHeader(
         "Today",
         "A calm view of what needs you",
-        `<button class="secondary-button" data-screen="company-map" type="button">Open company map</button>`,
+        `<button class="secondary-button" data-screen="company-map" type="button">Open progress</button>`,
       )}
       <div class="screen-scroll">
         <div class="today-content">
@@ -68,12 +69,12 @@ function renderToday() {
           <div class="attention-strip">
             <button class="attention-card approval" data-screen="mission-map" type="button">
               <small>Decision needed</small>
-              <strong>Approve the Mac client’s context boundary</strong>
+              <strong>Choose what Claude can access</strong>
               <span>Native platform · 8 min ago</span>
             </button>
             <button class="attention-card context" data-action="refill-context" type="button">
               <small>Context requested</small>
-              <strong>Claude needs the current API response schema</strong>
+              <strong>Claude needs the latest mobile decision</strong>
               <span>Product mission · 14 min ago</span>
             </button>
             <button class="attention-card agent-work" data-screen="channel" type="button">
@@ -86,12 +87,12 @@ function renderToday() {
           <section class="today-section" aria-labelledby="moving-heading">
             <div class="today-section-header">
               <h2 id="moving-heading">Moving now</h2>
-              <button data-screen="company-map" type="button">See the full map →</button>
+              <button data-screen="company-map" type="button">See all progress →</button>
             </div>
             <div class="progress-list">
               <button class="progress-row" data-screen="mission-map" type="button">
                 <span class="progress-icon agent">✦</span>
-                <span class="progress-copy"><strong>Native Murror client</strong><span>Claude is mapping the collaboration data contract</span></span>
+                <span class="progress-copy"><strong>Native Murror client</strong><span>Claude is shaping how agents collaborate</span></span>
                 <span class="state-pill working"><span class="status-dot working"></span>Working</span>
               </button>
               <button class="progress-row" data-screen="knowledge" type="button">
@@ -101,7 +102,7 @@ function renderToday() {
               </button>
               <button class="progress-row" data-screen="mission-map" type="button">
                 <span class="progress-icon blocked">!</span>
-                <span class="progress-copy"><strong>Claude context bridge</strong><span>Waiting for a safe account-integration boundary</span></span>
+                <span class="progress-copy"><strong>Claude joining Murror</strong><span>Waiting for Astro to choose what Claude may access</span></span>
                 <span class="state-pill context">Needs context</span>
               </button>
             </div>
@@ -159,7 +160,7 @@ function renderWorkSession() {
           </div>
           <div class="session-actions">
             <button class="context-action" data-action="start-claude" type="button">Summon Claude</button>
-            <button data-screen="mission-map" type="button">Preview mission</button>
+            <button data-screen="mission-map" type="button">View progress</button>
           </div>
         </div>
       </div>
@@ -178,7 +179,7 @@ function renderWorkSession() {
           <div class="context-callout"><span>Checkpoint preserved. Claude retains no active local access.</span></div>
           <div class="session-actions">
             <button class="context-action" data-action="resume-session" type="button">Resume session</button>
-            <button data-screen="mission-map" type="button">Open map</button>
+            <button data-screen="mission-map" type="button">View progress</button>
           </div>
         </div>
       </div>
@@ -200,7 +201,7 @@ function renderWorkSession() {
           </div>
           <div class="session-actions">
             <button class="review-action" data-screen="knowledge" type="button">View company memory</button>
-            <button data-screen="mission-map" type="button">Open outcome map</button>
+            <button data-screen="mission-map" type="button">View outcome</button>
           </div>
         </div>
       </div>
@@ -238,7 +239,7 @@ function renderWorkSession() {
         }
         <div class="session-actions">
           ${reviewReady ? `<button class="review-action" data-action="review-outcome" type="button">Review artifact</button>` : `<button class="context-action" data-action="refill-context" type="button">Refill context</button>`}
-          <button data-screen="mission-map" type="button">Open map</button>
+          <button data-screen="mission-map" type="button">View progress</button>
           <button data-action="pause-session" type="button">Pause</button>
           <button data-action="stop-session" type="button">Stop</button>
         </div>
@@ -271,7 +272,7 @@ function renderChannel(channelName = "product") {
           ${renderMessage(
             people.mona,
             "12:47 PM",
-            `<p>The calm Today view works. For the map, I’d keep people attached to work rather than turning them into nodes. It feels collaborative instead of managerial.</p>`,
+            `<p>The calm Today view works. For Progress, I’d keep the four stages visible and let each Mission show one clear next move.</p>`,
             `<button class="reaction" type="button">✓ 3</button>`,
           )}
           ${renderMessage(
@@ -326,73 +327,114 @@ function renderDM() {
   `;
 }
 
-function renderCompanyMap() {
+function getMissionProgress() {
+  if (state.sessionStage === "completed") return { index: 3, label: "Done", condition: "Checked", next: "Share the accepted outcome with the team" };
+  if (state.sessionStage === "review") return { index: 2, label: "Almost there", condition: "Ready for you", next: "Astro reviews Claude’s result" };
+  if (state.sessionStage === "needs-context") return { index: 1, label: "In motion", condition: "Needs a little help", next: "Share the latest mobile decision" };
+  if (state.sessionStage === "paused") return { index: 1, label: "In motion", condition: "Paused for now", next: "Resume from the saved checkpoint" };
+  return { index: 0, label: "Up next", condition: "Ready to begin", next: "Start a focused session with Claude" };
+}
+
+function progressTrack(activeIndex, label) {
+  const stages = ["Up next", "In motion", "Almost there", "Done"];
   return `
-    <section class="screen" data-prototype-screen="company-map">
-      ${screenHeader("Company map", "What is moving, missing, and ready for you", `<button class="ghost-button" data-action="toggle-list-view" type="button">Accessible list</button><button class="secondary-button" data-action="new-mission" type="button">New mission</button>`)}
-      <div class="map-screen">
-        <div class="map-toolbar"><button type="button">Fit map</button><button type="button">−</button><button type="button">＋</button></div>
-        <div class="map-canvas">
-          <svg class="context-thread-layer" viewBox="0 0 1000 650" preserveAspectRatio="none" aria-hidden="true">
-            <path class="active-thread" d="M500 110 C430 190 315 215 230 290" />
-            <path class="agent-thread active-thread" d="M500 110 C520 245 500 320 500 430" />
-            <path d="M500 110 C630 190 735 185 805 250" />
-            <path class="context-thread" d="M500 430 C655 445 710 520 790 530" />
-            <circle cx="500" cy="110" r="3" fill="#61d6e8" opacity=".8" />
-          </svg>
-          <button class="map-node portfolio-node goal" data-screen="mission-map" type="button">
-            <small>Company outcome</small><strong>Murror becomes the safest place for humans and agents to build together</strong><span>4 active missions</span>
-            <span class="node-footer"><span class="state-pill verified">Current</span><span class="node-avatar">A</span></span>
+    <div class="ledger-track" role="img" aria-label="${label}: ${stages[activeIndex]}">
+      ${stages.map((stage, index) => `<span class="track-step ${index < activeIndex ? "is-past" : ""} ${index === activeIndex ? "is-current" : ""}"><span class="track-dot"></span><span class="track-label">${stage}</span></span>`).join("")}
+    </div>
+  `;
+}
+
+function renderCompanyMap() {
+  const active = getMissionProgress();
+  const activePeople = `<span class="ledger-people"><span class="paper-avatar astro">A</span><span class="paper-avatar agent">C</span><span>Astro + Claude</span></span>`;
+  return `
+    <section class="screen progress-screen" data-prototype-screen="company-progress">
+      <div class="progress-sheet">
+        <header class="progress-topbar">
+          <div><span class="paper-eyebrow">Company progress</span><h1>Where everything stands</h1></div>
+          <div class="paper-actions"><span class="updated-copy">Updated just now</span><button class="paper-button" data-action="new-mission" type="button">New mission</button></div>
+        </header>
+
+        <section class="horizon-card" aria-labelledby="horizon-heading">
+          <div class="horizon-orbit orbit-one"></div><div class="horizon-orbit orbit-two"></div>
+          <div class="horizon-copy"><span class="horizon-label">Today at Murror</span><h2 id="horizon-heading">Three things<br />are moving.</h2><p>Two are ready for you. The rest can keep moving quietly.</p></div>
+          <div class="horizon-sun" aria-hidden="true"><span></span></div>
+        </section>
+
+        <section class="stage-overview" aria-label="Progress stages">
+          <button class="stage-summary up-next" data-action="filter-progress" data-stage="Up next" type="button"><span class="stage-number">2</span><span><strong>Up next</strong><small>Not started</small></span></button>
+          <button class="stage-summary in-motion is-selected" data-action="filter-progress" data-stage="In motion" type="button"><span class="stage-number">3</span><span><strong>In motion</strong><small>Work has begun</small></span></button>
+          <button class="stage-summary almost" data-action="filter-progress" data-stage="Almost there" type="button"><span class="stage-number">2</span><span><strong>Almost there</strong><small>Needs a final step</small></span></button>
+          <button class="stage-summary done" data-action="filter-progress" data-stage="Done" type="button"><span class="stage-number">5</span><span><strong>Done</strong><small>Finished and checked</small></span></button>
+        </section>
+
+        <section class="progress-ledger" aria-labelledby="ledger-heading">
+          <div class="ledger-heading"><div><span class="paper-eyebrow">Ready for you first</span><h2 id="ledger-heading">Company movement</h2></div><button data-action="show-since-left" type="button">What changed →</button></div>
+
+          <button class="ledger-row is-featured" data-screen="mission-map" type="button">
+            <span class="ledger-index">01</span>
+            <span class="ledger-main"><span class="ledger-kicker">Product · ${active.label}</span><strong>Native Company Memory alpha</strong><small>${active.next}</small>${progressTrack(active.index, "Native Company Memory alpha")}</span>
+            <span class="ledger-side"><span class="paper-condition ${active.index === 3 ? "checked" : active.index === 2 ? "ready" : active.index === 1 ? "help" : ""}">${active.condition}</span>${activePeople}<small>Changed just now</small></span>
           </button>
-          <button class="map-node portfolio-node product is-selected" data-screen="mission-map" type="button">
-            <small>Product</small><strong>Native Company Memory alpha</strong><span>1 context need · 1 review</span>
-            <span class="node-footer"><span class="state-pill working">Moving</span><span class="node-avatar">A</span></span>
+
+          <button class="ledger-row" data-action="open-mission-preview" data-mission="Secure local agent connection" type="button">
+            <span class="ledger-index">02</span>
+            <span class="ledger-main"><span class="ledger-kicker">Engineering · Up next</span><strong>Secure local agent connection</strong><small>Astro chooses what Claude may access</small>${progressTrack(0, "Secure local agent connection")}</span>
+            <span class="ledger-side"><span class="paper-condition">Ready to begin</span><span class="ledger-people"><span class="paper-avatar astro">A</span><span>Astro</span></span><small>Added today</small></span>
           </button>
-          <button class="map-node portfolio-node engineering agent-node" data-screen="mission-map" type="button">
-            <small>Engineering</small><strong>Claude context bridge</strong><span>2 agents working safely</span>
-            <span class="node-footer"><span class="state-pill working">Working</span><span class="node-avatar agent">C</span></span>
+
+          <button class="ledger-row" data-action="open-mission-preview" data-mission="Murror onboarding story" type="button">
+            <span class="ledger-index">03</span>
+            <span class="ledger-main"><span class="ledger-kicker">Growth · Almost there</span><strong>Murror onboarding story</strong><small>Mona is preparing the final story for review</small>${progressTrack(2, "Murror onboarding story")}</span>
+            <span class="ledger-side"><span class="paper-condition ready">Ready for you</span><span class="ledger-people"><span class="paper-avatar mona">M</span><span>Mona</span></span><small>Changed 18 min ago</small></span>
           </button>
-          <button class="map-node portfolio-node growth context-node" data-action="refill-context" type="button">
-            <small>Growth</small><strong>Onboarding narrative</strong><span>Needs customer evidence</span>
-            <span class="node-footer"><span class="state-pill context">Needs context</span><span class="node-avatar">M</span></span>
+
+          <button class="ledger-row is-complete" data-action="open-mission-preview" data-mission="Channels and direct messages" type="button">
+            <span class="ledger-index">04</span>
+            <span class="ledger-main"><span class="ledger-kicker">Company · Done</span><strong>Channels and direct messages</strong><small>The durable conversation model was checked by Astro</small>${progressTrack(3, "Channels and direct messages")}</span>
+            <span class="ledger-side"><span class="paper-condition checked">Checked</span><span class="ledger-people"><span class="paper-avatar astro">A</span><span>Astro</span></span><small>Finished Tuesday</small></span>
           </button>
-          <button class="map-node portfolio-node design" data-screen="design" type="button">
-            <small>Design</small><strong>Mac interaction language</strong><span>Prototype ready for review</span>
-            <span class="node-footer"><span class="state-pill verified">Review</span><span class="node-avatar">M</span></span>
-          </button>
-        </div>
-        <div class="timeline-control" aria-label="Map timeframe"><button class="is-active" type="button">Now</button><button type="button">Today</button><button type="button">Week</button><button type="button">Since I left</button></div>
+        </section>
       </div>
     </section>
   `;
 }
 
 function renderMissionMap() {
-  const isCompleted = state.sessionStage === "completed";
-  const outcomeState = isCompleted ? "Verified" : "Waiting";
-  const agentState = isCompleted ? "Complete" : state.sessionStage === "review" ? "Review" : state.sessionStage === "paused" ? "Paused" : state.sessionStage === "idle" ? "Ready" : "Working";
-  const reviewState = isCompleted ? "Accepted" : state.sessionStage === "review" ? "Needs you" : "Queued";
+  const progress = getMissionProgress();
+  const isCompleted = progress.index === 3;
+  const isReview = progress.index === 2;
+  const needsHelp = state.sessionStage === "needs-context";
+  const isPaused = state.sessionStage === "paused";
+  const nowTitle = isCompleted ? "Done and checked" : isReview ? "The result is ready for you" : needsHelp ? "Claude is waiting for one answer" : isPaused ? "Work is safely paused" : progress.index === 0 ? "Ready when you are" : "Claude is helping";
+  const nowBody = isCompleted ? "Astro accepted the collaboration contract and preserved the supporting evidence." : isReview ? "Claude finished the comparison. One human review moves this work to Done." : needsHelp ? "The latest mobile expectation is missing. A scoped note is ready to share." : isPaused ? "The checkpoint is preserved and no local access remains active." : "Start with the approved product direction and a clearly bounded session.";
+  const primaryAction = isCompleted ? `<button class="paper-button primary" data-screen="knowledge" type="button">View accepted decision</button>` : isReview ? `<button class="paper-button primary" data-action="review-outcome" type="button">Review the result</button>` : needsHelp ? `<button class="paper-button primary" data-action="refill-context" type="button">Share the missing answer</button>` : isPaused ? `<button class="paper-button primary" data-action="resume-session" type="button">Resume work</button>` : `<button class="paper-button primary" data-action="start-claude" type="button">Start with Claude</button>`;
   return `
-    <section class="screen" data-prototype-screen="living-mission-map">
-      ${screenHeader("Native Company Memory alpha", "Product · Owner Astro · 8 sources", `<button class="ghost-button" data-screen="channel" type="button">Open # product</button><button class="secondary-button" data-action="start-claude" type="button">✦ Start Work Session</button>`)}
-      <div class="map-screen mission-map">
-        <div class="map-toolbar"><button data-action="toggle-list-view" type="button">List view</button><button type="button">Fit</button><button type="button">＋</button></div>
-        <div class="map-canvas">
-          <svg class="context-thread-layer" viewBox="0 0 1000 650" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M150 350 C220 350 260 245 335 225" />
-            <path class="agent-thread active-thread" d="M150 350 C260 350 300 350 440 350" />
-            <path class="agent-thread" d="M520 350 C620 350 670 350 725 350" />
-            <path d="M790 350 C850 350 875 350 920 350" />
-            <path class="context-thread" d="M490 510 C490 455 480 410 470 390" />
-          </svg>
-          <button class="map-node goal-node" data-screen="channel" type="button"><small>Goal</small><strong>Make Murror the team’s daily collaboration home</strong><span>Approved by Astro</span><span class="node-footer"><span class="state-pill verified">Current</span><span class="node-avatar">A</span></span></button>
-          <button class="map-node context-node" data-screen="knowledge" type="button"><small>Context capsule · ${isCompleted ? "v4" : "v3"}</small><strong>Approved product and architecture direction</strong><span>${isCompleted ? "6 decisions" : "5 decisions"} · 8 sources</span><span class="node-footer"><span class="state-pill ${isCompleted ? "verified" : ""}">${isCompleted ? "Current" : "Fresh"}</span><span class="node-avatar">A</span></span></button>
-          <button class="map-node agent-node is-selected" data-screen="channel" type="button"><small>Claude Work Session</small><strong>Map the API collaboration contract</strong><span>${agentState} · $${isCompleted ? "1.18" : "0.82"}</span><span class="node-footer"><span class="state-pill ${isCompleted ? "verified" : "working"}">${agentState}</span><span class="node-avatar agent">C</span></span></button>
-          <button class="map-node review-node" ${isCompleted ? 'data-screen="knowledge"' : 'data-action="review-outcome"'} type="button"><small>Human review</small><strong>Verify artifacts and completion evidence</strong><span>${isCompleted ? "Accepted by Astro" : state.sessionStage === "review" ? "Ready for Astro" : "Waiting on artifact"}</span><span class="node-footer"><span class="state-pill ${isCompleted ? "verified" : state.sessionStage === "review" ? "context" : ""}">${reviewState}</span><span class="node-avatar">A</span></span></button>
-          <button class="map-node outcome-node" data-screen="knowledge" type="button"><small>Outcome</small><strong>Verified collaboration contract</strong><span>${outcomeState}</span><span class="node-footer"><span class="state-pill ${isCompleted ? "verified" : ""}">${outcomeState}</span></span></button>
-          <button class="map-node missing-node context-node" ${isCompleted ? 'data-screen="knowledge"' : 'data-action="refill-context"'} type="button"><small>${isCompleted ? "Context resolved" : "Missing context"}</small><strong>Current mobile response expectation</strong><span>${isCompleted ? "Context Capsule v4 · source cited" : "Refill from source"}</span><span class="node-footer"><span class="state-pill ${isCompleted ? "verified" : "context"}">${isCompleted ? "Resolved" : "Needs context"}</span><span class="node-avatar">T</span></span></button>
-        </div>
-        <div class="timeline-control"><button class="is-active" type="button">Now</button><button type="button">Today</button><button type="button">Week</button></div>
+    <section class="screen progress-screen mission-progress-screen" data-prototype-screen="mission-progress">
+      <div class="progress-sheet">
+        <header class="progress-topbar">
+          <button class="paper-back" data-screen="company-map" type="button">← All progress</button>
+          <div class="paper-actions"><button class="paper-link" data-screen="channel" type="button">Open # product</button><button class="paper-button" data-action="how-we-know" type="button">How we know</button></div>
+        </header>
+
+        <section class="mission-horizon">
+          <div class="mission-horizon-copy"><span class="horizon-label">Product mission</span><h1>Make Murror the team’s<br />daily collaboration home.</h1><p>Owned by Astro · Mona and Claude are helping</p></div>
+          <div class="mission-stage-seal"><span>${String(progress.index + 1).padStart(2, "0")}</span><small>of 04</small></div>
+        </section>
+
+        <section class="mission-stage-panel" aria-label="Mission stage">
+          <div class="mission-stage-intro"><span class="paper-eyebrow">Current stage</span><h2>${progress.label}</h2><p>${progress.condition}</p></div>
+          ${progressTrack(progress.index, "Native Company Memory alpha")}
+        </section>
+
+        <section class="mission-story-grid">
+          <article class="story-card now-card"><span class="story-number">Now</span><h2>${nowTitle}</h2><p>${nowBody}</p>${primaryAction}</article>
+          <article class="story-card"><span class="story-number">Next</span><h3>${isCompleted ? "Bring the learning back to the team" : isReview ? "Accept it or ask for changes" : needsHelp ? "Claude finishes the focused checks" : "Compare the staging contract"}</h3><p>${isCompleted ? "The verified decision is now available to channels and future Work Sessions." : "One clear next move stays visible; the detailed work remains behind it."}</p></article>
+          <article class="story-card ${needsHelp ? "attention-card-paper" : ""}"><span class="story-number">Help</span><h3>${needsHelp ? "The latest mobile decision" : isReview ? "Your final look" : isCompleted ? "Nothing is waiting" : "No blocker yet"}</h3><p>${needsHelp ? "Thanh shared a safe excerpt. The private conversation stays private." : isCompleted ? "The result and its source trail are safely preserved." : "If work needs context or a decision, it will appear here in plain language."}</p></article>
+          <article class="story-card people-card"><span class="story-number">Together</span><div class="large-people"><span class="large-paper-avatar astro">A</span><span class="large-paper-avatar mona">M</span><span class="large-paper-avatar agent">C</span></div><h3>Astro, Mona, and Claude</h3><p>One accountable person. Agents remain visible as collaborators.</p></article>
+        </section>
+
+        <footer class="mission-footer"><span>${isCompleted ? "Checked just now" : "Last meaningful change · 8 minutes ago"}</span><button data-action="how-we-know" type="button">Sources, decisions, and activity →</button></footer>
       </div>
     </section>
   `;
@@ -412,7 +454,7 @@ function renderKnowledge() {
           </button>
           <button class="knowledge-card" data-action="open-knowledge-detail" type="button">
             <span class="card-eyebrow">Policy · current</span>
-            <h3>Map work, not worker productivity</h3>
+            <h3>Show work, never worker productivity</h3>
             <p>No scores, rankings, activity surveillance, or private-session ingestion. Unknown state remains visibly unknown.</p>
             <span class="card-meta"><span>TEAM POLICY · 2 SOURCES</span><span class="trust-pill">Human verified</span></span>
           </button>
@@ -435,19 +477,6 @@ function renderKnowledge() {
           }
         </div>
       </div>
-    </section>
-  `;
-}
-
-function renderMissions() {
-  return `
-    <section class="screen" data-prototype-screen="missions">
-      ${screenHeader("Missions", "Outcome-oriented work with one accountable owner", `<button class="secondary-button" data-action="new-mission" type="button">New mission</button>`)}
-      <div class="screen-scroll"><div class="mission-grid">
-        <button class="mission-list-card" data-screen="mission-map" type="button"><span class="card-eyebrow">Product · active</span><h3>Native Company Memory alpha</h3><p>One Claude session · one context need · owner Astro</p><span class="card-meta"><span>UPDATED 8 MIN AGO</span><span class="state-pill working">Moving</span></span></button>
-        <button class="mission-list-card" data-screen="mission-map" type="button"><span class="card-eyebrow">Engineering · review</span><h3>Secure local agent bridge</h3><p>Architecture boundary ready for threat review</p><span class="card-meta"><span>UPDATED 21 MIN AGO</span><span class="state-pill context">Needs review</span></span></button>
-        <button class="mission-list-card" data-screen="knowledge" type="button"><span class="card-eyebrow">Company · verified</span><h3>Operating model and knowledge trust</h3><p>Five knowledge types and anti-surveillance policy approved</p><span class="card-meta"><span>TODAY</span><span class="state-pill verified">Verified</span></span></button>
-      </div></div>
     </section>
   `;
 }
@@ -534,7 +563,6 @@ function getScreen() {
     case "agent-private": return renderAgentPrivate();
     case "company-map": return renderCompanyMap();
     case "mission-map": return renderMissionMap();
-    case "missions": return renderMissions();
     case "knowledge": return renderKnowledge();
     case "agents": return renderAgents();
     default: return renderToday();
@@ -544,7 +572,7 @@ function getScreen() {
 function inspectorForScreen() {
   const peopleStack = `<div class="avatar-stack">${avatar(people.astro)}${avatar(people.thanh)}${avatar(people.mona)}${avatar(people.dominic)}</div>`;
 
-  if (["company-map", "mission-map", "missions"].includes(state.screen)) {
+  if (["company-map", "mission-map"].includes(state.screen)) {
     return `
       <div class="inspector-inner">
         <div class="inspector-header"><div><span class="inspector-eyebrow">Mission context</span><h2>Native Company Memory</h2></div><button class="quiet-button" type="button">•••</button></div>
@@ -593,7 +621,7 @@ function inspectorForScreen() {
     <div class="inspector-inner">
       <div class="inspector-header"><div><span class="inspector-eyebrow">Today</span><h2>Company pulse</h2></div></div>
       <section class="inspector-section"><h3>Working now</h3><div class="inspector-list"><div class="inspector-row"><span class="row-icon">✦</span><div><strong>2 agent sessions</strong><span>1 working · 1 needs context</span></div></div><div class="inspector-row"><span class="row-icon">◇</span><div><strong>4 active missions</strong><span>1 decision needed</span></div></div></div></section>
-      <section class="inspector-section"><h3>Today’s cost</h3><p>$1.44 across Claude and Codex. Both sessions remain below their limits.</p></section>
+      <section class="inspector-section"><h3>Agent limits</h3><p>Claude and Codex are both comfortably within today’s approved limits.</p></section>
       <section class="inspector-section"><h3>Quiet status</h3><p>No urgent blockers. Notifications are limited to mentions, context requests, and approvals.</p></section>
     </div>
   `;
@@ -610,6 +638,7 @@ function updateNavigation() {
 function render() {
   workspace.innerHTML = getScreen();
   inspector.innerHTML = inspectorForScreen();
+  appGrid.classList.toggle("progress-layout", ["company-map", "mission-map"].includes(state.screen) && state.simulatedState === "active");
   updateNavigation();
 }
 
@@ -701,11 +730,31 @@ function openOutcomeReview() {
           <div class="outcome-card"><small>Decision</small><strong>Preserve existing response keys</strong><span>Proposed for Company Memory</span></div>
           <div class="outcome-card"><small>Remaining risk</small><strong>Older mobile build not exercised</strong><span>Follow-up test recommended</span></div>
         </div></div>
-        <div class="context-preview"><div class="context-preview-header"><strong>What acceptance will do</strong><span class="permission-pill">Human action</span></div><dl><dt>Mission</dt><dd>Mark agent work verified and move to outcome</dd><dt>Map</dt><dd>Resolve missing-context edge</dd><dt>Knowledge</dt><dd>Create a human-verified Decision</dd><dt>Agent</dt><dd>Close session and revoke local capability</dd></dl></div>
+        <div class="context-preview"><div class="context-preview-header"><strong>What acceptance will do</strong><span class="permission-pill">Human action</span></div><dl><dt>Progress</dt><dd>Move the Mission to Done and resolve its context need</dd><dt>Company Memory</dt><dd>Create a human-verified decision</dd><dt>Claude</dt><dd>Close the session and revoke local capability</dd><dt>Team</dt><dd>Make the checked result available with its source trail</dd></dl></div>
       </div>
       <footer class="sheet-footer"><span class="source-pill">$1.18 · 11 min · 8 sources</span><div class="sheet-footer-actions"><button class="ghost-button" data-action="request-changes" type="button">Request changes</button><button class="primary-button" data-action="accept-outcome" type="button">Accept outcome</button></div></footer>
     `,
     "Review Outcome Bundle",
+  );
+}
+
+function openHowWeKnow() {
+  openSheet(
+    `
+      <header class="sheet-header"><div><h2>How we know</h2><p>The evidence behind this Mission’s current stage</p></div><button class="close-button" data-action="close-sheet" type="button" aria-label="Close">×</button></header>
+      <div class="sheet-body" data-prototype-screen="how-we-know">
+        <div class="context-preview"><div class="context-preview-header"><strong>Current understanding</strong><span class="permission-pill">${getMissionProgress().label}</span></div><p style="margin:0;color:var(--mist);font-size:10px;line-height:1.55">The team approved the native-first collaboration direction. Claude’s focused comparison and Astro’s review determine whether the Mission advances.</p></div>
+        <div class="form-group" style="margin-top:16px"><div class="form-label">Supporting trail <span>Details stay out of the overview</span></div><div class="selection-list">
+          <div class="selection-row"><span class="row-icon">#</span><span class="selection-copy"><strong>Product conversation</strong><span>Astro, Mona, and Thanh · today</span></span><span class="source-pill">Shared</span></div>
+          <div class="selection-row"><span class="row-icon">✓</span><span class="selection-copy"><strong>Approved Horizon direction</strong><span>Human checked · current</span></span><span class="source-pill">Decision</span></div>
+          <div class="selection-row"><span class="row-icon">✦</span><span class="selection-copy"><strong>Claude Work Session</strong><span>Scoped sources · owner Astro · resumable</span></span><span class="source-pill">Agent</span></div>
+          <div class="selection-row"><span class="row-icon">D</span><span class="selection-copy"><strong>Staging response contract</strong><span>Provided by Thanh · updated today</span></span><span class="source-pill">Document</span></div>
+        </div></div>
+        <div class="context-preview"><div class="context-preview-header"><strong>Safety boundary</strong><span class="permission-pill">Visible to # product</span></div><dl><dt>Included</dt><dd>Selected channel context, approved decisions, staging contract</dd><dt>Excluded</dt><dd>Private DMs, secrets, unrelated repositories</dd><dt>Owner</dt><dd>Astro can pause, review, or stop the session</dd><dt>Completion</dt><dd>Only Astro’s acceptance can move this Mission to Done</dd></dl></div>
+      </div>
+      <footer class="sheet-footer"><span class="source-pill">Source trail preserved</span><div class="sheet-footer-actions"><button class="primary-button" data-action="close-sheet" type="button">Done</button></div></footer>
+    `,
+    "How we know",
   );
 }
 
@@ -829,7 +878,7 @@ document.addEventListener("click", (event) => {
       state.knowledgeVerified = true;
       closeSheet();
       navigate("mission-map");
-      toast("Outcome verified. Mission, map, and Company Memory now share the same state.", "verified");
+      toast("Done and checked. Progress and Company Memory now share the same state.", "verified");
       break;
     case "request-changes":
       closeSheet();
@@ -863,6 +912,9 @@ document.addEventListener("click", (event) => {
     }
     case "send-dm": toast("Private message sent to Thanh."); break;
     case "open-knowledge-detail": toast("Source trail opened: 3 conversations, 1 review, 1 current version."); break;
+    case "how-we-know": openHowWeKnow(); break;
+    case "filter-progress": toast(`${actionTarget.dataset.stage}: showing the same calm ledger, ordered by this stage.`); break;
+    case "open-mission-preview": toast(`${actionTarget.dataset.mission}: detail view is represented by the Company Memory Mission in this milestone.`); break;
     case "ask-murror": openCommand(); break;
     case "new-channel": openNewChannel(); break;
     case "new-message": openNewMessage(); break;
@@ -876,7 +928,6 @@ document.addEventListener("click", (event) => {
       render();
       toast("Live company state restored.", "verified");
       break;
-    case "toggle-list-view": toast("Accessible list view preserves every node, state, and dependency."); break;
     case "show-since-left": toast("Since You Left highlights 4 meaningful changes, not 126 unread messages."); break;
     case "new-mission": toast("Mission composer will preserve the channel and owner context."); break;
     case "convert-dm": toast("Only selected messages will move into the new private channel."); break;

@@ -13,33 +13,32 @@ Open `index.html` directly in a modern browser. No install or build step is requ
 3. Review the Context Capsule and choose a permission mode.
 4. Start the Work Session, then select **Refill context**.
 5. Share the scoped source and review Claude's Outcome Bundle.
-6. Accept the outcome to update the Mission Map and Company Memory together.
+6. Accept the outcome to move Mission Progress to **Done** and update Company Memory.
 
 ## Screen inventory
 
 - Today
 - Channel
 - Direct message
-- Company Map
-- Living Mission Map
+- Company Progress
+- Mission Progress
 - Start Work Session
 - Active Work Session
 - Refill Context
 - Outcome Review
 - Company Memory
-- Missions
 - Agents
 - Inbox
 - Private Claude conversation
 - Command palette
 - Lifecycle state gallery
 
-## Interaction map
+## Interaction flow
 
 ```text
 Today
   ├─ conversation → # product
-  ├─ progress → Company Map → Living Mission Map
+  ├─ progress → Company Progress → Mission Progress
   └─ attention → Refill Context
 
 # product
@@ -49,7 +48,7 @@ Today
               └─ Refill Context
                   └─ Outcome Review
                       └─ Human acceptance
-                          ├─ Living Mission Map updated
+                          ├─ Mission Progress moves to Done
                           └─ Company Memory verified
 ```
 
@@ -59,13 +58,13 @@ Today
 - `Escape` closes sheets and the command palette.
 - `Command-Enter` sends a channel message.
 - **States** in the sidebar opens empty, loading, blocked, offline, permission, provider, failure, paused, completed, and stale examples.
-- **Accessible list** demonstrates the non-spatial representation promised for maps.
+- **Progress** shows Up next, In motion, Almost there, and Done without panning or zooming.
 
 ## Product boundaries represented
 
 - Private DMs are excluded from agent context by default.
 - Agent access is scoped, time-bounded, owned by a person, and visible before starting.
 - Company Memory distinguishes proposals and evidence from human-verified knowledge.
-- Accepting an outcome revokes active capability and synchronizes the conversation, mission, map, and knowledge state.
+- Accepting an outcome revokes active capability and synchronizes conversation, Mission Progress, and Company Memory.
+- The dark Night Studio shell and luminous Daylight Progress sheet share one Murror Horizon identity.
 - The visual prototype uses no external scripts, fonts, frameworks, or network requests.
-

@@ -14,8 +14,8 @@ test("contains the milestone-one screen inventory", () => {
     "today",
     "channel",
     "direct-message",
-    "company-map",
-    "living-mission-map",
+    "company-progress",
+    "mission-progress",
     "start-work-session",
     "active-work-session",
     "refill-context",
@@ -65,9 +65,31 @@ test("preserves the complete conversation-to-knowledge vertical slice", () => {
   }
   assert.match(app, /state\.knowledgeVerified = true/);
   assert.match(app, /Context Capsule v4/);
-  assert.match(app, /Context resolved/);
-  assert.match(app, /Accepted by Astro/);
+  assert.match(app, /getMissionProgress/);
+  assert.match(app, /Ready for you/);
+  assert.match(app, /Done and checked/);
   assert.match(app, /Human verified/);
+});
+
+test("uses the approved four-stage Progress Ledger without map controls", () => {
+  for (const stage of ["Up next", "In motion", "Almost there", "Done"]) {
+    assert.match(app, new RegExp(stage), `missing ${stage}`);
+  }
+
+  const progressRenderer = app.slice(app.indexOf("function renderCompanyMap"), app.indexOf("function renderKnowledge"));
+  assert.doesNotMatch(progressRenderer, /<svg|map-node|Fit map|timeline-control|toggle-list-view/);
+  assert.doesNotMatch(html, />Missions</);
+  assert.match(html, />Progress</);
+  assert.match(html, />Company Memory</);
+});
+
+test("contains the Murror Horizon visual identity", () => {
+  for (const token of ["night-studio", "daylight", "paper-lift", "horizon-blue", "horizon-coral", "horizon-amber"]) {
+    assert.match(css, new RegExp(`--${token}:`), `missing ${token}`);
+  }
+  assert.match(app, /class="horizon-card"/);
+  assert.match(css, /\.horizon-card/);
+  assert.match(css, /horizon-breathe/);
 });
 
 test("makes privacy and agent permissions visible before action", () => {
@@ -85,7 +107,8 @@ test("includes keyboard, reduced-motion, and screen-reader affordances", () => {
   assert.match(html, /class="skip-link"/);
   assert.match(html, /aria-label=/);
   assert.match(app, /aria-modal="true"/);
-  assert.match(app, /Accessible list/);
+  assert.match(app, /aria-label="Progress stages"/);
+  assert.match(app, /role="img" aria-label=/);
   assert.match(app, /event\.metaKey \|\| event\.ctrlKey/);
   assert.match(css, /:focus-visible/);
   assert.match(css, /\.visually-hidden/);
