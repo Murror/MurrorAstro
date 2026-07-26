@@ -1,5 +1,33 @@
 # Murror Progress
 
+## 2026-07-26 (PDT): Duo/Together reaches a real staging test surface
+
+### Highlights
+- **Staging and alpha are at API + web parity** and both run the Duo rule set clean: the state-machine harness scores **14/14 on BOTH** environments, including `Duo resolves to 2 seats`.
+- **The RevenueCat silent-success bug is dead.** Root cause was Prisma dropping an `undefined` `eventId` from a where clause, so the idempotency lookup matched an unrelated processed event and discarded the purchase while answering 201. Fixed at three sites; two were found by grepping consumers rather than by the repro. `storeAnonymousEvent` was arguably worse than the original, silently dropping pre-login purchases.
+- **The Duo claim flow works end to end on staging.** `staging.app.murror.app/family/join` is live, the seat token now survives the sign-out/sign-in switch, and new invitees are routed back to the claim page after sign-up (previously they finished onboarding and silently never claimed, which hit every new invitee).
+- **V1 onboarding is retired.** V2 is the only funnel; a stale `murror_ob_variant: "control"` session is actively repinned so no flag, outage, or pin can resurrect V1.
+- **Staging purchase lane is configured**: RC webhook created and app-scoped, secret rotated off a placeholder, seat map set with the `.stg` product ids, and cross-environment webhook pollution closed.
+- Mobile build **372** carries Duo enabled for staging testers, with production still gate-only.
+
+### Operating notes
+- **Merging to `staging` does NOT deploy alpha.** The deploy matrix fires only `nsp-staging-murror`; alpha needs a separate `Build & Push Image` dispatch. Assuming otherwise leaves alpha silently on the old image.
+- **A `web-client` deployment has existed in `nsp-staging-murror` for 49 days** at `staging.app.murror.app`. The missing `staging` git branch in murror-platform was never the blocker for a staging web surface.
+- **RC enforces one webhook per URL per project** (409 on the second). A distinguishing query param makes the URL unique while hitting the same endpoint; verified live that auth still enforces.
+- The staging `REVENUECAT_WEBHOOK_SECRET` was the literal placeholder `secret-value`. Rotated on both sides and proven three ways.
+- Staging had **no** `REVENUECAT_FAMILY_PRODUCT_SEAT_MAP` at all (absent key, `optional: true`), so a Duo purchase would have created a personal subscription with no plan and no seats while answering 201.
+- `Config.ENV !== 'production'` is fail-open for a money-adjacent flag. Use an explicit allowlist.
+- A mock that does not do what production does converts a guard into false confidence: the join-page "keeps the token" spec passed throughout because its logout mock never ran the storage sweep.
+
+### Docs
+- `docs/plans/2026-07-26-duo-staging-parity-week.md` (this week, full detail)
+- `docs/plans/2026-07-25-duo-claim-and-webhook-silent-success.md`
+
+### Still open
+- Device pass on staging. Everything proven so far is rules-level; the harness says so itself.
+- Alpha's webhook secret is a literal `kubectl set env` value drifted from the k8s Secret.
+- V1 stage 2: delete the ~29 unreachable pages/routes. `/onboarding/invite` is shared with v2 and must survive.
+
 ## 2026-07-18 (PDT): Alpha Duo goes purchasable (RevenueCat) + the "Alpha is the dev backend" correction
 
 Took Together Duo on Alpha from UI-only to a real sandbox purchase, stood up the RevenueCat store side in the correct project, and corrected a stale infra assumption that had sent a session chasing a dead cluster. Full detail: `docs/plans/2026-07-18-alpha-duo-revenuecat-and-infra-truth.md`.
