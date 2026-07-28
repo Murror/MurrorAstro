@@ -746,3 +746,49 @@ gate-dark. Prod and staging were never exposed.
 **Doc pointers:** `Murror/docs/plans/2026-07-18-galaxy-alpha-pilot-build.md` (full writeup),
 `2026-07-17-galaxy-alpha-pilot-addendum.md` (scope), `docs/contracts/galaxy-pilot-api.md` (frozen
 contract), `docs/runbooks/galaxy-dev-enablement.md` (the still-gated dev enablement steps).
+
+---
+
+## 2026-07-28 — Connection/Duo two-sided verification, 8 shipped fixes, and production readiness
+
+**Summary:** Two threads. A full verification sweep of the connection and Duo (Together)
+surfaces on two devices with two connected staging accounts, which turned up eight shipped
+bugs. And an assessment of what it takes to get staging to LIVE production, which found the
+divergence is materially worse than memory described.
+
+**Key accomplishments:**
+- **Two-sided card states proven.** Drove a real directional takeaway card through
+  `PENDING -> COMPLETED -> INSIGHT_READY` and diffed both users' payloads at every state:
+  byte-identical throughout. The sender/receiver difference is derived client-side from the
+  ids, so the server cannot emit two different cards. Reflection cards are one row with one
+  shared status, so divergence is structurally impossible there too.
+- **Every Duo case exercised:** re-invite (reuses the freed seat), re-claim in grace,
+  organizer-remove, wrong-account 403, bogus token 409, under-13 403, 13-17 consent 409, and
+  two negative guards. The grace fix was proven live on a seat genuinely in its grace window,
+  flipping false -> true with the right date, then back to false on re-claim.
+- **Eight mobile fixes shipped** (#867-#881) plus API (#639, #640, #641, #642) and web
+  (#244/#245/#246, deployed to staging and verified at byte level in the served bundle).
+- **Prod bundle-phase blocker solved and archive-proven** (#883). Build 380 cut (#882).
+- **Backlog swept:** 14 stale PRs closed, 4 merged, 1 held for a rebase rather than overridden.
+
+**Operating notes:**
+- **A guard that asserts existence is not a guard.** The butterfly avatar fallback never
+  painted: an `<Image>` styled with only `StyleSheet.absoluteFillObject` lays out at zero size.
+  The existing spec passed the whole time because a zero-size image still EXISTS. Proved it by
+  restoring the broken style: 48 tests still green while the new size guard failed. Pin the box.
+- **The prod bundle-phase mystery is solved.** `with-environment.sh` ends with
+  `if [ -n "$1" ]; then $1; fi` and runs ONLY `$1`. The prod phase passed `/bin/sh` as `$1`, so
+  the sentry and RN scripts were discarded as `$2`/`$3`, and `/bin/sh` with no args exits 0.
+  Nothing was swallowing an error; the call was never made. That is why the "redundant" bare
+  line was load-bearing.
+- **Only an archive proves a bundle.** `main.jsbundle` verified at 13,775,156 bytes.
+- **THREE divergent states, not two.** Live production runs `deep-chat-hotfix-ba9172a`, an
+  off-branch image, **148 commits behind the `production` branch**. You cannot tell what is in
+  production by reading a branch. A naive promotion would delete the Stripe billing portal
+  (prod-only, absent from staging) and 131 stardust artwork entries.
+- **`gh pr list` defaults to 30 and truncates silently.** The first sweep undercounted. Always
+  pass `--limit`.
+
+**Doc pointers:** `Murror/docs/plans/2026-07-28-connection-duo-verification-and-prod-readiness.md`,
+memory `project_production_migration_plan.md` (the goal + locked decisions),
+`incident_prod_bundle_phase_node_2026_07_16.md` (root cause + the still-open Sentry question).
