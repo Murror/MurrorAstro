@@ -90,7 +90,7 @@ B. iOS subscription offering timeout and Restore lock
 - Only two test files are modified and uncommitted:
   - src/hooks/use-subscription-prices.spec.ts
   - src/screens/setting/subscription-screen.spec.tsx
-- These are red-first tests and have not been run. Inspect syntax, then run the two focused Jest suites using the primary checkout's node_modules.
+- The two focused Jest suites have now run using the primary checkout's dependency tree: 33 existing tests passed and 3 new tests failed. The hook remained `loading` after 10 seconds, and the full screen did not surface Retry, proving the missing timeout. The Restore test did not reach `Purchases.purchasePackage`, so correct that test's selected-plan/purchase setup before treating it as mutex evidence.
 - Implement a shared iOS-only 10-second timeout around both Purchases.getOfferings() calls so a hung SDK reaches the existing unavailable/Retry state.
 - Keep telemetry privacy-safe: operation, surface, outcome, and latency_ms only. Never log receipts, transaction ids, or private user content.
 - Make Restore acquire the same global purchaseOperationMutex, disable Restore during purchase or restore, and add/preserve a stable testID.
