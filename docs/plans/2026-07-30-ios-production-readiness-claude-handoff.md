@@ -104,8 +104,9 @@ C. AI production release gate
 - Head: 3f6cccaebcb60e8f9ffb6aecb88d8923e6a4a5ec
 - Production source guard passes on PRs and remains fail-closed for production.
 - Commit `3f6ccca` removed the invalid pre-install Poetry cache lookup. Local actionlint, focused CI tests, Ruff, and diff checks passed.
-- Current CI run `30575042790` has green release-source and quality-security jobs; build-images is in progress.
-- Exact next action: wait for the current run, confirm no production deployment job mutates anything, then merge to staging only when green and verify the resulting AI staging deployment and health. Do not dispatch production.
+- PR #596 is merged into staging at `3a642962f26363c0939151a111e57f2277870639` after every required PR check passed and the production deploy job was skipped.
+- Automatic staging run `30575394844` is in progress.
+- Exact next action: wait for that single staging run, confirm the staging deployment succeeds, and verify AI staging health. Do not dispatch production.
 
 D. Kubernetes hardening, staging first
 - API worktree: /Users/astro/Projects/murror-transfer/Murror/murror-api-k8s-hardening
