@@ -71,16 +71,16 @@ A. Mobile hosted E2E / ODE Firebase launch fix
 - PR: https://github.com/Murror/MurrorMobile/pull/958
 - Worktree: /Users/astro/Projects/murror-transfer/Murror/mobile-ci-cost-lifecycle
 - Branch: ci/mobile-actions-cost-lifecycle
-- Pushed head: d6934e63f83a040565f4419a58f7cf1aee0d5843
-- Current local changes are intentionally uncommitted in exactly three files:
+- Current pushed head: 854158759d766b7f36976032e54f3c283284670b
+- Commit `85415875` contains the ODE Firebase launch fix in exactly three files:
   - .github/workflows/e2e.yaml
   - ios/MurrorMobile.xcodeproj/project.pbxproj
   - scripts/ci/verify-workflow-contracts.mjs
 - Root cause is proven: MurrorMobileODE launches then aborts at FirebaseApp.configure because GoogleService-Info.plist is absent from the ODE bundle. Manually adding the tracked plist kept the process alive.
 - The local fix adds the tracked plist to ODE Resources only and adds a pre-WebDriverIO install/launch/PID-survival gate. It does not change environment selection.
-- Evidence already green: workflow contract PASS, git diff check, fresh CocoaPods setup, and a clean Xcode 26.6 simulator build with BUILD SUCCEEDED.
-- Exact next action: verify the bundled plist exists and passes plutil, start Metro, create an ephemeral iOS 26.4 simulator, install and launch app.murror.mobile.ode, wait five seconds, prove its PID is alive, terminate/delete the simulator, stop Metro, rerun contracts/diff-check, stage only the three files, commit `fix(ios): bundle Firebase config for ODE tests`, push once, and allow the one required PR run.
-- Cleanup afterward: remove the temporary vendor symlink, generated simulator, Metro process, /tmp/murror-pr958-validation-30569056344, and /tmp/murror-pr958-pod-install.log if present. Do not delete retained evidence until captured in the PR.
+- Evidence is green locally: workflow contract PASS, git diff check, bundled plist present and valid, clean Xcode 26.6 simulator build, Metro bundle, and direct iOS 26.4 process-survival proof after five seconds.
+- Temporary simulator, Metro process, vendor symlink, build evidence directory, and pod-install log were cleaned. Disk free space increased to 241 GiB.
+- Hosted PR run `30575281935` is now running. Exact next action: wait for this single run, inspect failures rather than rerunning blindly, then merge PR #958 to staging only if every required check is green.
 
 B. iOS subscription offering timeout and Restore lock
 - Worktree: /Users/astro/Projects/murror-transfer/Murror/MurrorMobile-worktrees/ios-storekit-offering-timeout-restore-lock
@@ -101,11 +101,11 @@ C. AI production release gate
 - PR: https://github.com/Murror/viasr-api/pull/596
 - Worktree: /Users/astro/Projects/murror-transfer/Murror/viasr-api-worktrees/prod-release-gates
 - Branch: fix/prod-release-gates
-- Head: 6675f675613ee9682ae1ee1e5864dc2f50fd72a6
-- Production source guard now passes on PRs and remains fail-closed for production.
-- Current CI run 30574594278 fails in quality-security before tests because actions/setup-python enables `cache: poetry` before Poetry is installed. The exact error is `Unable to locate executable file: poetry`.
-- Fix the workflow without weakening any release guard. A safe minimal option is to remove setup-python's Poetry cache and keep Poetry installation immediately afterward, or replace it with a correctly ordered explicit cache. Add a workflow contract if useful, run actionlint and focused CI tests locally, then push once.
-- After all checks pass, merge to staging, confirm only staging deploys, and verify AI staging health. Do not dispatch production.
+- Head: 3f6cccaebcb60e8f9ffb6aecb88d8923e6a4a5ec
+- Production source guard passes on PRs and remains fail-closed for production.
+- Commit `3f6ccca` removed the invalid pre-install Poetry cache lookup. Local actionlint, focused CI tests, Ruff, and diff checks passed.
+- Current CI run `30575042790` has green release-source and quality-security jobs; build-images is in progress.
+- Exact next action: wait for the current run, confirm no production deployment job mutates anything, then merge to staging only when green and verify the resulting AI staging deployment and health. Do not dispatch production.
 
 D. Kubernetes hardening, staging first
 - API worktree: /Users/astro/Projects/murror-transfer/Murror/murror-api-k8s-hardening
