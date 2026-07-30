@@ -792,3 +792,30 @@ divergence is materially worse than memory described.
 **Doc pointers:** `Murror/docs/plans/2026-07-28-connection-duo-verification-and-prod-readiness.md`,
 memory `project_production_migration_plan.md` (the goal + locked decisions),
 `incident_prod_bundle_phase_node_2026_07_16.md` (root cause + the still-open Sentry question).
+
+---
+
+## 2026-07-30 - Production-readiness continuation handoff
+
+**Summary:** The API staging line now has a non-Galaxy migration allowlist, private-media
+hardening, cost-aware CI, and a fully green staging deployment. AI queue logging no longer
+prints private payloads. Focused Connection Reflection contracts pass across mobile and API.
+A detailed continuation handoff now preserves the remaining iOS, subscription, AI release-gate,
+infrastructure, two-account, TestFlight, and production-promotion work.
+
+**Completed evidence:**
+- API PRs #681, #682, and #683 merged; staging deployment run `30573700416` passed build,
+  deploy, smoke, and release gates.
+- AI PR #595 merged and deployed to staging with private payload log redaction.
+- Mobile PR #958's pushed revision passed hosted Ubuntu checks, unit coverage, and iOS build.
+- Connection Reflection focused contracts passed 92 tests across the two codebases.
+
+**Still required before production:**
+- Finish the local ODE Firebase resource fix, subscription timeout/Restore lock, and AI PR #596.
+- Close the iOS chat-reflection keyboard bug.
+- Prove Connection Reflection and Duo flows with two real accounts, including Apple Sandbox.
+- Complete staging-first Kubernetes hardening and the exact non-Galaxy promotion rehearsal.
+- Rotate the exposed production database credential only with Astro's explicit approval.
+- Cut and process one final TestFlight candidate, then present the complete promotion dossier.
+
+**Doc pointer:** `docs/plans/2026-07-30-ios-production-readiness-claude-handoff.md`.
