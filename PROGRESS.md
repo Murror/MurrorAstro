@@ -1,5 +1,34 @@
 # Murror Progress
 
+## 2026-07-31 (PDT): Onboarding length A/B built, staging pinned to the short arm
+
+Brainstormed, designed, built, and shipped a full-vs-short v2 onboarding A/B
+in response to user feedback that the funnel felt long, then armed staging to
+the short arm at Astro's request. Full detail:
+`docs/plans/2026-07-31-onboarding-length-ab.md`.
+
+### Highlights
+- **Four-agent panel (forge/heart/prism/oracle) brainstormed the cut before any code.** Consensus: Act 1 (orbital hook -> chip -> Share -> AI "their side" Merge reveal) stays untouched in every variant, it is the entire value demo. Only Act 2/3 (the 15-beat question block) shortens, using Heart's rule: keep beats that GIVE the user something, cut beats that only TAKE.
+- **A visual screen-by-screen storyboard was shown to Astro and approved before implementation** (phone mockups in the app's dark orbital language, the flag-switch diagram, the experiment design).
+- **Mobile PR #976** (`staging-environment-setup`, merged): `ACT23_STEPS_SHORT` cuts Act 2/3 from 15 beats to 4 (`identity`, `hearUs`, `relImprovement`, `insightPreview`); the arm is resolved once at the letter -> Act 2/3 transition and **persisted per install** so a relaunch can never switch someone between arms mid-experiment; RevenueCat subscriber gets re-tagged with the arm after `Purchases.logIn` (RC does not merge anonymous attributes on login, so the pre-signup tag alone would have been unattributable). 2 adversarial review rounds, all findings fixed. 52 tests green.
+- **murror-api PR #687** (`staging`, merged + deployed both namespaces): made `gender`/`goalIds` optional on `POST /onboarding/complete`, a hard prerequisite found by verifying the backend rather than assuming it (the short arm defers those questions and would have 400'd on every signup otherwise). Round-2 review caught a cross-DB asymmetry (absent gender wiped murror but left legacy stale on redo) and a round-trip trap (`goalIds: []` would have 400'd the profile-edit save for every short-arm user); both fixed. 2,753 tests green.
+- **PostHog flag `onboarding_v2_length`** (id 792796) created disabled first, multivariate full/short 50/50, then armed scoped to `env=staging` only at 100% short. Verified live against the `/decide` API for staging, production, and no-env; production is untouched two ways over (condition excludes it, and no prod build carries the code yet).
+
+### Operating notes
+- **Kill switches, zero build:** flip the flag's condition to serve 100% `full`, or disable the flag entirely (client fail-safes to `full` either way).
+- `evaluation_runtime: 'client'` (the PostHog create-flag default) silently excludes a flag from `/decide` responses; use `'all'` for any flag you need to verify or that a server-side path might read.
+- The next staging TestFlight build cut from `staging-environment-setup` carries the short arm; existing builds predate the merge and ignore the flag. Alpha/dev already defaults to the short arm (no PostHog key ships there).
+- Open: an end-to-end signup-without-gender/goals proof against a live staging harness account was blocked by the permission classifier twice this session; covered today by the passing test suites and the verified-deployed API image, true end-to-end confirmation lands with the first staging TestFlight walkthrough.
+- For the real 50/50 launch A/B (not staging-only): replace the flag's `env=staging` condition with the launch targeting and drop the forced `short` override.
+
+### Docs
+- `docs/plans/2026-07-31-onboarding-length-ab.md`
+
+### Still open
+- Real 50/50 launch targeting on the flag (currently staging-only, 100% short).
+- Live-device end-to-end proof of a short-arm signup completing.
+- Cut the next staging TestFlight build to actually surface the short arm to testers.
+
 ## 2026-07-26 (PDT): Duo/Together reaches a real staging test surface
 
 ### Highlights
