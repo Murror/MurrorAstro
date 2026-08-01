@@ -1,5 +1,66 @@
 # Murror Progress
 
+## 2026-08-01 (PDT): Duo grace copy, the build-lane collision, Sentry live, and the DO bill explained
+
+Multi-day production-readiness push. Full writeup:
+`docs/plans/2026-08-01-production-readiness-duo-sentry-infra.md`.
+
+**Duo: ex-member saw plan-owner copy.** Someone who left a plan and a Solo
+subscriber who cancelled were byte-identical on the wire (SOLO / NONE /
+cancelAtPeriodEnd), so the client could not tell them apart. murror-api #701 adds
+`seatGraceUntil`, deliberately the DATE not a flag beside a date, so discriminator
+and printed value come from one read of one seat. MurrorMobile #988 renders
+member-specific copy and excludes it from `endingSoloGrace`. Deployed and verified
+live: exactly one of four harness accounts returns a date, matching the seat's
+`entitled_until` to the millisecond. Copy stays neutral on cause, because the field
+is set for any REMOVED seat (left OR removed by organizer). An existing test had
+encoded the bug as a requirement; kept and renamed to lock back-compat instead.
+
+**Avatar preset URLs were hardcoded to staging.** #989 gave Manage Account the
+butterfly placeholder and surfaced a production landmine: the only URLs the app
+BUILDS and then PERSISTS as user data pointed at the staging Supabase project, with
+a comment asking a human to remember to swap it. Now derived from
+`Config.SUPABASE_URL`, with a test naming all three project ids. Measured exposure
+on the production DB: **0 users affected**. Preventive, no backfill.
+
+**Build 403 was already on TestFlight while trunk said 402.** `ios-next-build.sh`
+read git only, so it would have emitted a colliding 403; Apple rejects the duplicate
+and the fix silently never ships (the 251/253 failure again). #990 now takes
+`max(git, App Store Connect)`. Build 404 archived, verified (app + both appex at 404,
+staging host only in the binary), VALID.
+
+**Sentry.** #703 first: `NODE_ENV` is `production` on EVERY tier (verified in the
+running pods, not the ConfigMaps), so staging noise would have been filed as
+production the moment a DSN existed. Then enabled in production using the existing
+`murror-api` project. Verified the DSN inside the pod, not just the patch output.
+
+**TLS certificate broken 105 days.** #704. Two Certificates fighting over one secret;
+the ingress-shim one held a valid cert the whole time so only the loser reported
+failure. Safe to remove because the deploy has no `--prune`.
+
+**DigitalOcean 4x bill.** Nothing orphaned: July 4 ADDED sgp1 and never
+decommissioned sfo2. Run-rate ~$240. HA cannot be disabled (DO restriction), sfo2 is
+memory-bound so cannot shrink, and consolidation saves ~$52/mo not $148 because
+workloads carry their compute. Real lever is over-declared requests (sfo2 requests
+6.4 CPU, uses 0.83). Split into its own session; tasks #35-38.
+
+**Production RevenueCat Duo path complete.** Both SKUs registered under the live app
+and attached to `app.murror.premium`, verified via API.
+
+### Operating notes
+
+- **Two near-misses, both "remove the unused thing".** `insights.murror.app` was
+  returning 200, and `murror.api.ambercare.app` is what `.env.production` points at,
+  so the live App Store app calls it. Checking live state before deleting is what
+  caught both.
+- **Three corrections.** Claimed prod had no Duo products (I had created them the day
+  before), claimed a DSN would tag prod as `development` (inverse was true, and the
+  code comment already said so), and framed the expected state of staging-first work
+  as a discovery. Pattern: check what exists before building it.
+- **Build environment traps:** CocoaPods needs a UTF-8 locale; the vendored
+  `xcodeproj` needs the `objectVersion 70` patch and the gem set copied from build 400
+  did NOT carry it; and `pod install | tail` reports success even when it failed.
+
 ## 2026-07-31 (PDT): Onboarding length A/B built, staging pinned to the short arm
 
 Brainstormed, designed, built, and shipped a full-vs-short v2 onboarding A/B
