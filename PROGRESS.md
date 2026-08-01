@@ -848,3 +848,58 @@ infrastructure, two-account, TestFlight, and production-promotion work.
 - Cut and process one final TestFlight candidate, then present the complete promotion dossier.
 
 **Doc pointer:** `docs/plans/2026-07-30-ios-production-readiness-claude-handoff.md`.
+
+---
+
+## 2026-07-31 - Vietnamese + Japanese localization
+
+**Summary:** Japanese went from disabled in production (`MURROR_SUPPORTED_LANGUAGES.JA`
+commented out) to supported end-to-end across mobile, murror-api, and viasr-api, with every
+string natively authored rather than machine-translated. Vietnamese, already a mature live
+language, got audited for parity and had two real gaps closed. TestFlight build 402 cut and
+verified as the concrete review checkpoint requested mid-session.
+
+**Completed evidence:**
+- MurrorMobile PR #987 merged: 44 vi/ja strings authored natively, copy-lint infra extended
+  with cross-locale rules, three real rendering bugs fixed (ASCII-space injection into
+  Japanese sentences, a zero-leading severity label, iOS permission dialogs localized).
+- TestFlight build 402 archived, exported, uploaded, confirmed `VALID` via direct ASC API
+  query. Build-number consistency verified across the app and both `.appex` extensions before
+  archiving. (Unexplained build 403 also appeared in ASC; flagged to Astro, not investigated.)
+- murror-api PR #698 merged: `LanguageQueryParamsDto` widened, unblocking 21 endpoints that
+  were 400ing every Japanese-locale device from first launch. Closed a live crash risk in
+  `getRelationshipTypeInfo` found by adversarial review, not the original ticket.
+- viasr-api PR #599 merged: enum enabled, chat language detection fixed (two structurally
+  identical bugs meant Japanese text from a non-ja-default user never triggered real language
+  detection), and the Japanese "is this real text or gibberish" content filter rebuilt after
+  six adversarially-reviewed attempts, each catching a real bug in the last. Vietnamese short
+  reply allowlist and Unicode normalization gaps closed in the same PR.
+- murror-api PR #702 opened: widened the last 4 lang-gated DTOs left out of #698. Honest about
+  scope, 3 of 4 have no Japanese content column yet (quote_ja/description_ja/contentJa), so
+  this stops the 400 but serves English content, not real Japanese output, until that content
+  is authored. One genuinely new natively-authored Japanese string pair shipped in the same PR.
+
+**Operating notes:**
+- **Six attempts on one function is what "no tokenizer for this language" costs.** Japanese
+  has no space-delimited words, so the existing `\b\w+\b` dictionary-ratio check (built for
+  en/vi) extracts a whole sentence as one "word" and can't evaluate it. Every threshold-based
+  fix (density, absolute count, both) was broken a different way because real and adversarial
+  Japanese content occupy the same range on any single density/count axis. The fix that
+  finally held changed the axis entirely: mark Japanese runs as evidence (dilution), don't
+  delete them, don't score density at all.
+- **A test suite that only pins a wide-enough range is not a real regression guard.** One
+  review round found the prior fixtures only constrained a threshold to a 17-point-wide range;
+  moving it anywhere inside that range would not have failed a single test. Pin the tightest
+  known real and adversarial examples directly.
+- **Mutation-test every fix, not just the latest one.** Reverting to the immediately prior
+  commit is not enough when a function has been rewritten five times; the final round tested
+  against the union of every prior attempt's adversarial corpus, not just the last diff.
+- **Vietnamese wasn't actually done just because it's old.** Auditing it after Japanese forced
+  six rounds of scrutiny surfaced two real gaps a first pass would have missed: an English-only
+  short-reply allowlist, and a Unicode NFC/NFD normalization gap that broke the exact word the
+  first fix existed for.
+- **A stale worktree gives a false read on current file state.** Two worktrees reused for
+  follow-up work (`mobile-l10n`, `murror-api-ja-support`) had their branches fast-forwarded
+  past their own already-merged PRs before starting anything new on them.
+
+**Doc pointer:** `docs/plans/2026-07-31-vietnamese-japanese-localization.md`.
