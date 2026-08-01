@@ -964,3 +964,48 @@ verified as the concrete review checkpoint requested mid-session.
   past their own already-merged PRs before starting anything new on them.
 
 **Doc pointer:** `docs/plans/2026-07-31-vietnamese-japanese-localization.md`.
+
+## 2026-07-31 — Staging production-readiness: security, performance, reliability
+
+**Summary.** Full audit of staging for launch readiness (12 agents, 6 lenses, each
+adversarially verified). 46 verified findings. 8 PRs merged and deployed. Staging and
+production databases hardened and verified live.
+
+**Key accomplishments**
+- Root-caused a security control that had failed silently on every call for a month:
+  `enable_rls_on_vector_table()` built a psycopg2 engine from a URL carrying Prisma's
+  `?pgbouncer=true`, psycopg2 rejected the DSN, and the fail-open handler swallowed it at
+  WARNING. Every per-user vector table since was anon-readable. Fixed in viasr#597 by
+  reusing `_sanitize_pg_url`, asserting `pg_class.relrowsecurity` after the ALTER, and
+  raising the log to ERROR.
+- Production remediated with explicit authorization: anon-executable SECURITY DEFINER
+  functions 8 -> 0, anon user-id enumeration via the public storage bucket 275 -> 0.
+  Verified with a positive read-after test on a real avatar (byte-identical, 77,519 B).
+- Staging: ERROR-level Supabase security lints 11 -> 0, vector tables 28/28 RLS-on.
+- Crisis-safety gap closed: `detect_crisis_async` ran only on `/chat/stream`, so
+  `/chat/text` and `/chat/voice` gave no 988 / Crisis Text Line. Shared guard now on every
+  entrypoint, and crisis turns are persisted (they previously vanished from history).
+- HA: replicas 1 -> 2, PDB allowed-disruptions 0 -> 1 (node drains had been blocked).
+- `/api/docs` and `/api/docs-yaml` now 404 on staging; swagger gate inverted from a
+  denylist to an allowlist so an unset or misspelled ENVIRONMENT fails closed.
+- 33 routes were silently unthrottled: five `@Throttle` tiers keyed onto throttler names
+  never registered in AppModule. Registration now derived from `ThrottlerTiers` so the two
+  lists cannot drift.
+
+**Operating notes**
+- FK indexes from #692 are NOT live: the deploy's `build-migration-image` job was SKIPPED,
+  so the migration never ran. Two of three perf numbers are flat as a result.
+  `/api/v1/connections` did improve 0.453s -> 0.367s (-19%) from the code half.
+- Staging deploys always show red: `Deployment Summary` fails because `smoke-test` and
+  `release` conclude `skipped`, while the deploy itself succeeds.
+- Staging GoTrue's Resend key is invalid (535): password-reset and magic-link will fail.
+  Signup is fine (confirmations off, matching prod).
+- `murror-backend` `format` fails on every PR in that repo, blocking #898.
+- NetworkPolicies merged as files only, deliberately not applied.
+
+**Lesson recorded.** A blanket revoke stripped `authenticated` of `user_has_role`, which
+15 RLS policies call, breaking reads for every logged-in user for ~4 minutes. RLS policy
+expressions evaluate with the querying role's privileges. Grep `pg_policies` before
+revoking EXECUTE, and test the ROLE, not just the absence of an error.
+
+**Docs:** `Murror/docs/plans/2026-07-31-staging-production-readiness.md`
