@@ -1,5 +1,44 @@
 # HANDOFF 2026-08-01 — Google sign-in broken on build 404, and #689 promotion
 
+## ✅ BLOCKER 1 IS SOLVED. Do not re-investigate it.
+
+Root cause found and fixed in MurrorMobile #993 (merged), shipped in build 405.
+
+`performAccountCacheIsolation` calls `completeAccountCleanup` on login, and can
+only decide to do so AFTER the incoming user signs in, because it needs their
+user id. By then supabase-js has written the session through the secure seam,
+and `setSecureItem` registers every key it writes. `clearSecureStorage` was
+UNSCOPED, so it deleted the session that had just been created, and the next
+call threw AuthSessionMissingError.
+
+Both branches were affected. The worse one is `no previous cache owner`, which
+covers a FRESH INSTALL and every user upgrading from a release predating the
+owner marker, so the first sign-in on the new build failed for nearly everyone.
+
+It survived review because the AsyncStorage sweep beside it is an ALLOWLIST that
+never matched the Supabase key. The seam itself is a faithful pass-through,
+which is why reading it in isolation looks correct.
+
+Fix: `clearSecureStorage(preserveKeys?)`. The two isolation call sites pass the
+active session; logout, rollback and account deletion still wipe everything.
+`SUPABASE_AUTH_STORAGE_KEY` is derived once in supabase-client so no second
+hand-built copy can drift.
+
+**Everything under "BLOCKER 1" below is the investigation history. It is kept
+only so the eliminations are not repeated. The answer is above.**
+
+## ✅ ALSO RESOLVED: the short onboarding arm
+
+Two causes, neither a bug:
+1. The assignment is frozen in `StorageKeys.onboardingV2LengthAssigned`, a
+   DEVICE-LEVEL key that survives logout, account cleanup and TestFlight
+   updates. Only a full app DELETE re-rolls it.
+2. The PostHog flag's description claimed "short at 100%" while the config was
+   actually `full 50% / short 50%`. Set to `full 0% / short 100%` on 2026-08-01
+   and verified: "All users in this set will be in variant short". Staging-only
+   condition unchanged; production still fail-safes to `full`.
+
+
 Live state at handoff. Read this first; it is the open work, not history.
 Completed work is in `2026-08-01-production-readiness-duo-sentry-infra.md`.
 
