@@ -1009,3 +1009,25 @@ expressions evaluate with the querying role's privileges. Grep `pg_policies` bef
 revoking EXECUTE, and test the ROLE, not just the absence of an error.
 
 **Docs:** `Murror/docs/plans/2026-07-31-staging-production-readiness.md`
+
+## 2026-08-02 - Privacy release hardening
+
+**Summary.** The API privacy and deletion safeguards are merged into `staging`. The mobile privacy safeguards are ready in PR #1006 but remain gated by a required Android build that is still queued. The marketing site's PostHog session replay now masks page text and element attributes in the live bundle.
+
+**Key accomplishments**
+- Murror API PR #713 merged with reviewed head `10d5cf7` and merge commit `8cb65b3`. Hosted validation, integration, quality, coverage, and PR summary checks passed.
+- The deletion path now has durable steps, crash recovery, auth revocation retries, provider receipts, storage verification, vector cleanup, log redaction, and survivor-safe handling of shared relationship content.
+- The CI cascade guard landed before the deletion schema prerequisite. It rejects new user or connection cascades without an explicit reviewed exception.
+- The StepCI obfuscated dynamic-loader payload was removed and a contract test now rejects the original pattern. Mutation tests confirmed the guard fails when the payload is reintroduced.
+- Mobile privacy controls cover secure credential storage, analytics filtering, crisis and reflection-event suppression, error and development-log sanitization, deletion identity cleanup, and removal of Firebase configuration.
+- Marketing commit `0cef5f8c` was deployed and verified with HTTP 200 plus live bundle scans showing text masking on `murror.app` and `web.murror.app`.
+
+**Operating notes**
+- Do not merge mobile PR #1006 until Android Build run `30763605235`, job `91538386250`, completes successfully. It was still queued with no steps started at documentation time.
+- Production schema parity is UNKNOWN until the read-only preflight runs against the production connection. No production write or DDL was performed.
+- The rewritten privacy policy remains unpublished. Its local draft documentation still has unresolved decision and counsel markers, and deletion production evidence is not complete.
+- No public progress page update was made because this session shipped internal privacy controls and release safeguards, not a new user-facing capability.
+
+**Verification.** API local Jest passed 316 suites and 2,986 tests, with 8 suites and 84 tests skipped. Mobile local Jest passed 344 suites and 2,783 tests, with 1 suite and 3 tests skipped. Type checks, build or hosted build gates, lint, workflow contracts, and mutation tests passed where available. Android local build status is UNKNOWN because the local environment has no Java runtime; the hosted Android gate remains the release authority.
+
+**Doc pointer:** `docs/plans/2026-08-02-privacy-release-hardening.md`.
