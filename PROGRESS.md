@@ -1,5 +1,42 @@
 # Murror Progress
 
+## 2026-08-02 (PDT): Codex iPhone auth and subscription release handoff
+
+Codex consolidated the recent iPhone-only staging work into a production-readiness
+handoff. Android, iPad, and Apple Watch work remain out of scope.
+
+### Verified
+
+- Staging build 409 (`app.murror.mobile.stg`, version 2.1.0) archived, exported,
+  uploaded, and later reported `VALID` by App Store Connect.
+- Focused auth, account-isolation, onboarding, and subscription checks passed with
+  9 suites and 67 tests. Targeted lint, formatting, i18n, release-contract, and
+  diff checks also passed.
+- The latest checked-in iOS lane commit is `8924a795`, reconciling Duo entitlement
+  refresh, purchase recovery, plan syncing, membership/sharing, and invite flows.
+
+### In flight
+
+- The current isolated Codex iOS worktree still contains uncommitted auth-session,
+  fresh-OAuth profile, soft-paywall, localization, and subscription-management
+  fixes. They are preserved for Claude to inspect and reconcile rather than being
+  silently merged or overwritten.
+- A real-device report still shows login failing immediately after Google
+  authentication. The exact device log and authenticated backend request/response
+  are required before another build or TestFlight cycle; build 409 validity does not
+  prove the device flow.
+
+### Operating notes
+
+- Task-owned iOS dependencies, Pods, archive/build outputs, and temporary upload
+  logs were removed after App Store Connect validation, reclaiming approximately
+  6.7 GB. Shared DerivedData and unrelated dirty worktrees were preserved.
+- No GitHub Actions workflow was manually dispatched for this handoff. The JA/VI
+  staging release, clinical sign-off, production promotion, and DEV/Alpha P3009
+  migration decision remain separate gates.
+
+Full technical record: `docs/plans/2026-08-02-codex-ios-production-handoff.md`.
+
 ## 2026-08-02 (PDT): Vietnamese and Japanese PHQ-9/GAD-7 staging release
 
 Completed the coordinated Vietnamese and Japanese mental-health questionnaire
