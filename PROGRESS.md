@@ -1,5 +1,40 @@
 # Murror Progress
 
+## 2026-08-02 (PDT): Vietnamese and Japanese PHQ-9/GAD-7 staging release
+
+Completed the coordinated Vietnamese and Japanese mental-health questionnaire
+release on staging. Production and DEV/Alpha remained untouched.
+
+### Shipped
+
+- murror-api PR #710 merged into `staging` at `75ddb94d`, carrying the corrected
+  Vietnamese content, Japanese PHQ-9/GAD-7 questions and answers, Japanese
+  severity response handling, and connection-insight Japanese infrastructure.
+- MurrorMobile PR #996 merged into `staging-environment-setup` at `bba7bddf`,
+  versioning the check-in cache by locale and disclosing the two-week timeframe
+  before launch in English, Vietnamese, and Japanese.
+- Staging deploy run #30727859628 applied the three localization migrations,
+  rolled out the API, passed the smoke test, and passed the release gate.
+
+### Verification
+
+- The deployed legacy Prisma read path returned all 16 questions with complete
+  Vietnamese and Japanese question and answer sets, including reviewed item 9
+  wording.
+- API and mobile CI passed their existing validation suites. No additional
+  workflow was manually dispatched, and the mobile merge did not create a new
+  Actions run.
+- Storage cleanup removed task-owned temporary artifacts while preserving
+  pre-existing dirty worktrees.
+
+### Operating notes
+
+- The DEV/Alpha P3009 migration-lane jam remains a separate decision boundary.
+  No DEV/Alpha migration repair or `prisma migrate resolve` was attempted.
+- This was a staging readiness release, not a production promotion.
+
+Full technical record: `docs/plans/2026-08-02-ja-vi-staging-release.md`.
+
 ## 2026-08-01 (PDT): Duo grace copy, the build-lane collision, Sentry live, and the DO bill explained
 
 Multi-day production-readiness push. Full writeup:
