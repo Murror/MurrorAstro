@@ -1,5 +1,93 @@
 # Murror Progress
 
+## 2026-08-06 (PDT): Builds 417 and 418 shipped, and the paywall footer root cause
+
+Astro's build-416 TestFlight feedback, worked through to two shipped builds. Full
+writeups: `docs/plans/2026-08-05-build-416-feedback-ui-and-paywall-footer.md`
+(investigation), `docs/plans/2026-08-06-builds-417-418-shipped.md` (what shipped),
+`docs/plans/2026-08-06-build-418-feedback-handoff.md` (open items).
+
+### Shipped
+
+- Builds **417** and **418** uploaded to TestFlight. PRs #1034, #1035, #1036, #1037.
+  Each verified: app and every `.appex` at the same build number,
+  `staging.api.murror.app` present in the native binary, Alpha and prod hosts
+  absent, and both runbook markers (`** EXPORT SUCCEEDED **` plus
+  `Uploaded MurrorMobileStaging`).
+- **Paywall footer is genuinely see-through.** Root cause after five failed
+  attempts: the sticky footer was a plain **flex sibling** of its `ScrollView`, so
+  it occupied its own space and page content never passed behind it. Builds 353,
+  399, 413 and 415 all tuned a blur or gradient on a layer with nothing behind it.
+  Fixed with `position: absolute` plus the app's card glass recipe.
+- **Home background** matched to the shared gradient and much darker. An opaque
+  `#05070F` absolute-fill base in `home-orbital-background.tsx` had been covering
+  the app gradient entirely, so Home never showed the shared tint. Aurora washes
+  cut, and the shared bottom stop taken `#323245` to `#15151D`. Measured bottom
+  went (62,52,84) to (25,23,33).
+- **Nav pill and the deep-chat butterfly FAB are neutral.** The R10 purple retint
+  lived in two independent copies, `tab-controller.tsx` and `murror-bubble.tsx`,
+  which is why fixing one did not fix the other.
+- **One paywall appearance.** The switch-account link is now unconditional, so the
+  cold-start gate and the Settings-initiated paywall stop reading as two different
+  screens. Verified four ways that only ONE full paywall exists.
+- Feedback button opens `murror.app/feedback` instead of a `mailto:`.
+- Memo last-word flicker: the screen passed an inline `onComplete`, and
+  `FadeMarkdownText` carries it in the deps of the effect owning the completion
+  timer, so a fresh identity every render restarted that timer in the branch that
+  only runs once the last word is on screen. Handlers are now cached per index.
+
+### Caught before shipping
+
+An adversarial review before the archive found three blockers, all real:
+
+- Making the switch-account link unconditional newly exposed **immediate sign-out,
+  no confirmation, no undo** on every in-app soft-paywall gate and the upgrade
+  sheet. Now behind a confirm dialog reusing the settings logout copy, with a
+  dedicated test that fails if the dialog is removed.
+- The "ONE derivation" claim was **false**: 15 hand-rolled copies of the old
+  gradient remained, nine of them full-screen, which manufactured new same-flow
+  brightness steps. Nine aligned; five sheet and card fills left deliberately.
+- Padding the `ScrollView` by the FULL footer height was self-defeating, since the
+  padding that stops content being trapped is the same padding that guarantees
+  emptiness behind the glass. Now a fraction.
+
+11 specs were rewritten rather than deleted, because they locked the old R10 purple
+direction and the conditional link.
+
+### Operating notes
+
+- **Read the runbook before declaring a blocker.** The TestFlight upload was called
+  impossible twice. `docs/runbooks/ios-build.md` had the `-authenticationKeyPath` /
+  `-authenticationKeyID` / `-authenticationKeyIssuerID` flags all along. The API key
+  IS the account, and with `-allowProvisioningUpdates` xcodebuild fetches the
+  distribution certificate itself. "No Accounts" meant not authenticating.
+- **`scripts/ios-next-build.sh` MUTATES.** It was run as a read-only App Store
+  Connect query and wrote a stray 419 that had to be reverted. Never use a
+  number-claiming script as a status probe.
+- **Verify which screen is on the simulator before trusting a pixel sample.**
+  Numbers were reported from the wrong screen three times. A dark-pixel probe is not
+  a screen identity check; assert on a known glyph.
+- A correct measurement of the wrong thing is worse than no measurement. The footer
+  ramp measured "correct" five times while the real cause was structural.
+- zsh does not word-split unquoted variables, so `for f in $FILES` over a
+  newline-separated string passes one giant filename.
+
+### Still open
+
+- **MTC card overlap** did not reproduce across four simulator configurations, so no
+  seventh fix was written. The build-414 geometry telemetry cannot report a bad
+  frame (it early-returns on a non-positive slot width), so its in-code conclusion
+  is not settled fact. Recommendation is a latching diagnostic capturing real
+  geometry from Astro's device.
+- Build-418 feedback: paywall and premium confused for a paying subscriber (highest
+  severity), connection prompt pronouns still wrong (the fix is uncommitted in
+  `viasr-api` AND likely targets the wrong surface, since prompts come from a
+  server-generated pool the client merely cycles), keyboard pushes the note field
+  under the header, zodiac cards black on black, orbit dots less vivid on Home than
+  in onboarding. The last two may be side effects of the 417 background darkening.
+- Notion Engineering Log still blocked: the database is not shared with the Composio
+  integration. Re-verified 2026-08-06.
+
 ## 2026-08-02 (PDT): Codex iPhone auth and subscription release handoff
 
 Codex consolidated the recent iPhone-only staging work into a production-readiness
