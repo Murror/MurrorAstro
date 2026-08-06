@@ -1,8 +1,8 @@
 # Murror iOS 2.0 core-first production promotion design
 
-**Status:** Approved direction, execution not yet authorized  
-**Decision date:** 2026-08-06  
-**Decision owner:** Astro  
+**Status:** Approved direction, execution not yet authorized
+**Decision date:** 2026-08-06
+**Decision owner:** Astro
 **Detailed execution plan:** [`../superpowers/plans/2026-08-06-ios-core-first-production-promotion.md`](../superpowers/plans/2026-08-06-ios-core-first-production-promotion.md)
 
 ## Decision
