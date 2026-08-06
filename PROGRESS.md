@@ -1,5 +1,46 @@
 # Murror Progress
 
+## 2026-08-05 - Web parity checkpoint and documentation lane isolation
+
+Codex continued the Murror web and Android parity work during the
+production-promotion freeze without changing the shared iOS staging lane.
+
+### Web checkpoint
+
+- Isolated web commit `8bcbfa6f` adds account-scoped, server-backed private
+  journal draft recovery through the existing authenticated journal routes.
+  Local text typed before profile hydration is preserved, remote content wins
+  only when it is at least as new, and serialized autosaves update the same
+  server draft rather than creating duplicates.
+- The accessible journal exit flow now makes Keep writing, Save for later, and
+  Discard draft explicit. Server failure leaves a recoverable browser draft;
+  known server drafts are deleted on explicit discard or successful submit.
+- Focused coverage passes 4 suites and 12 tests. The full web gate passes 67
+  suites and 329 tests, TypeScript, changed-file ESLint, Prettier,
+  `git diff --check`, both web staging source guards, and a 2,847-module
+  production Vite build.
+
+### Isolation and cleanup
+
+- The web branch is clean at `8bcbfa6f`, 0 behind and 56 ahead of freshly
+  fetched `origin/dev`; its branch-owned diff contains no `ios/**` path.
+- A clean docs-only worktree is available at
+  `/Users/astro/Projects/murror-transfer/Murror/worktrees/codex-docs-unblock-20260805`
+  on `codex/docs-unblock-20260805`. Claude can append its iOS documentation
+  here without editing the dirty umbrella checkout.
+- Local excludes now hide only independent nested repositories and worktrees
+  from the umbrella checkout's status. The exact web dependency tree (1.7 GB),
+  web-client dependency directory (124 KB), and Vite output (3.9 MB) moved to
+  macOS Trash after validation. Shared/global caches, other worktrees, iOS,
+  Android artifacts, and Uni were preserved.
+
+### Evidence boundary
+
+This is local source and automated evidence only. Authenticated two-account
+browser behavior, hosted web artifact/API/schema/CSP/WebSocket proof, Android
+Gradle/CI/signing/device validation, review/landing, and post-promotion gates
+remain open. Internal tracker: `docs/progress/web-android-staging-parity.html`.
+
 ## 2026-08-02 (PDT): Codex iPhone auth and subscription release handoff
 
 Codex consolidated the recent iPhone-only staging work into a production-readiness
