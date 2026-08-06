@@ -88,6 +88,201 @@ direction and the conditional link.
 - Notion Engineering Log still blocked: the database is not shared with the Composio
   integration. Re-verified 2026-08-06.
 
+## 2026-08-03 (PDT): Isolated web and Android staging parity lanes
+
+The cross-platform parity work was reorganized around Murror-only lanes so it
+cannot collide with the active iOS staging repair. The iOS checkout remains a
+protected reference owned by the parallel Claude work; no iOS files, builds,
+archives, merges, pushes, deployments, or migrations were touched here.
+
+### Workspace and safety completed
+
+- Confirmed the canonical Murror root is `/Users/astro/Projects/murror-transfer/Murror`.
+  Uni and the Google Drive folder with the same visible name are outside this
+  workstream. Murror has iOS, Android, and web scope only; there is no Murror
+  macOS app target.
+- Added the Murror workspace identity marker and cross-platform isolation plan,
+  with guards that accept only the web parity, Android staging parity, and
+  Together API contract lanes. The guards reject the protected iOS checkout,
+  canonical API checkout, Uni, and the misleading Drive folder.
+- Kept work in separate branches/worktrees: web
+  `feat/web-core-loop-parity`, Android `codex/android-staging-parity`, and
+  Together API `codex/together-contract`. The pre-existing web dependency
+  symlink and all unrelated dirty files were preserved.
+
+### Staging and contract protection completed
+
+- Made Android staging manual and fail-closed: the shared iOS staging branch
+  no longer starts an Android staging build, staging source/ref and
+  `BASE_API_URL` are validated, staging signing is isolated, and concurrency is
+  target-aware.
+- Made web staging explicit and serialized by target, validated the approved
+  source branch, preserved all existing capability flags, and limited the
+  staging deploy target to the web client where repository values are present.
+- Hardened the web staging verifier to require the Memory Room and Connection
+  Journey Docker build arguments as well as their environment wiring, so those
+  parity flags cannot silently disappear from a staging image.
+- Added/verified checked-in typed client foundations and source-backed generated
+  declarations for web and Android. Generators fail closed when hosted staging
+  OpenAPI is unavailable instead of silently generating from an unknown schema.
+- Added the isolated Together companion DTO contract and pinned the caller-scoped
+  family-plan member-leave route without changing runtime data or migrations.
+- Added the daily voice-summary route to both fail-closed generated-client route
+  sets and tied Android's general client plus web's Diary query to the generated
+  route key. The isolated Together API contract lane now documents the existing
+  response as `VoiceSummaryResponseDto`; a source-backed 311-path Swagger probe
+  confirmed the shape and both checked-in declarations reference it instead of
+  `Object`. Hosted staging schema publication and authenticated runtime proof
+  remain explicit gates.
+- Verified the Android private journaling lifecycle in the isolated staging lane:
+  draft persistence, resumable history, quota terminal states, streamed status,
+  retry, and completion return pass 10 focused suites and 48 tests. This remains
+  source and client-contract evidence until authenticated staging and device
+  validation are completed.
+
+### Web parity completed in the isolated lane
+
+- Added personal Memory Room with feature-flagged route, month/detail/summary
+  reads, deep-link handling, and Home/Diary entry points.
+- Added Your Growth detail lifecycle states, connection journey timeline, and
+  the mobile-compatible notification callback/quiet-hours behavior.
+- Localized the existing web notification toggle and mobile-parity permission
+  prompt in EN/VI/JA, including callback-pings errors and browser permission
+  recovery. The focused notification suite passes 12 tests; web TypeScript,
+  formatting, and diff checks pass.
+- Closed the shared locale-contract gap for `takeaway.syncError`: web EN/VI/JA
+  now carry the same recovery key already present in Android. The recursive web
+  locale audit passes with 2,455 keys per locale.
+- Localized the generic web AI chat connection/auth fallbacks in EN/VI/JA while
+  preserving server-provided error messages. The focused deep-chat and notification
+  run passes 2 files and 21 tests; web TypeScript, formatting, and diff checks pass.
+- Hardened Android quiet-hours storage handling with a fail-safe parser that accepts
+  the shared numeric format and the web time-string format while preserving the
+  existing mobile serializer. Malformed values now fall back safely instead of
+  producing an unhandled parse error; the new contract suite passes 4 tests.
+- Added web support for the mobile-compatible `/memory_room/:id` Memory Room deep
+  link, while preserving the existing `/memory-room?memoryId=...` route and
+  canonicalizing follow-up selection/close actions. The focused Memory Room suite
+  passes 4 tests; web TypeScript, formatting, and targeted ESLint pass.
+- Added web aliases for the remaining shipped mobile linking/widget/share paths:
+  `/home_screen`, `/relationship_screen`, `/knowledge/:articleId`, and
+  `/takeaway/:relationshipId/:takeawayId`. They reuse the existing protected
+  home, Friends, article, and relationship-takeaway screens; the route contract
+  suite covers these aliases alongside Memory Room and voice summary.
+- Hardened Android daily voice-summary deep links with explicit ready/loading/
+  empty/error state handling, localized retry copy, stale-content preservation,
+  and playback controls that remain hidden until content is ready.
+- Matched the web daily voice-summary page to that recovery contract: inline or
+  stale content remains playable, first-load failures show localized retry, and
+  playback controls stay hidden until content exists. The focused page check,
+  full TypeScript check, client/staging guards, production build, formatting, and
+  diff checks pass. A missing `note` member in the existing Personal Note
+  carousel union was corrected as a narrow type-contract fix.
+- Added a PR/manual-staging Android workflow gate for the focused Connection
+  Journey, voice-summary, Memory Room lifecycle, Your Growth, AI chat
+  resume/history, and quiet-hours suites before JDK/Gradle setup.
+- Extended that same Android gate with AI chat resume isolation, Diary-to-chat
+  continuation, conversation-history rendering/close coverage, quiet-hours
+  storage coverage, and the native linking path contract. Ten suites and 49
+  tests pass; authenticated staging, cancellation, Gradle packaging, and device
+  validation remain separate gates.
+- Closed a shipped deep-link drift in Android: `/relationship_screen` was already
+  declared in the native linking table and mapped on web, but the raw URL
+  interception list and widget fallback did not route it. Android now registers
+  the path and reuses the existing Connections tab; the focused linking suite
+  passes 6 tests.
+- Added shared-plan Settings and subscription management states for Duo/Circle,
+  organizer/member privacy, grace periods, member leave, and entitlement refresh.
+- Added the partner-only personal-note exchange: composer, daily cap handling,
+  crisis-safe inline prompt reuse, received-note card/dialog, message typing,
+  API mutation, and tests for privacy and error states.
+- Matched Android's shared Our Memories freshness behavior on web: the wall now
+  refreshes when the visible browser regains focus or returns from a hidden tab,
+  then on a calm 15-second visible cadence; failed seen markers receive one
+  bounded retry. Web TypeScript, Prettier, client/staging contract guards, and
+  diff checks pass. The focused Vitest runner remains blocked by the retained
+  offline mirror's broken React/Testing Library links; no browser or authenticated
+  staging claim is made.
+- Hardened the web staging image workflow to reject unapproved source refs
+  before Docker push, using the same `matrix-config.json` allowlist as the
+  deploy workflow. This prevents an iOS/shared staging ref from being mislabeled
+  as the web parity image.
+- Made the web staging flag plumbing explicit for Care Tips and the Memory
+  Recall chip across Docker, local builds, GitHub image builds, and deploys.
+  Care Tips preserves its existing client default (`true`, with backend gating);
+  Memory Recall remains explicitly off unless staging opts in.
+
+### Android parity completed in the isolated lane
+
+- Centralized the typed client foundation and generated declarations for the
+  parity surfaces, including shared auth reset and unauthorized handling.
+- Added Your Growth detail lifecycle states and Memory Room lifecycle parity:
+  initial and stale errors with retry, month/deep-link validation, cursor
+  pagination, load-more errors with retry while preserving loaded memories,
+  localized copy, and screen regression coverage for missing deep links, load
+  more, and stale-page retry.
+- Pinned the caller-scoped Together member-leave contract and kept development
+  and staging workflow paths separate.
+- Scoped Android push and pull-request workflow triggers to Android/shared
+  client inputs. Xcode-only changes under `ios/**` no longer start Android
+  validation, while shared React Native changes still exercise the parity gate.
+
+### Evidence and cleanup
+
+- Web and Android workspace/staging/client guards, locale checks, formatting,
+  syntax checks, focused tests, workflow checks, and diff checks
+  passed for the isolated changes. The focused web Personal Note run passed 3
+  files and 45 tests; the prior Android parity gate passed 8 suites and 40 tests,
+  and the latest rerun including quiet-hours and native-linking coverage passed
+  10 suites and 49 tests. The workflow contract verifier pinned that
+  ten-suite baseline before the gate was expanded in the latest parity pass.
+  The new Android helper also passes isolated TypeScript validation; a full
+  workspace typecheck against the recoverable mirror is not treated as release
+  evidence because that mirror produces broad dependency-resolution errors.
+- Read-only staging probes reached the health endpoint with `200`; protected
+  parity routes returned `401`, and candidate Swagger docs returned `404`.
+  These prove gateway/route behavior only, not an authenticated user flow.
+- A final shared-memory/native-capability source audit found the Android and web
+  detail surfaces aligned for comments, optimistic rollback, private reporting,
+  speech/share/clipboard fallbacks, and notification gating. No additional source
+  rewrite was justified; the remaining end-goal work is staging deployment and
+  authenticated browser/device/native-build validation.
+- The hosted `https://staging.app.murror.app` shell returns `200`, but its current
+  headers show a July 28 `Last-Modified` timestamp and an older API-domain CSP.
+  It is therefore not evidence that this dirty isolated parity lane has been
+  deployed; no staging dispatch was triggered from it.
+- Android Gradle/device validation remains open because this machine has no Java
+  runtime. Authenticated staging and real browser/device checks remain open.
+- Reused task-owned dependency mirrors only for validation, then moved disposable
+  artifacts recoverably into dated Trash. The Android Yarn dependency tree used
+  for the journal lifecycle check was approximately 1.2 GB and now lives at
+  `/Users/astro/.Trash/murror-android-parity-node_modules-2026-08-03-journal`.
+  No broad cache purge occurred, the pre-existing web symlink was not changed,
+  and the task-owned Watchman metadata was absent after the final audit.
+
+### Progress page
+
+- Removed the internal latest-update/live ledger from the investor-facing
+  public `/progress` page. The existing timeline remains public; parity status,
+  test counts, workspace details, and staging gates stay in this internal log
+  and the parity matrix.
+- Added a public-page contract test that keeps the timeline populated in EN/VI/JA
+  and rejects the internal live-ledger markers from the marketing component.
+  The focused contract test passes 2 tests with Prettier and ESLint clean.
+- Redeployed the existing Cloudflare Pages preview alias
+  [`progress-parity-2026-08-03.murror.pages.dev`](https://progress-parity-2026-08-03.murror.pages.dev/progress/).
+  The new preview deployment is `1d2347d9.murror.pages.dev`; English,
+  Vietnamese, and Japanese routes returned `200`, no longer contained the
+  internal ledger markers, and still contained their normal timeline heading.
+  This is a preview deployment, not a production promotion.
+
+### Still open
+
+- Authenticated staging flows, Android Gradle packaging, hosted CI, real Android
+  device/emulator checks, and browser acceptance.
+- Human review before any merge, deploy, distribution build, or feature-flag
+  change. Claude's active iOS staging repair remains independent and protected.
+
 ## 2026-08-02 (PDT): Codex iPhone auth and subscription release handoff
 
 Codex consolidated the recent iPhone-only staging work into a production-readiness
@@ -1191,3 +1386,330 @@ revoking EXECUTE, and test the ROLE, not just the absence of an error.
 **Verification.** API local Jest passed 316 suites and 2,986 tests, with 8 suites and 84 tests skipped. Mobile local Jest passed 344 suites and 2,783 tests, with 1 suite and 3 tests skipped. Type checks, build or hosted build gates, lint, workflow contracts, and mutation tests passed where available. Android local build status is UNKNOWN because the local environment has no Java runtime; the hosted Android gate remains the release authority.
 
 **Doc pointer:** `docs/plans/2026-08-02-privacy-release-hardening.md`.
+
+## 2026-08-03 - Private web shared-memory parity slice
+
+**Summary.** The isolated Murror web parity lane now matches the Android shared-memory
+detail lifecycle for append-only comments and partner-only private reporting. The
+investor-facing progress page remains timeline-only; the details below are internal
+engineering evidence and are intentionally kept out of the public page.
+
+**Key accomplishments**
+- Added web `POST /v1/connections/:connectionId/memories/:photoId/comments` with an
+  optimistic append, server reconciliation, rollback on failure, and a shared thread
+  visible to both members.
+- Added web `POST /v1/connections/:connectionId/memories/:photoId/report` with the
+  existing API reason enum, a partner-only reason picker, and explicit confirmation.
+  The report body remains private and the owner cannot report their own memory from
+  this surface.
+- Extended the web generated API declaration and fail-closed codegen/contract guards
+  for the comment and report routes, `MemoryCommentDto`, `ReportMemoryDto`, and
+  `ReportMemoryResponseDto`, using the API source DTO/controller lineage because the
+  hosted staging Swagger endpoint was unavailable during this pass.
+- Added EN/VI/JA copy and focused coverage for existing comment rendering, comment
+  submission, report reason gating, report confirmation, and the existing Our Memories
+  wall. The focused Vitest run passed 4 files and 42 tests, including the visible
+  focus/return and 15-second refresh contract.
+
+**Verification and boundaries.** Web TypeScript, Prettier, `git diff --check`, web
+client contracts, web staging-source contracts, and the cross-platform workspace guard
+passed. No iOS checkout was edited, no Android worktree was edited in this slice, no
+staging dispatch or deployment was triggered, and no API runtime, migration, or
+production operation was performed. Authenticated two-account staging, moderation
+read-after behavior, and device/browser validation remain open gates.
+
+## 2026-08-03 - Private web Home journal recovery parity slice
+
+**Summary.** The isolated Murror web parity lane now covers the Home journal
+refresh/error lifecycle that Android already exercises on screen focus. This is an
+internal engineering update; the investor-facing progress page remains timeline-only.
+
+**Key accomplishments:**
+- Added a stable recent-diary query and visible-window refresh listener to web Home;
+  browser focus and tab return now refetch the rail without changing the global diary
+  cache policy or polling hidden tabs.
+- Added separate no-data and stale-data recovery states. A failed first load no longer
+  masquerades as a brand-new empty journal, while stale entries stay readable during a
+  failed refresh and expose a retry action.
+- Added localized EN/VI/JA recovery copy and focused coverage for focus refresh,
+  initial-load failure, stale-data recovery, and existing journal rendering. The
+  focused Home suite passes 10 tests.
+
+**Verification and boundaries.** Web TypeScript, targeted ESLint, Prettier,
+`git diff --check`, locale JSON parsing, and the focused Home suite passed. The
+temporary dependency mirror was removed from the lane after validation and the
+pre-existing web/root dependency symlinks were restored exactly. No iOS checkout,
+Android worktree, API runtime, migration, staging dispatch, deployment, or public
+progress page was touched. Cancel/quota/private-input recovery, authenticated staging,
+and real browser/device validation remain open gates.
+
+## 2026-08-03 - Private web deep-chat quota parity slice
+
+**Summary.** The isolated Murror web parity lane now handles the API's first-class
+`chat_quota` socket event like Android. This is an internal engineering update; the
+investor-facing progress page remains timeline-only.
+
+**Key accomplishments:**
+- Added typed web socket contracts for the three existing quota codes and wired
+  `chat_quota` into the live deep-chat hook and Redux state.
+- Added the Android-matching warm quota notice: at-cap responses show localized copy,
+  a concrete reset time when supplied, and the existing `/subscription` route; a
+  temporary AI outage shows retry-safe reassurance without an upgrade CTA.
+- Deduplicated the backend compatibility `message_complete` that follows
+  `chat_quota`, preventing the warm server copy from appearing as a second AI bubble.
+  New sends clear the old quota state so a retry can proceed.
+- Added EN/VI/JA copy and coverage for reducer deduplication, live socket delivery,
+  upgrade routing, temporary-unavailable behavior, and the existing writer flow. The
+  focused parity set passes 8 files and 70 tests.
+
+**Verification and boundaries.** Web TypeScript, targeted ESLint, Prettier,
+`git diff --check`, and the focused parity tests passed. The temporary dependency
+mirror was removed from the lane after validation and the pre-existing web/root
+dependency symlinks were restored exactly. No iOS checkout, Android worktree, API
+runtime, migration, staging dispatch, deployment, or public progress page was
+touched. Authenticated staging quota limits, subscription purchase/return behavior,
+cancellation, deep-link/resume, and real browser/device validation remain open gates.
+
+## 2026-08-03 - Private Android Home journal recovery parity slice
+
+**Summary.** The isolated Murror Android parity lane now keeps the Home journal
+rail's request lifecycle honest: a first-load failure is no longer presented as a
+new user's empty journal, and a failed refresh leaves existing reflections visible
+with a retry action. This is an internal engineering update; the investor-facing
+progress page remains timeline-only.
+
+**Key accomplishments:**
+- Added a localized `JournalLoadState` for initial and stale-content failures with
+  scoped retry callbacks and stable test IDs.
+- Added EN/VI/JA copy for the two recovery messages and retry action without changing
+  the existing empty-journal onboarding card.
+- Preserved the existing evening voice card when the journal request fails, and
+  preserved loaded journal entries during a failed refresh.
+- Added focused coverage for both recovery states; the Android Jest component suite
+  passes 2 tests. Android client/staging contract checks, i18n synchronization, copy
+  lint, Prettier, `git diff --check`, and targeted ESLint pass. The broader Android
+  typecheck still reports the pre-existing `src/common/linking.spec.ts` strictness
+  error; the new journal files introduce no type errors.
+
+**Verification and boundaries.** The temporary dependency mirror was removed after
+validation and no disposable Watchman artifact remains in the worktree. No iOS
+checkout, web lane, API runtime, migration, staging dispatch, deployment, or public
+progress page was touched. Authenticated Android staging, cancellation/quota/private
+input behavior, and real Android device or emulator validation remain open gates.
+
+## 2026-08-03 - Private Android parity gate expansion
+
+**Summary.** The Android pull-request and manual-staging parity gate now includes
+the Home and private-writing lifecycle tests that were already present in the
+isolated Murror lane but were not previously part of the workflow command.
+
+**Key accomplishments:**
+- Added Home journal initial-load recovery, AI quota messaging, composer
+  persistence, and draft-resurrection tests to the existing Android parity gate.
+- Updated the YAML-aware workflow verifier to require the exact expanded command,
+  preserving the existing ordering after staging/client contract checks and before
+  JDK/Gradle setup.
+- The expanded isolated run passes 14 suites and 65 tests. Android client and
+  staging contracts, workflow contracts, Prettier, and `git diff --check` pass.
+
+**Verification and boundaries.** This is CI/readiness coverage only: no Android
+Gradle build, staging dispatch, deployment, API runtime, migration, iOS checkout,
+web lane, or public progress page was touched. Authenticated staging and real
+Android device or emulator validation remain open gates.
+
+## 2026-08-03 - Private Android full typecheck repair
+
+**Summary.** The isolated Murror Android parity lane no longer carries the
+strictness error introduced by its expanded deep-link contract test.
+
+**Key accomplishments:**
+- Narrowed the optional `linking.config` access in
+  `src/common/linking.spec.ts` while keeping the runtime route assertion intact.
+- Full Android TypeScript now passes with the available complete dependency mirror;
+  targeted ESLint and Prettier also pass.
+- The expanded Android parity run remains green at 14 suites and 65 tests, with
+  workflow, client, staging, i18n, copy, formatting, and diff guards passing.
+
+**Verification and boundaries.** No production or staging runtime was changed, no
+Gradle build or dispatch was run, and iOS, Uni, web, API, and the public progress
+page remain untouched. Native packaging, authenticated staging, and real-device
+validation remain external gates.
+
+## 2026-08-03 - Private cross-platform gate re-verification
+
+**Summary.** The isolated Murror web and Android lanes were rechecked after the
+Android typecheck repair and parity-gate expansion.
+
+**Key accomplishments:**
+- Web client and staging contracts, TypeScript, 8 focused Vitest files with 77
+  tests, production Vite build, and targeted ESLint all pass. Existing web/root
+  dependency symlinks were restored exactly after validation.
+- Android's 14-suite/65-test parity gate, full TypeScript, client/staging/workflow
+  contracts, i18n, copy lint, Prettier, and diff checks remain green.
+- The 12 MB generated web `dist` output was moved recoverably to
+  `/Users/astro/.Trash/murror-web-parity-build-2026-08-03`; Android temporary
+  dependencies and Watchman artifacts remain absent.
+
+**Native-build boundary.** This workstation still has no Java runtime, Android SDK
+variables, or `android/local.properties`, so no local Gradle result is claimed.
+Hosted Android CI, authenticated staging, browser/device acceptance, and any
+deployment remain separate human-gated steps. No iOS, Uni, API runtime, migration,
+or public progress-page work was touched.
+
+## 2026-08-03 - Private web journal storage recovery coverage
+
+**Summary.** The web journal writer's existing best-effort localStorage wrapper now
+has direct coverage for private-mode and quota failures, closing the source-level
+private-input recovery gap in the parity matrix.
+
+**Key accomplishments:**
+- Added tests proving blocked `getItem`, `setItem`, and `removeItem` calls return
+  safe empty/no-op results instead of breaking the writer or submit cleanup.
+- The storage suite passes 12 tests; the combined storage and journal-writer check
+  passes 42 tests. Web TypeScript, targeted ESLint, and Prettier pass.
+
+**Verification and boundaries.** This is storage/recovery evidence, not proof of a
+real private browser or authenticated staging session. No Android/iOS source, API
+runtime, migration, deployment, or public progress page was touched. Browser
+reload, authenticated staging, and device acceptance remain external gates.
+
+## 2026-08-03 - Private web staging CSP handoff guard
+
+**Summary.** A read-only staging audit found that the live web shell is an older
+deployment whose CSP does not allow the staging API REST or WebSocket origins,
+despite the parity build already targeting `staging.api.murror.app`.
+
+**Key accomplishments:**
+- Added `https://staging.api.murror.app` and
+  `wss://staging.api.murror.app` to all five web nginx report-only CSP headers
+  in the isolated parity lane.
+- Extended `verify-web-staging-contract.mjs` so the staging handoff fails if
+  either origin is removed.
+- Reconfirmed `WEB_STAGING_CONTRACT_OK`, `WEB_CLIENT_CONTRACT_OK`, JavaScript
+  syntax, `git diff --check`, and both isolated workspace guards.
+
+**Current boundary.** Unauthenticated staging API live/ready health returns 200,
+but hosted Swagger candidates return 404. The live web shell returns 200 and is
+stamped July 28, so the source fix is not a deployment claim. No staging dispatch,
+image publication, runtime, migration, iOS checkout, Uni work, or public investor
+page was touched.
+
+## 2026-08-03 - Private staging schema drift guard
+
+**Summary.** Staging image/build workflows could previously skip OpenAPI
+regeneration when `MURROR_API_OPENAPI_URL` was unset. The web and Android staging
+paths now fail closed before building in that case, while PR, development, and
+alpha paths retain their existing optional behavior.
+
+**Key accomplishments:**
+- Added a hosted-schema prerequisite to the web one-off image build, web staging
+  deploy build, and Android manual staging workflow.
+- Added workflow-contract assertions for the guard, its environment variable,
+  and ordering before client generation.
+- Pinned the staging API origin in both workflows: web requires
+  `https://staging.api.murror.app/api`, while Android requires the bare
+  `https://staging.api.murror.app` host; production/development URLs are rejected.
+- Validation passes: web staging/client contracts, Android staging/client
+  contracts, YAML-aware workflow contracts, i18n synchronization, copy lint,
+  syntax, and diff checks.
+- Mounted the Android dependency mirror only for validation and removed it again;
+  no `node_modules`, `android/local.properties`, Watchman cookie, build output,
+  dispatch, or deployment remains in the lane.
+- Audited native-capability fallbacks: the focused web run passes 5 files and 43
+  tests covering speech unsupported/prefix/error paths, Web Share/clipboard
+  cancellation and failure, OneSignal gating, and notification controls.
+- Confirmed the API source intentionally excludes internet-facing staging from
+  its Swagger allowlist; the `404` must be resolved through a reviewed protected
+  or versioned schema source, not by bypassing the privacy gate.
+
+**Current boundary.** The live staging API health endpoints respond 200, but the
+hosted Swagger candidates respond 404. This guard is therefore a deliberate
+staging prerequisite, not evidence that hosted regeneration or runtime parity is
+complete. No iOS checkout, Uni work, API runtime, migration, or public investor
+page was touched.
+
+## 2026-08-03 - Private Android generated-route provenance guard
+
+**Summary.** The Android generator now protects the shared-memory comment and
+private-report routes that the existing hand-written `SharedPhotosApiClient` already
+uses. This closes a cross-platform contract-check gap without treating a newer dev
+schema as staging truth.
+
+**Key accomplishments:**
+
+- Added required generator route groups for
+  `/v1/connections/{id}/memories/{pid}/comments` and
+  `/v1/connections/{id}/memories/{pid}/report`, matching web's generator guard.
+- Extended the Android client verifier to check both generator routes and the
+  existing shared-memory client call sites.
+- Confirmed a temporary dev-schema generation contains
+  `SharedPhotosController_addComment_v1`, `SharedPhotosController_reportMemory_v1`,
+  `MemoryCommentDto`, and the report DTOs. The candidate was deleted after
+  inspection and was not copied into the Android declaration.
+- `ANDROID_CLIENT_CONTRACT_OK`, `ANDROID_STAGING_CONTRACT_OK`, workflow contracts,
+  the shared-photos transport suite (2 tests), syntax checks, and `git diff --check`
+  pass. The Android parity gate now runs 15 suites and 67 tests.
+
+**Current boundary.** The checked-in Android generated declaration still predates
+these two routes. Staging Swagger remains intentionally private and returns `404`,
+so regeneration is gated on a reviewed/versioned or protected schema source. No
+staging dispatch, deployment, API runtime, migration, iOS checkout, web lane, or
+public investor page was touched. The temporary dependency mirror was removed and
+the Android worktree has no `node_modules` artifact.
+
+## 2026-08-03 - Read-only staging route presence probe
+
+**Summary.** The scoped web/Android API routes were probed against live staging
+without credentials. Auth guards rejected every request, including the newly aligned
+shared-memory mutations, so the routes are deployed without exposing account data.
+
+**Evidence:**
+
+- `401`: Memory Room index/summary, Emotional Growth, voice-summary, takeaways,
+  relationship reflection, Together member leave, shared-memory comments, and
+  shared-memory reports.
+- No scoped route returned `404`; this confirms route presence and authentication
+  protection, not authenticated response shapes or client/runtime parity.
+- Staging health remains `200`, while staging OpenAPI JSON remains intentionally
+  unavailable at `404`. No staging data or deployment state was changed by the
+  probes.
+
+## 2026-08-04 - Private parity resume and internal tracker
+
+**Summary.** The isolated Murror Android/web parity effort resumed after the iOS
+lane pause against `origin/staging-environment-setup` at `b1fc6af0`. A private HTML tracker now records verified-local work separately from
+runtime and release gates; the investor-facing page was not changed.
+
+**Key accomplishments:**
+
+- Ported the current staging English-only launch behavior to Android: both i18n
+  initialization paths are pinned to `en-US`, the settings language row is hidden,
+  and the existing catalogs/routes remain recoverable for a future relaunch.
+- Added the Android true-photo-shape behavior from the refreshed mobile staging
+  trunk: decoded FastImage dimensions drive a bounded aspect ratio, the square
+  fallback remains safe before measurement, and the ratio resets between memories.
+- Ported the refreshed Home Moments first-load fix without touching the shared
+  `InsightCard`: a pure resolver supplies each card's known resting position until
+  Reanimated reports a live value. Its focused resolver suite passes 3 tests;
+  Android TypeScript and targeted ESLint also pass (two existing inline-style
+  warnings only).
+- Added focused Android coverage for landscape, portrait, square, panorama, tall,
+  invalid, non-finite, reopen, and close/reopen cases. The two focused suites pass
+  50 tests.
+- Added a fail-closed web English-only launch flag. Web i18n, profile sync, REST
+  language parameters, settings, Docker, the local build helper, one-off staging
+  build, and staging deploy workflow all carry the explicit flag; staging refuses
+  to build unless `WEB_CLIENT__VITE_ENGLISH_ONLY_LAUNCH=true` is present.
+- `WEB_STAGING_CONTRACT_OK`, `WEB_CLIENT_CONTRACT_OK`,
+  `ANDROID_STAGING_CONTRACT_OK`, `ANDROID_CLIENT_CONTRACT_OK`, and both diff checks
+  pass. Temporary Android dependencies, Watchman cookies, and the failed web pnpm
+  install were moved to dated recoverable Trash; the pre-existing web symlink was
+  restored exactly.
+
+**Current boundary.** A focused web language-section runtime test passes 5/5 after
+using a controlled offline dependency link; the original broken symlink was restored
+and the temporary tree was moved to dated Trash. This is not full browser or
+authenticated staging proof. No iOS checkout, Uni folder, API runtime, migration,
+staging dispatch, image publication, deployment, or public investor page was touched.
+Authenticated staging, hosted schema, web browser, Android Gradle/device, and human
+release gates remain open.
