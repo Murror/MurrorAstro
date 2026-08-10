@@ -1713,3 +1713,114 @@ authenticated staging proof. No iOS checkout, Uni folder, API runtime, migration
 staging dispatch, image publication, deployment, or public investor page was touched.
 Authenticated staging, hosted schema, web browser, Android Gradle/device, and human
 release gates remain open.
+
+## 2026-08-04 - Five fixes were in the wrong file, and we finally proved it
+
+**Summary.** The iOS lane spent the day on build 413/414 device feedback and on
+two bugs that had each survived several previous attempts. In both cases the code
+being changed was real and correct, and simply was not the code running. Measuring
+the device, rather than reasoning about the source, is what ended both.
+
+**Key accomplishments:**
+
+- Proved the recurring "Moment to Care card overlap" lives in the pinned rail
+  (`pinned-compact-feed-card.tsx`), not in `moment-to-care.tsx`. Five consecutive
+  fixes had been written into a different rail that deliberately mirrors the first
+  one, which is why unit tests and a mutation test all passed while the device never
+  changed. Card height was the discriminator: 140pt measured against the screenshot
+  matches the pinned rail exactly, while the other rail computes to 480pt on the
+  same device.
+- Established from build 414 telemetry that the overlap was never a geometry error.
+  Stride, measured slot, face and gap all came back correct, so the cards were being
+  painted before the carousel assigned their offsets. The rail now waits for the
+  viewport to measure before mounting, and a same-height placeholder keeps Home from
+  jumping.
+- Found why connection prompts named the wrong person and used the wrong pronoun.
+  The mobile app was sending the connection all along, and the API was discarding it
+  silently: a global validation pipe configured to strip undeclared fields without
+  raising an error. Reflection prompts are now scoped to the connection they are
+  about, and the deletion of a user's prompt pool is scoped with them, which had been
+  wide enough to wipe another connection's prompts.
+- Fixed account deletion failing on shared photos the user had already soft deleted.
+  The repair is on the purge side, because relaxing the verifier instead would have
+  left the personal data in place.
+- Split the hard paywall kill switch per environment, so staging and production can
+  no longer read each other's flag value.
+- Shipped build 414 to TestFlight and confirmed it on device.
+
+**Continuation the same evening.** The "Settings shows Premium while the content is
+locked" report was root caused. RevenueCat does still entitle the account, so the
+stored INACTIVE status is wrong rather than correct. The writer is a second, unguarded
+copy of the negative subscription self heal that is reached from the transfer webhook
+path. An earlier fix had hardened the other copy of the same logic and had already
+been deployed more than three hours before the bad row was written, which is why it
+could not have helped. Production carries none of these rows.
+
+**Current boundary.** No subscription fix has been written; the direction is waiting
+on an explicit decision. The build 414 feedback branch is open as a pull request with
+formatting repaired and is not merged, so build 415 has not been cut. The Notion
+engineering log row could not be written because that connector is disconnected. The
+two proposed connection insight shapes are specified only, and the production funnel
+behind them shows the takeaway flow has been used four times in total, which suggests
+connection formation is the more valuable question.
+
+## 2026-08-10 - Build 428 shipped, and three pieces of tooling that were lying
+
+**Summary.** Build 428 reached TestFlight after a prior attempt died at codesign. The
+cause was environmental, not a code defect: the earlier archive ran over SSH, which gets
+a Background security session that cannot reach the login keychain. Separately, three
+pieces of local tooling turned out to be broken in the same way, all downstream of this
+workstation being migrated to a new Mac and a new user account while several things kept
+pointing at the old one. This section also covers 2026-08-07 through 2026-08-09, which
+had no writeup.
+
+**Key accomplishments:**
+
+- Shipped build 428 to TestFlight. Verified by marker, never by exit code:
+  `** ARCHIVE SUCCEEDED **`, `Upload succeeded.`, `Uploaded MurrorMobileStaging`, and
+  `** EXPORT SUCCEEDED **`. App and both embedded extensions all report 428.
+- Confirmed the signing premise before spending a 15 minute archive, rather than
+  assuming it: `launchctl managername` returned `Aqua`, the login keychain was unlocked
+  with no timeout, and one valid codesigning identity was present.
+- Caught that the staging scheme reads `ios/MurrorMobileStaging-Info.plist`, which a
+  `find -name "Info.plist"` check never matches. Only the production plist had been
+  verified. Reading the runbook is what caught it, and verifying the wrong plist is
+  exactly the build-241 failure mode.
+- Repaired the workspace guard. `verify-murror-workspace.sh` hardcoded a
+  `/Users/astro` home that does not exist here, so it returned exit 1 on every run while
+  CLAUDE.md mandated running it before every build. Both guards now derive their root
+  from their own location and resolve symlinks, so they survive the next machine move.
+  Verified against seven cases including the ones that must still fail.
+- Fixed claude-mem, which reported Connected while every tool call failed. The MCP
+  server is a thin proxy to a worker that needs Bun; Bun was not installed. Installed via
+  npm specifically because that lands the binary on the stale screen session's existing
+  PATH, avoiding a restart.
+- Audited every connector by live call rather than by config. 13 verified working, 3
+  redundant duplicate registrations removed with their working twins re-probed afterwards,
+  4 shadow entries deliberately kept.
+- Builds 420 through 427 landed on 08-08 and 08-09, covering the Home consolidation
+  (#1047), OTA channel repair (#1055, #1056), production flag defaults (#1061), and the
+  plaintext journal draft fix (#1067).
+
+**Operating notes:**
+
+- A guard that cannot pass is not a guard. It becomes noise that everyone learns to skip,
+  which is worse than having no guard at all.
+- `./script.sh | tail` reports tail's exit status, not the script's. That is what hid the
+  workspace guard failing for an unknown length of time.
+- Authorizing an MCP connector mid-session is not enough. The tool registry is built once
+  at session start, so a newly authorized server connects but exposes no callable tools
+  until Claude Code restarts.
+- Verified working duplicates are not automatically safe to delete. After a reconnect the
+  local `stripe` and `mixpanel` entries were the ones that worked, while their claude.ai
+  twins stayed dark.
+
+**Current boundary.** Sentry and Mixpanel connectors remain unauthorized, and Sentry is
+the one that matters. `facebook-ads` fails with a Facebook GraphMethodException, which is
+a permissions problem rather than a reauthorization. claude-mem has no history before
+2026-08-10 and session transcripts before that date do not exist on this machine, so token
+accounting for 08-07 through 08-09 is not possible. The Murror docs repo carries 32 dirty
+files including substantive uncommitted edits to AGENTS.md, docs/CONVENTIONS.md and
+docs/runbooks/staging-environment.md, which were left untouched.
+
+**Doc pointer.** `docs/plans/2026-08-10-build-428-and-workspace-tooling.md`
