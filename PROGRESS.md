@@ -1,5 +1,70 @@
 # Murror Progress
 
+## 2026-08-11 (PDT): Build 429, and the extension floors that hid the widgets
+
+Full writeup: `docs/plans/2026-08-11-build-429-and-extension-floors.md`.
+
+### Shipped
+
+- **Build `2.1.0 (429)` on TestFlight**, `VALID` at App Store Connect. Bump PR
+  #1078, merged as `7e0b6678`. It exists because build 428 was archived from
+  `32927636`, before three security fixes landed: #1073 and #1075 (deep links
+  resolved from the path, not matched anywhere in the string) and #1076 (the iOS
+  bridge app group guard now fails closed). Nothing testable carried them.
+- Number claimed by `scripts/ios-next-build.sh` and verified against App Store
+  Connect (`canonical=428 local=428 asc=428`), so it is not a git-only guess.
+  `scripts/verify-build-lane.sh` refused to archive until the bump PR merged,
+  which is the gate working as designed.
+- Verified at artifact tier: `** ARCHIVE SUCCEEDED **`, app and both `.appex` all
+  at 429 with zero mismatches, `staging.api.murror.app` present in the native
+  executable with Alpha and prod hosts absent, all three fix SHAs proven
+  ancestors, then `Uploaded MurrorMobileStaging` plus `** EXPORT SUCCEEDED **`.
+
+### Fixed
+
+- **QA-427-001. The widget extension floor was hiding widgets AND Live
+  Activities.** Host app is iOS 15.5; the AppWidgets extension declared 18.5 on
+  every scheme and the production OneSignal extension declared 18.1 while
+  staging/dev/ODE ran the same code at 15.5 and 15.1. An `.appex` above the host
+  floor is not loaded at all below it, so under 18.5 the widgets were absent and
+  so were Live Activities, even though `MomentLiveActivity.swift` guards itself
+  `@available(iOS 16.2, *)` five times. No crash, no log, so it reads as low
+  adoption rather than an impossible feature.
+- No iOS 18 API is used anywhere in that extension. Highest availability marker
+  in the source is `17` (`containerBackground`), six more at `16.2`. The floor
+  came from `fc36f7ee` when the widget targets were created: an Xcode new-target
+  default. PR #1079 sets AppWidgets to 17.0 on all schemes and production
+  OneSignal to 15.5. Strictly additive, host untouched.
+- Verified by compiling BOTH the staging and production schemes and reading
+  `MinimumOSVersion` back off the built products, because the OneSignal change
+  only lands on production. Staging-only verification would have been a half fix.
+
+### Operating notes
+
+- **The workspace guard is not broken.** It was logged as defective twice on
+  08-10 with `line 19: A: unbound variable`. `verify-murror-workspace.sh` is
+  `#!/bin/zsh` and `${0:A:h}` is zsh-only; under bash it parses as substring
+  expansion and `set -u` trips on `A`. Run with zsh it returns `PASS`. Do not
+  "fix" line 19 for bash: dropping `:A` loses symlink resolution and restores the
+  exact path mismatch the 08-10 refactor removed.
+- **A build setting can justify a source mistake.** A comment in
+  `AppWidgetSpark.swift` reasoned "the widget target deploys to iOS 18.5, so
+  containerBackground is unconditional". The wrong floor had propagated into code
+  decisions, which makes correcting it later look like a regression.
+- Codex ran in parallel in four worktrees. Work stayed in the build lane the 427
+  audit assigns to Claude. Codex's `ios-build-lane-canonical-content.spec.ts` was
+  run to prove it still passes, never edited, and an earlier suggestion to close
+  #1069 was withdrawn once its Codex authorship was checked.
+
+### Still open
+
+- **SEC-427-001** is untouched and still the largest source-level security
+  blocker: every scheme shares `group.com.murror.widget` while
+  `ios/RNWidgetBridge.m` writes access and refresh tokens into it. One-way door on
+  device, gated on Astro.
+- The 427 audit verdict is unchanged at **NO-GO for public release**. Device and
+  provider gates all remain untested.
+
 ## 2026-08-06 (PDT): Builds 417 and 418 shipped, and the paywall footer root cause
 
 Astro's build-416 TestFlight feedback, worked through to two shipped builds. Full
