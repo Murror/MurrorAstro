@@ -192,14 +192,33 @@ E2E-427-001, CI-427-001, plus a newly published h2 CVE in viasr.
   its moment. Do NOT add a read-side persona pin, it would blank councils whose
   stored panel lacks the pinned persona.
 
-## One open PR needs Astro, not you
+## Two open PRs, and one of them is YOUR work
 
-MurrorMobile **#1069** is Codex's CI lane. It cuts dependency advisories from 213
-groups to 40 with 0 critical, repairs the E2E harness, and compiles the production
-Release scheme in CI. It also changes what `yarn lint` does for the entire team,
-raw ESLint having moved to `yarn lint:raw`. It is deliberately unmerged. Do not
-merge it without Astro. Its CI runs the native iOS and Android build jobs, which
-take 15 to 25 minutes, so "pending" is normal there.
+**#1074 (deps, lint, E2E)** is the green split of Codex's CI lane. Astro merges it.
+Do not touch it. It cuts dependency advisories from 213 groups to 40 with 0
+critical, repairs the E2E harness, and swaps `yarn lint` to an exact-baseline
+checker with raw ESLint at `yarn lint:raw`.
+
+**#1069** is now ONLY the job that compiles the production Release scheme in CI,
+and it is RED:
+
+```
+** BUILD FAILED **
+ios/MurrorMobile.xcodeproj: error: Unable to open base configuration reference file
+exit code 65
+```
+
+That is not a regression. The production scheme had NEVER been compiled in CI
+before, so this job found on its first run that it cannot resolve its `.xcconfig`
+on a clean runner. Real finding, and it is IN YOUR LANE (`ios/`).
+
+**Work it as CI-427-001b, and check REL-427-004 first.** The strong hypothesis,
+untested: the missing xcconfig is produced by a build phase that runs LATER, which
+is the same defect as REL-427-004 (environment selection running after React
+Native bundling). If so, one fix closes both. Verify that rather than assuming it;
+it is a hunch, not a finding.
+
+Do not merge #1069 yourself. Fix the cause, push to its branch, and report.
 
 ## TestFlight
 
