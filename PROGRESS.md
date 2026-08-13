@@ -28,6 +28,10 @@ is merged; Build 432 landed after it but before the still-running PR #956 checks
 - Reconciled the iOS evidence board with the broader cross-stack launch map,
   including production deployment, clinical, privacy, review-account, and
   placeholder-entitlement gates.
+- Corrected the shared Viasr branch map and kubeconfig runbook: production uses
+  the dedicated `production` branch, and its workflow consumes raw kubeconfig
+  YAML. Claude-owned PR #619 is green, while promotion, stale-secret rotation,
+  and any production dispatch remain owner-approved gates.
 - Recorded the August 11-13 mobile, API, voice, backend privacy, and public-content
   work in
   [`docs/plans/2026-08-13-ios-production-launch-readiness.md`](docs/plans/2026-08-13-ios-production-launch-readiness.md).

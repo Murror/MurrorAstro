@@ -80,22 +80,33 @@ contexts:
 current-context: ci
 EOF
 
-# Encode + copy to clipboard for pasting into GitHub
-base64 -i ci-kubeconfig.yaml | pbcopy
+# Copy the raw YAML for workflows that write KUBE_CONFIG directly to a file
+pbcopy < ci-kubeconfig.yaml
 ```
 
 ---
 
 ## Where to set `KUBE_CONFIG`
 
-`KUBE_CONFIG` is a **base64-encoded kubeconfig**, set as a **GitHub environment secret** (NOT a repo secret) on every environment that deploys.
+`KUBE_CONFIG` is set as a **GitHub environment secret** (NOT a repo secret) on
+every environment that deploys. Its encoding is a workflow contract, not a
+universal convention:
+
+- `viasr-api/.github/workflows/ci.yaml` writes the secret directly to a file, so
+  its value must be the **raw kubeconfig YAML**.
+- Before rotating another workflow, inspect its setup step. A step that pipes
+  through `base64 --decode` expects base64; a direct `printf` or redirect expects
+  raw YAML.
+
+Never change the encoding while rotating credentials unless the consuming
+workflow changes in the same reviewed release.
 
 | Repo | Environments needing `KUBE_CONFIG` |
 |---|---|
 | `murror-api` | `staging`, `alpha`, `production` |
 | `viasr-api` | `staging`, `alpha`, `production` |
 
-GitHub UI: Repo → Settings → Environments → `<env>` → Environment secrets → New environment secret → name `KUBE_CONFIG`, value the base64 blob.
+GitHub UI: Repo → Settings → Environments → `<env>` → Environment secrets → New environment secret → name `KUBE_CONFIG`, value the representation required by that repo's workflow.
 
 ---
 
@@ -103,10 +114,12 @@ GitHub UI: Repo → Settings → Environments → `<env>` → Environment secret
 
 In each deploy action / job:
 
+For `viasr-api`, the release workflow consumes raw YAML:
+
 ```yaml
 - name: Setup kubeconfig
   run: |
-    echo "$KUBE_CONFIG" | base64 -d > kubeconfig.yaml
+    printf '%s' "$KUBE_CONFIG" > kubeconfig.yaml
     echo "KUBECONFIG=$PWD/kubeconfig.yaml" >> $GITHUB_ENV
   env:
     KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}

@@ -182,6 +182,16 @@ For the next candidate, the minimum evidence chain is:
   and revoked states.
 - Provider-side Hermes symbol ingestion and one symbolicated crash.
 - Exact production deployment provenance and rollback for all required services.
+- Promote Claude-owned Viasr PR #619 through reviewed staging and production
+  branches. Keep context labels diagnostic while API-server, embedded-CA,
+  CA-fingerprint, and TLS checks remain fatal.
+- Replace the production Viasr kubeconfig with a raw-YAML, namespace-scoped SGP1
+  credential after an identity-only preflight is reviewed and explicitly
+  approved. The stored secret predates the SGP1 cluster and the GitHub production
+  environment currently has no reviewer protection.
+- Preserve the live Viasr deployment's explicit body-logging-off overrides until
+  the safe source defaults are deployed. The current pod is safe, but the older
+  image's fallback defaults are not.
 - VoiceOver, Dynamic Type, and supported-locale device passes.
 
 ### App Store, safety, and owner gates
