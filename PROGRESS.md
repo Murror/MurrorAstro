@@ -4,7 +4,8 @@
 
 **Summary.** Builds 430 and 431 anchored a safer iOS staging lane, while a fresh
 production audit kept TestFlight staging proof separate from production App Store
-proof and found two source repairs that must land before the next candidate.
+proof and found two source repairs required before the final candidate. PR #1102
+is merged; Build 432 landed after it but before the still-running PR #956 checks.
 
 **Key accomplishments:**
 
@@ -13,10 +14,14 @@ proof and found two source repairs that must land before the next candidate.
 - Confirmed the production store still serves 1.0.19 build 5; Build 430 is the
   newest production upload and is attached to no version, while 1.1.0 remains
   rejected and its submission remains unresolved.
-- Added an isolated RCT-Folly lock-receipt repair in mobile PR #1102 and refreshed
-  PR #956 against current staging, preserving the intentional takeaway-audio
+- Landed the isolated RCT-Folly lock-receipt repair in mobile PR #1102 and
+  refreshed PR #956 against current staging, preserving the intentional takeaway-audio
   removal while adding runtime contracts, production-host checks, Metro
   provenance, build-lane coverage, and verified Hermes dSYM attachment.
+- Recorded Build 432 as an intermediate production-scheme diagnostic, not the
+  final candidate: its bump merged before PR #956, and its first archive attempt
+  failed because Sentry upload phases did not receive the intended disable flag
+  and had no auth token. A separate Claude session owns the retry.
 - Separated source/CI, staging artifact, production artifact, device, provider,
   deployment, and App Store evidence so a green test or beta upload cannot be
   mistaken for a launch candidate.
@@ -27,8 +32,9 @@ proof and found two source repairs that must land before the next candidate.
   work in
   [`docs/plans/2026-08-13-ios-production-launch-readiness.md`](docs/plans/2026-08-13-ios-production-launch-readiness.md).
 
-**Current boundary.** PRs #1102 and #956 are still in flight, so Build 431 is not
-the current-source release candidate. No production-distribution IPA, physical
+**Current boundary.** PR #1102 is merged and PR #956 is still in flight. Build
+431 is a staging/Beta artifact, and Build 432 predates the final hardening, so
+neither is the current-source release candidate. No production-distribution IPA, physical
 device proof, production upload, App Store version attachment/submission,
 provider delivery proof, migration, production deployment, pricing decision,
 clinical approval, or privacy-policy decision was performed by this documentation

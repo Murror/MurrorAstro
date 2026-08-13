@@ -10,10 +10,16 @@ is still no current-source production-distribution candidate.
 - **The public production app is still 1.0.19 (build 5)**. Build 430 is the
   newest upload for Murror AI, bundle `app.murror.mobile`, App Store Connect app
   `6741769381`, and is attached to no version.
-- **Build 431 predates two required source repairs**: the RCT-Folly lock receipt
-  repair in PR #1102 and the refreshed runtime/release contracts in PR #956.
+- **Build 431 predates both required source repairs**. The RCT-Folly lock
+  receipt repair in PR #1102 is now merged; the refreshed runtime/release
+  contracts in PR #956 are still completing exact-current-base CI.
+- **Build 432 is not the combined candidate**. Its bump landed after PR #1102
+  but before PR #956, and a production-scheme archive was started from that
+  intermediate source. The first attempt failed when Sentry upload phases did
+  not receive the intended disable flag and had no auth token; a separate
+  Claude session owns the retry.
 - **The next candidate must be cut from canonical
-  `staging-environment-setup`**, after both repairs land, using
+  `staging-environment-setup`**, after PR #956 lands, using
   `scripts/ios-next-build.sh`. It must not reuse or manually choose a number.
 
 The correct launch verdict remains **NO-GO**. Source hardening is moving forward;
@@ -80,7 +86,7 @@ public iOS release.
 
 A clean production-configuration build exposed a one-line RCT-Folly checksum
 drift in `ios/Podfile.lock`. The pod version did not change; the tracked receipt
-was stale. The deterministic repair is PR #1102.
+was stale. The deterministic repair landed in PR #1102.
 
 Why it matters: a locally repaired checkout can build while canonical source
 still cannot. Any archive created before the repair lands lacks exact-source
@@ -124,6 +130,20 @@ the environment was repaired and the number was checked against live App Store
 Connect. Future cuts must continue to prove both canonical-git and live-Apple
 inputs before changing any of the 30 version sites.
 
+### 6. Build 432 closed one gap but raced the final source repair
+
+PR #1103 bumped all 30 version sites to 432 only after PR #1102 merged, so the
+lock receipt is canonical. It merged before PR #956, however, which means any
+Build 432 archive predates the runtime contracts, production-host guard, and
+Hermes dSYM helper. It is useful diagnostic evidence but cannot be the final
+combined candidate.
+
+The first production-scheme archive attempt also exposed an independent release
+configuration issue: the Sentry source-map and native-symbol phases saw
+`SENTRY_DISABLE_AUTO_UPLOAD` as empty, tried authenticated uploads, and failed
+without a Sentry token. Another Claude session owns the retry; this audit did
+not alter or restart that build.
+
 ## Verification approach
 
 The audit deliberately kept each proof tier separate:
@@ -138,9 +158,11 @@ The audit deliberately kept each proof tier separate:
 
 For the next candidate, the minimum evidence chain is:
 
-1. Merge PR #1102 after its hosted iOS check passes.
-2. Merge current staging into refreshed PR #956 and rerun all required checks.
-3. Merge PR #956 only on exact-current-base green evidence.
+1. PR #1102: merged after hosted iOS passed.
+2. PR #1103: merged Build 432 after PR #1102, before PR #956; retain it as
+   intermediate diagnostic evidence only.
+3. Merge PR #956 only after exact-current-base CI and independent review are
+   green.
 4. Run `scripts/ios-next-build.sh` from a clean isolated worktree.
 5. Land the generated bump by PR before any archive work.
 6. Verify the bump commit is present on remote
@@ -192,7 +214,8 @@ and backend owner gates rather than silently treating them as green.
 ## Public-progress decision
 
 No investor-facing progress-timeline entry should be added for this period.
-Build 431 is not public and predates current required source repairs. The privacy
-and infrastructure changes are intentionally excluded from the public timeline,
-and the two relationship guides are content additions rather than a new product
+Build 431 is not public and predates current required source repairs. Build 432
+also predates PR #956 and is not the combined candidate. The privacy and
+infrastructure changes are intentionally excluded from the public timeline, and
+the two relationship guides are content additions rather than a new product
 capability.
