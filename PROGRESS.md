@@ -1,5 +1,39 @@
 # Murror Progress
 
+## 2026-08-13 - iOS production launch evidence and cross-stack hardening
+
+**Summary.** Builds 430 and 431 anchored a safer iOS staging lane, while a fresh
+production audit kept TestFlight staging proof separate from production App Store
+proof and found two source repairs that must land before the next candidate.
+
+**Key accomplishments:**
+
+- Confirmed Build 431 is TestFlight `VALID` for Murror Beta
+  (`app.murror.mobile.stg`), not for the production Murror AI app.
+- Confirmed the production store still serves 1.0.19 build 5; Build 430 is the
+  newest production upload and is attached to no version, while 1.1.0 remains
+  rejected and its submission remains unresolved.
+- Added an isolated RCT-Folly lock-receipt repair in mobile PR #1102 and refreshed
+  PR #956 against current staging, preserving the intentional takeaway-audio
+  removal while adding runtime contracts, production-host checks, Metro
+  provenance, build-lane coverage, and verified Hermes dSYM attachment.
+- Separated source/CI, staging artifact, production artifact, device, provider,
+  deployment, and App Store evidence so a green test or beta upload cannot be
+  mistaken for a launch candidate.
+- Reconciled the iOS evidence board with the broader cross-stack launch map,
+  including production deployment, clinical, privacy, review-account, and
+  placeholder-entitlement gates.
+- Recorded the August 11-13 mobile, API, voice, backend privacy, and public-content
+  work in
+  [`docs/plans/2026-08-13-ios-production-launch-readiness.md`](docs/plans/2026-08-13-ios-production-launch-readiness.md).
+
+**Current boundary.** PRs #1102 and #956 are still in flight, so Build 431 is not
+the current-source release candidate. No production-distribution IPA, physical
+device proof, production upload, App Store version attachment/submission,
+provider delivery proof, migration, production deployment, pricing decision,
+clinical approval, or privacy-policy decision was performed by this documentation
+pass. No public progress-timeline entry was added.
+
 ## 2026-08-06 (PDT): Builds 417 and 418 shipped, and the paywall footer root cause
 
 Astro's build-416 TestFlight feedback, worked through to two shipped builds. Full
