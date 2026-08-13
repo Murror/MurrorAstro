@@ -22,7 +22,9 @@ is merged; Build 432 landed after it but before the still-running PR #956 checks
   final candidate: its bump merged before PR #956, and its first archive attempt
   failed because Sentry upload phases did not receive the intended disable flag
   and had no auth token. Claude's retry archived and uploaded successfully, but
-  Apple reported the missing Hermes dSYM during export.
+  Apple reported the missing Hermes dSYM during export. Direct inspection of the
+  exact uploaded IPA confirmed Apple Distribution signing, production APNs,
+  `get-task-allow=false`, and matching distribution signatures on both extensions.
 - Separated source/CI, staging artifact, production artifact, device, provider,
   deployment, and App Store evidence so a green test or beta upload cannot be
   mistaken for a launch candidate.
@@ -39,8 +41,8 @@ is merged; Build 432 landed after it but before the still-running PR #956 checks
 
 **Current boundary.** PR #1102 is merged and PR #956 is still in flight. Build
 431 is a staging/Beta artifact, and Build 432 predates the final hardening, so
-neither is the current-source release candidate. No production-distribution IPA, physical
-device proof, current-source production upload, App Store version attachment/submission,
+neither is the current-source release candidate. No current-source production-distribution
+candidate IPA, physical device proof, current-source production upload, App Store version attachment/submission,
 provider delivery proof, migration, production deployment, pricing decision,
 clinical approval, or privacy-policy decision was performed by this documentation
 pass. No public progress-timeline entry was added.

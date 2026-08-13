@@ -16,8 +16,9 @@ is still no current-source production-distribution candidate.
 - **Build 432 is not the combined candidate**. Its bump landed after PR #1102
   but before PR #956, and a production-scheme archive was started from that
   intermediate source. The first attempt failed when Sentry upload phases did
-  not receive the intended disable flag and had no auth token; a separate
-  Claude session owns the retry.
+  not receive the intended disable flag and had no auth token. Claude's retry
+  archived, distribution-signed, uploaded, and processed as `VALID`, but Apple
+  warned that its Hermes dSYM was missing.
 - **The next candidate must be cut from canonical
   `staging-environment-setup`**, after PR #956 lands, using
   `scripts/ios-next-build.sh`. It must not reuse or manually choose a number.
@@ -65,10 +66,13 @@ The same period also closed important server-side source and runtime risks:
   existing consent decliners.
 
 These are meaningful launch inputs, but source presence does not prove every
-change is deployed to production. In particular, the `viasr-api` production
-deployment failed closed because the kubeconfig context name did not match the
-hardcoded guard. Production request/response body logging therefore remains an
-open gate.
+change is deployed to production. The `viasr-api` production deployment failed
+closed because the kubeconfig context name did not match the hardcoded guard.
+Read-only runtime inspection confirmed that the live API pod's explicit
+environment overrides currently disable HTTP request and response body logging.
+The older deployed image still has unsafe fallback defaults, so reviewed source
+promotion and rollback safety remain open gates even though the current pod is
+configured safely.
 
 ### Public content
 
@@ -147,6 +151,17 @@ explicitly warned that the Hermes dSYM for UUID
 `4EAC6EDE-5B89-36B7-8F77-09A0E75C2F4A` was absent. The build remains unattached
 and predates PR #956. This audit did not alter or restart either build attempt.
 
+The transient exported IPA was still available for direct inspection after
+upload. Its SHA-256 was
+`1804e0aed7b8f132e393638d54bfeca1f31f3ca8f5500c609fb3f7648fe58b0d`.
+The main app and both extensions were signed by `Apple Distribution: My Murror
+Inc (YL72VTKBR7)`. The main app used identifier
+`YL72VTKBR7.app.murror.mobile`, `get-task-allow=false`, production APNs, and
+`beta-reports-active=true`; both extensions also used their expected production
+application identifiers and `get-task-allow=false`. This closes distribution
+signing and entitlement uncertainty for Build 432 only. It does not repair the
+missing Hermes symbols or make the pre-PR-#956 source a release candidate.
+
 ## Verification approach
 
 The audit deliberately kept each proof tier separate:
@@ -156,6 +171,7 @@ The audit deliberately kept each proof tier separate:
 | Source | Canonical merge SHAs, current-base PR diffs, lock receipt, runtime contracts | A signed artifact or deployment |
 | Automation | Unit, contract, JS bundle, Android, and hosted iOS jobs | Physical-device behavior or App Review acceptance |
 | Staging artifact | Build 431 is TestFlight `VALID` for Murror Beta | Production bundle, distribution candidate, or submission |
+| Intermediate production artifact | Directly inspected Build 432 IPA is Apple Distribution signed with production APNs and `get-task-allow=false` | Current-source candidate status, Hermes symbol ingestion, physical-device behavior, or submission |
 | Production App Store | Live 1.0.19 build 5; newest production upload 432 is `VALID` but unattached; 1.1.0 rejected | Readiness of the next source candidate, provider symbol ingestion, or submission |
 | Runtime | Production health and scoped database-policy checks | Exact deployment SHA, rollback, every user flow, or provider delivery |
 
@@ -171,14 +187,15 @@ For the next candidate, the minimum evidence chain is:
 6. Verify the bump commit is present on remote
    `staging-environment-setup`, then run `scripts/verify-build-lane.sh`.
 7. Attach the verified Hermes dSYM to the archive.
-8. Treat distribution signing, upload, physical-device testing, and submission
-   as explicit later gates.
+8. Treat exact-candidate distribution signing, upload, physical-device testing,
+   and submission as explicit later gates; Build 432 proves only the intermediate
+   source snapshot.
 
 ## Launch gates still open
 
 ### Engineering and artifact gates
 
-- Production-distribution signing identity and production IPA.
+- Current-source production-distribution signing identity and candidate IPA.
 - Exact final-candidate physical iPhone install and 1.0.19 upgrade path.
 - StoreKit and RevenueCat subscriber-state matrix.
 - APNs and OneSignal delivery across foreground, background, terminated, denied,
