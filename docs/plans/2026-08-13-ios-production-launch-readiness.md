@@ -7,9 +7,9 @@ is still no current-source production-distribution candidate.
 
 - **Build 431 is valid on TestFlight only for Murror Beta**, bundle
   `app.murror.mobile.stg`, App Store Connect app `6741769645`.
-- **The public production app is still 1.0.19 (build 5)**. Build 430 is the
-  newest upload for Murror AI, bundle `app.murror.mobile`, App Store Connect app
-  `6741769381`, and is attached to no version.
+- **The public production app is still 1.0.19 (build 5)**. Build 432 is now the
+  newest `VALID` upload for Murror AI, bundle `app.murror.mobile`, App Store
+  Connect app `6741769381`, and is attached to no version.
 - **Build 431 predates both required source repairs**. The RCT-Folly lock
   receipt repair in PR #1102 is now merged; the refreshed runtime/release
   contracts in PR #956 are still completing exact-current-base CI.
@@ -141,8 +141,11 @@ combined candidate.
 The first production-scheme archive attempt also exposed an independent release
 configuration issue: the Sentry source-map and native-symbol phases saw
 `SENTRY_DISABLE_AUTO_UPLOAD` as empty, tried authenticated uploads, and failed
-without a Sentry token. Another Claude session owns the retry; this audit did
-not alter or restart that build.
+without a Sentry token. Claude's retry carried the flag correctly, archived,
+exported, and uploaded Build 432. Apple processed it as `VALID`, but export
+explicitly warned that the Hermes dSYM for UUID
+`4EAC6EDE-5B89-36B7-8F77-09A0E75C2F4A` was absent. The build remains unattached
+and predates PR #956. This audit did not alter or restart either build attempt.
 
 ## Verification approach
 
@@ -153,7 +156,7 @@ The audit deliberately kept each proof tier separate:
 | Source | Canonical merge SHAs, current-base PR diffs, lock receipt, runtime contracts | A signed artifact or deployment |
 | Automation | Unit, contract, JS bundle, Android, and hosted iOS jobs | Physical-device behavior or App Review acceptance |
 | Staging artifact | Build 431 is TestFlight `VALID` for Murror Beta | Production bundle, distribution candidate, or submission |
-| Production App Store | Live 1.0.19 build 5; newest production upload 430 unattached; 1.1.0 rejected | Readiness of the next source candidate |
+| Production App Store | Live 1.0.19 build 5; newest production upload 432 is `VALID` but unattached; 1.1.0 rejected | Readiness of the next source candidate, provider symbol ingestion, or submission |
 | Runtime | Production health and scoped database-policy checks | Exact deployment SHA, rollback, every user flow, or provider delivery |
 
 For the next candidate, the minimum evidence chain is:

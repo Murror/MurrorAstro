@@ -11,9 +11,9 @@ is merged; Build 432 landed after it but before the still-running PR #956 checks
 
 - Confirmed Build 431 is TestFlight `VALID` for Murror Beta
   (`app.murror.mobile.stg`), not for the production Murror AI app.
-- Confirmed the production store still serves 1.0.19 build 5; Build 430 is the
-  newest production upload and is attached to no version, while 1.1.0 remains
-  rejected and its submission remains unresolved.
+- Confirmed the production store still serves 1.0.19 build 5. Build 432 is now
+  the newest production upload and is `VALID` but attached to no version, while
+  1.1.0 remains rejected and its submission remains unresolved.
 - Landed the isolated RCT-Folly lock-receipt repair in mobile PR #1102 and
   refreshed PR #956 against current staging, preserving the intentional takeaway-audio
   removal while adding runtime contracts, production-host checks, Metro
@@ -21,7 +21,8 @@ is merged; Build 432 landed after it but before the still-running PR #956 checks
 - Recorded Build 432 as an intermediate production-scheme diagnostic, not the
   final candidate: its bump merged before PR #956, and its first archive attempt
   failed because Sentry upload phases did not receive the intended disable flag
-  and had no auth token. A separate Claude session owns the retry.
+  and had no auth token. Claude's retry archived and uploaded successfully, but
+  Apple reported the missing Hermes dSYM during export.
 - Separated source/CI, staging artifact, production artifact, device, provider,
   deployment, and App Store evidence so a green test or beta upload cannot be
   mistaken for a launch candidate.
@@ -39,7 +40,7 @@ is merged; Build 432 landed after it but before the still-running PR #956 checks
 **Current boundary.** PR #1102 is merged and PR #956 is still in flight. Build
 431 is a staging/Beta artifact, and Build 432 predates the final hardening, so
 neither is the current-source release candidate. No production-distribution IPA, physical
-device proof, production upload, App Store version attachment/submission,
+device proof, current-source production upload, App Store version attachment/submission,
 provider delivery proof, migration, production deployment, pricing decision,
 clinical approval, or privacy-policy decision was performed by this documentation
 pass. No public progress-timeline entry was added.
