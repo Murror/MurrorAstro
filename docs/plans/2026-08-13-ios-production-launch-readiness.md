@@ -11,8 +11,8 @@ is still no current-source production-distribution candidate.
   newest `VALID` upload for Murror AI, bundle `app.murror.mobile`, App Store
   Connect app `6741769381`, and is attached to no version.
 - **Build 431 predates both required source repairs**. The RCT-Folly lock
-  receipt repair in PR #1102 is now merged; the refreshed runtime/release
-  contracts in PR #956 are still completing exact-current-base CI.
+  receipt repair in PR #1102 and the refreshed runtime/release contracts in PR
+  #956 are now merged after exact-current-base CI.
 - **Build 432 is not the combined candidate**. Its bump landed after PR #1102
   but before PR #956, and a production-scheme archive was started from that
   intermediate source. The first attempt failed when Sentry upload phases did
@@ -20,7 +20,8 @@ is still no current-source production-distribution candidate.
   archived, distribution-signed, uploaded, and processed as `VALID`, but Apple
   warned that its Hermes dSYM was missing.
 - **The next candidate must be cut from canonical
-  `staging-environment-setup`**, after PR #956 lands, using
+  `staging-environment-setup`**, after the separate observability finalizer
+  passes independent review, hosted checks, and merge, using
   `scripts/ios-next-build.sh`. It must not reuse or manually choose a number.
 
 The correct launch verdict remains **NO-GO**. Source hardening is moving forward;
@@ -107,7 +108,9 @@ The refresh removed the obsolete contract, preserved the newer behavior, and
 added current-base runtime contracts, a production-host guard, build-lane
 checklist coverage, Metro provenance, and a fail-closed Hermes dSYM attachment
 helper. The helper verifies both the official artifact SHA-256 and the archive
-binary UUID, including negative tests for downloaded and cached corruption.
+binary UUID, including negative tests for downloaded and cached corruption. PR
+#956 then passed the exact-current-base hosted matrix and merged as
+`e0b4b6fd85d4ec0a02a28a45820f6b1a329ded86`.
 
 ### 3. "Staging branch" and "production app" were being conflated
 
@@ -162,6 +165,24 @@ application identifiers and `get-task-allow=false`. This closes distribution
 signing and entitlement uncertainty for Build 432 only. It does not repair the
 missing Hermes symbols or make the pre-PR-#956 source a release candidate.
 
+### 7. Archive-time Sentry automation was not a trustworthy evidence boundary
+
+Build 432's first archive attempt showed that the two Xcode Sentry phases could
+try provider uploads before the archive was complete. The retry disabled those
+uploads, but that also left no provider receipt and did not attach the Hermes
+dSYM. A token appearing later would make archive creation itself perform an
+external write before all binaries, maps, UUIDs, and signatures were proven.
+
+An isolated follow-up now keeps archive-time uploads disabled and moves evidence
+collection into an explicit post-archive finalizer. Its current review snapshot
+binds the signed bundle, composed source map, Sentry module inventory, dependency
+lock, canonical Git source, Apple signing requirements, full entitlement
+allowlists, binary/dSYM UUID inventory, and official Hermes artifact. A separate
+uploader re-verifies those facts before reading a short-lived token or touching
+the provider and journals partial outcomes. The focused release-script suite is
+green, but this remains source-under-review rather than canonical or provider
+proof until independent review, hosted CI, and merge are complete.
+
 ## Verification approach
 
 The audit deliberately kept each proof tier separate:
@@ -180,16 +201,19 @@ For the next candidate, the minimum evidence chain is:
 1. PR #1102: merged after hosted iOS passed.
 2. PR #1103: merged Build 432 after PR #1102, before PR #956; retain it as
    intermediate diagnostic evidence only.
-3. Merge PR #956 only after exact-current-base CI and independent review are
+3. PR #956: merged only after exact-current-base CI and independent review were
    green.
-4. Run `scripts/ios-next-build.sh` from a clean isolated worktree.
-5. Land the generated bump by PR before any archive work.
-6. Verify the bump commit is present on remote
+4. Land the separate observability finalizer only after exact-snapshot security
+   and functional reviews plus hosted CI are green.
+5. Run `scripts/ios-next-build.sh` from a clean isolated worktree.
+6. Land the generated bump by PR before any archive work.
+7. Verify the bump commit is present on remote
    `staging-environment-setup`, then run `scripts/verify-build-lane.sh`.
-7. Attach the verified Hermes dSYM to the archive.
-8. Treat exact-candidate distribution signing, upload, physical-device testing,
-   and submission as explicit later gates; Build 432 proves only the intermediate
-   source snapshot.
+8. Finalize a working copy of the exact archive, attach the verified Hermes
+   dSYM, and validate its signed provenance before export.
+9. Treat exact-candidate distribution signing, Apple upload, Sentry upload and
+   provider inspection, physical-device testing, and submission as separate
+   later gates; Build 432 proves only the intermediate source snapshot.
 
 ## Launch gates still open
 
@@ -245,7 +269,8 @@ and backend owner gates rather than silently treating them as green.
 
 No investor-facing progress-timeline entry should be added for this period.
 Build 431 is not public and predates current required source repairs. Build 432
-also predates PR #956 and is not the combined candidate. The privacy and
+also predates PR #956 and the observability finalizer, so it is not the combined
+candidate. The privacy and
 infrastructure changes are intentionally excluded from the public timeline, and
 the two relationship guides are content additions rather than a new product
 capability.
