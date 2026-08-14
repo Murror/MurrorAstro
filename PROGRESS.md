@@ -1,5 +1,61 @@
 # Murror Progress
 
+## 2026-08-13 - iOS production launch evidence and cross-stack hardening
+
+**Summary.** Builds 430 and 431 anchored a safer iOS staging lane, while a fresh
+production audit kept TestFlight staging proof separate from production App Store
+proof and found two source repairs required before the final candidate. PRs #1102
+and #956 are merged; Build 432 landed after #1102 but before #956.
+
+**Key accomplishments:**
+
+- Confirmed Build 431 is TestFlight `VALID` for Murror Beta
+  (`app.murror.mobile.stg`), not for the production Murror AI app.
+- Confirmed the production store still serves 1.0.19 build 5. Build 432 is now
+  the newest production upload and is `VALID` but attached to no version, while
+  1.1.0 remains rejected and its submission remains unresolved.
+- Landed the isolated RCT-Folly lock-receipt repair in mobile PR #1102 and the
+  exact-current-base runtime/release hardening in PR #956, preserving the
+  intentional takeaway-audio removal while adding runtime contracts,
+  production-host checks, Metro provenance, build-lane coverage, and verified
+  Hermes dSYM attachment.
+- Prepared a separate post-archive observability finalizer in an isolated mobile
+  worktree. It keeps archive-time Sentry uploads disabled, binds the signed
+  bundle, source map, module inventory, Git source, signing identity,
+  entitlements, binary UUIDs, and Hermes artifact into a receipt, and keeps
+  Apple export separate from an explicit provider upload. It remains outside
+  canonical source pending independent review and hosted PR checks.
+- Recorded Build 432 as an intermediate production-scheme diagnostic, not the
+  final candidate: its bump merged before PR #956, and its first archive attempt
+  failed because Sentry upload phases did not receive the intended disable flag
+  and had no auth token. Claude's retry archived and uploaded successfully, but
+  Apple reported the missing Hermes dSYM during export. Direct inspection of the
+  exact uploaded IPA confirmed Apple Distribution signing, production APNs,
+  `get-task-allow=false`, and matching distribution signatures on both extensions.
+- Separated source/CI, staging artifact, production artifact, device, provider,
+  deployment, and App Store evidence so a green test or beta upload cannot be
+  mistaken for a launch candidate.
+- Reconciled the iOS evidence board with the broader cross-stack launch map,
+  including production deployment, clinical, privacy, review-account, and
+  placeholder-entitlement gates.
+- Corrected the shared Viasr branch map and kubeconfig runbook: production uses
+  the dedicated `production` branch, and its workflow consumes raw kubeconfig
+  YAML. Claude-owned PR #619 is green, while promotion, stale-secret rotation,
+  and any production dispatch remain owner-approved gates.
+- Recorded the August 11-13 mobile, API, voice, backend privacy, and public-content
+  work in
+  [`docs/plans/2026-08-13-ios-production-launch-readiness.md`](docs/plans/2026-08-13-ios-production-launch-readiness.md).
+
+**Current boundary.** PRs #1102 and #956 are merged, but the post-archive
+observability finalizer remains under independent review and is not canonical.
+Build 431 is a staging/Beta artifact, and Build 432 predates PR #956 and the
+finalizer, so neither is the current-source release candidate. No current-source
+production-distribution candidate IPA, physical-device proof, current-source
+production upload, App Store version attachment/submission, provider delivery
+proof, migration, production deployment, pricing decision, clinical approval,
+or privacy-policy decision was performed by this documentation pass. No public
+progress-timeline entry was added.
+
 ## 2026-08-06 (PDT): Builds 417 and 418 shipped, and the paywall footer root cause
 
 Astro's build-416 TestFlight feedback, worked through to two shipped builds. Full

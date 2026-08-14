@@ -1,0 +1,276 @@
+# iOS production launch readiness, August 11-13, 2026
+
+## TL;DR
+
+Murror's iOS source became materially safer across builds 430 and 431, but there
+is still no current-source production-distribution candidate.
+
+- **Build 431 is valid on TestFlight only for Murror Beta**, bundle
+  `app.murror.mobile.stg`, App Store Connect app `6741769645`.
+- **The public production app is still 1.0.19 (build 5)**. Build 432 is now the
+  newest `VALID` upload for Murror AI, bundle `app.murror.mobile`, App Store
+  Connect app `6741769381`, and is attached to no version.
+- **Build 431 predates both required source repairs**. The RCT-Folly lock
+  receipt repair in PR #1102 and the refreshed runtime/release contracts in PR
+  #956 are now merged after exact-current-base CI.
+- **Build 432 is not the combined candidate**. Its bump landed after PR #1102
+  but before PR #956, and a production-scheme archive was started from that
+  intermediate source. The first attempt failed when Sentry upload phases did
+  not receive the intended disable flag and had no auth token. Claude's retry
+  archived, distribution-signed, uploaded, and processed as `VALID`, but Apple
+  warned that its Hermes dSYM was missing.
+- **The next candidate must be cut from canonical
+  `staging-environment-setup`**, after the separate observability finalizer
+  passes independent review, hosted checks, and merge, using
+  `scripts/ios-next-build.sh`. It must not reuse or manually choose a number.
+
+The correct launch verdict remains **NO-GO**. Source hardening is moving forward;
+signed-artifact, physical-device, provider, production-deployment, App Store,
+clinical, privacy, and product-policy evidence remain separate gates.
+
+## What changed
+
+### Mobile source and release lane
+
+Between August 11 and 13, the mobile staging trunk landed the following release
+work:
+
+| Area | Evidence | Result |
+|---|---|---|
+| Release provenance | PRs #1080, #1081, #1085, #1101 | Added lane checks and anchored builds 430 and 431 in canonical source. |
+| Widgets and Live Activities | PRs #1079, #1095 | Raised extension deployment floors and hardened media/state handling. |
+| Account and credential isolation | PRs #1086, #1089 | Prevented deferred routes and shared app-group refresh tokens from crossing accounts or environments. |
+| Consent and crisis safety | PRs #1094, #1099, #1100 | Added a pre-transmission AI consent gate, severe-result crisis resources, and accurate storage/provider copy. |
+| Accessibility | PR #1098 | Improved Dynamic Type and large-text behavior in release-critical surfaces. |
+| Android privacy and telemetry | PRs #1087, #1088 | Decoupled Sentry configuration and removed advertising-ID collection. |
+| Regression and dependency controls | PRs #1074, #1092, #1096 | Added CI baselines, protected the intentional takeaway-audio removal, and pinned the accepted OSV advisory baseline. |
+| App Store visibility | PR #1093 | Added a submission-state monitor, but its schedule is not active until the workflow is present on GitHub's default branch. |
+
+Build 431 carries the consent, crisis-resource, consent-copy, and App Store
+monitor source changes. It is useful staging-device evidence, but it cannot be
+promoted or submitted as the production app because its bundle identifier is
+different.
+
+### Backend and privacy work
+
+The same period also closed important server-side source and runtime risks:
+
+- `murror-api` landed family-seat entitlement handling, a placeholder-entitlement
+  safety gate, a production WebSocket authentication hotfix, source
+  reconciliation, and safe organic-attribution handling.
+- `viasr-api` landed authenticated private TTS, notification hardening,
+  serialized deployment controls, and request/response body-log privacy
+  controls.
+- The backend tightened row-level access on seven personal-data tables and
+  separated AI-training consent from deletion intent. Runtime checks found no
+  permissive `USING(true)` policy on the scoped tables and preserved all eight
+  existing consent decliners.
+
+These are meaningful launch inputs, but source presence does not prove every
+change is deployed to production. The `viasr-api` production deployment failed
+closed because the kubeconfig context name did not match the hardcoded guard.
+Read-only runtime inspection confirmed that the live API pod's explicit
+environment overrides currently disable HTTP request and response body logging.
+The older deployed image still has unsafe fallback defaults, so reviewed source
+promotion and rollback safety remain open gates even though the current pod is
+configured safely.
+
+### Public content
+
+Two new relationship guides are live in English, Vietnamese, and Japanese:
+
+- `https://murror.app/resources/how-to-remember-what-people-tell-you`
+- `https://murror.app/resources/how-to-help-a-friend-through-a-breakup`
+
+They are public content additions, not evidence of a new app capability or a
+public iOS release.
+
+## Bugs and root causes found
+
+### 1. The tracked CocoaPods receipt drifted
+
+A clean production-configuration build exposed a one-line RCT-Folly checksum
+drift in `ios/Podfile.lock`. The pod version did not change; the tracked receipt
+was stale. The deterministic repair landed in PR #1102.
+
+Why it matters: a locally repaired checkout can build while canonical source
+still cannot. Any archive created before the repair lands lacks exact-source
+provenance and must not be relabeled as the candidate.
+
+### 2. A green old PR had become semantically stale
+
+PR #956 originally passed on an August 12 merge base while still requiring a
+takeaway-audio path that PR #1092 later removed intentionally. GitHub reported a
+clean textual merge, but current staging plus the old contract would fail by
+construction.
+
+The refresh removed the obsolete contract, preserved the newer behavior, and
+added current-base runtime contracts, a production-host guard, build-lane
+checklist coverage, Metro provenance, and a fail-closed Hermes dSYM attachment
+helper. The helper verifies both the official artifact SHA-256 and the archive
+binary UUID, including negative tests for downloaded and cached corruption. PR
+#956 then passed the exact-current-base hosted matrix and merged as
+`e0b4b6fd85d4ec0a02a28a45820f6b1a329ded86`.
+
+### 3. "Staging branch" and "production app" were being conflated
+
+`staging-environment-setup` is the canonical source branch for the iOS release
+lane. The production scheme inside that branch is `MurrorMobile`, bundle
+`app.murror.mobile`. The existing Build 431 archive and TestFlight upload used
+`MurrorMobileStaging`, bundle `app.murror.mobile.stg`.
+
+The branch name describes the source-integration lane; the scheme and bundle
+identify the product artifact. All three must be recorded separately.
+
+### 4. The App Store monitor is configured but not scheduled
+
+The four App Store Connect repository secrets now exist. However, GitHub's
+default branch is `main`, and `asc-submission-monitor.yaml` exists only on
+`staging-environment-setup`. Scheduled workflows register from the default
+branch, so the monitor is available as source but is not watching automatically.
+
+### 5. Build-number collision protection had a silent dependency failure
+
+The App Store query inside the build-number path previously lacked its Python
+dependencies and fell back to git-only numbering. Before Build 431 was bumped,
+the environment was repaired and the number was checked against live App Store
+Connect. Future cuts must continue to prove both canonical-git and live-Apple
+inputs before changing any of the 30 version sites.
+
+### 6. Build 432 closed one gap but raced the final source repair
+
+PR #1103 bumped all 30 version sites to 432 only after PR #1102 merged, so the
+lock receipt is canonical. It merged before PR #956, however, which means any
+Build 432 archive predates the runtime contracts, production-host guard, and
+Hermes dSYM helper. It is useful diagnostic evidence but cannot be the final
+combined candidate.
+
+The first production-scheme archive attempt also exposed an independent release
+configuration issue: the Sentry source-map and native-symbol phases saw
+`SENTRY_DISABLE_AUTO_UPLOAD` as empty, tried authenticated uploads, and failed
+without a Sentry token. Claude's retry carried the flag correctly, archived,
+exported, and uploaded Build 432. Apple processed it as `VALID`, but export
+explicitly warned that the Hermes dSYM for UUID
+`4EAC6EDE-5B89-36B7-8F77-09A0E75C2F4A` was absent. The build remains unattached
+and predates PR #956. This audit did not alter or restart either build attempt.
+
+The transient exported IPA was still available for direct inspection after
+upload. Its SHA-256 was
+`1804e0aed7b8f132e393638d54bfeca1f31f3ca8f5500c609fb3f7648fe58b0d`.
+The main app and both extensions were signed by `Apple Distribution: My Murror
+Inc (YL72VTKBR7)`. The main app used identifier
+`YL72VTKBR7.app.murror.mobile`, `get-task-allow=false`, production APNs, and
+`beta-reports-active=true`; both extensions also used their expected production
+application identifiers and `get-task-allow=false`. This closes distribution
+signing and entitlement uncertainty for Build 432 only. It does not repair the
+missing Hermes symbols or make the pre-PR-#956 source a release candidate.
+
+### 7. Archive-time Sentry automation was not a trustworthy evidence boundary
+
+Build 432's first archive attempt showed that the two Xcode Sentry phases could
+try provider uploads before the archive was complete. The retry disabled those
+uploads, but that also left no provider receipt and did not attach the Hermes
+dSYM. A token appearing later would make archive creation itself perform an
+external write before all binaries, maps, UUIDs, and signatures were proven.
+
+An isolated follow-up now keeps archive-time uploads disabled and moves evidence
+collection into an explicit post-archive finalizer. Its current review snapshot
+binds the signed bundle, composed source map, Sentry module inventory, dependency
+lock, canonical Git source, Apple signing requirements, full entitlement
+allowlists, binary/dSYM UUID inventory, and official Hermes artifact. A separate
+uploader re-verifies those facts before reading a short-lived token or touching
+the provider and journals partial outcomes. The focused release-script suite is
+green, but this remains source-under-review rather than canonical or provider
+proof until independent review, hosted CI, and merge are complete.
+
+## Verification approach
+
+The audit deliberately kept each proof tier separate:
+
+| Proof tier | Current evidence | What it does not prove |
+|---|---|---|
+| Source | Canonical merge SHAs, current-base PR diffs, lock receipt, runtime contracts | A signed artifact or deployment |
+| Automation | Unit, contract, JS bundle, Android, and hosted iOS jobs | Physical-device behavior or App Review acceptance |
+| Staging artifact | Build 431 is TestFlight `VALID` for Murror Beta | Production bundle, distribution candidate, or submission |
+| Intermediate production artifact | Directly inspected Build 432 IPA is Apple Distribution signed with production APNs and `get-task-allow=false` | Current-source candidate status, Hermes symbol ingestion, physical-device behavior, or submission |
+| Production App Store | Live 1.0.19 build 5; newest production upload 432 is `VALID` but unattached; 1.1.0 rejected | Readiness of the next source candidate, provider symbol ingestion, or submission |
+| Runtime | Production health and scoped database-policy checks | Exact deployment SHA, rollback, every user flow, or provider delivery |
+
+For the next candidate, the minimum evidence chain is:
+
+1. PR #1102: merged after hosted iOS passed.
+2. PR #1103: merged Build 432 after PR #1102, before PR #956; retain it as
+   intermediate diagnostic evidence only.
+3. PR #956: merged only after exact-current-base CI and independent review were
+   green.
+4. Land the separate observability finalizer only after exact-snapshot security
+   and functional reviews plus hosted CI are green.
+5. Run `scripts/ios-next-build.sh` from a clean isolated worktree.
+6. Land the generated bump by PR before any archive work.
+7. Verify the bump commit is present on remote
+   `staging-environment-setup`, then run `scripts/verify-build-lane.sh`.
+8. Finalize a working copy of the exact archive, attach the verified Hermes
+   dSYM, and validate its signed provenance before export.
+9. Treat exact-candidate distribution signing, Apple upload, Sentry upload and
+   provider inspection, physical-device testing, and submission as separate
+   later gates; Build 432 proves only the intermediate source snapshot.
+
+## Launch gates still open
+
+### Engineering and artifact gates
+
+- Current-source production-distribution signing identity and candidate IPA.
+- Exact final-candidate physical iPhone install and 1.0.19 upgrade path.
+- StoreKit and RevenueCat subscriber-state matrix.
+- APNs and OneSignal delivery across foreground, background, terminated, denied,
+  and revoked states.
+- Provider-side Hermes symbol ingestion and one symbolicated crash.
+- Exact production deployment provenance and rollback for all required services.
+- Promote Claude-owned Viasr PR #619 through reviewed staging and production
+  branches. Keep context labels diagnostic while API-server, embedded-CA,
+  CA-fingerprint, and TLS checks remain fatal.
+- Replace the production Viasr kubeconfig with a raw-YAML, namespace-scoped SGP1
+  credential after an identity-only preflight is reviewed and explicitly
+  approved. The stored secret predates the SGP1 cluster and the GitHub production
+  environment currently has no reviewer protection.
+- Preserve the live Viasr deployment's explicit body-logging-off overrides until
+  the safe source defaults are deployed. The current pod is safe, but the older
+  image's fallback defaults are not.
+- VoiceOver, Dynamic Type, and supported-locale device passes.
+
+### App Store, safety, and owner gates
+
+- Resolve the 127-day `UNRESOLVED_ISSUES` submission and the 1.1.0 rejection in
+  Resolution Center.
+- Create and populate the 2.0.0 App Store version, screenshots, release notes,
+  privacy labels, age rating, and review credentials.
+- Reconcile privacy-policy statements and add an in-app consent-withdrawal path.
+- Obtain clinical approval for PHQ-9 severity bands, item 9 crisis signaling, and
+  localized crisis resources before reopening Vietnamese or Japanese app UI.
+- Decide how to handle 2,813 placeholder premium entitlements.
+- Keep English-only launch and Duo delay unless Astro explicitly reopens scope.
+
+## Tracking-page reconciliation
+
+The two Claude artifacts represent the same launch objective at different zoom
+levels:
+
+- The production launch artifact is the cross-stack dependency map.
+- The iOS launch board is the detailed evidence ledger for mobile source,
+  artifact, device, provider, and App Store gates.
+
+They should remain separate views but share one set of facts. The production
+artifact should say that Build 431 is valid for the staging/Beta app, not the
+production app, and that the App Store monitor has credentials but no active
+schedule. The iOS board should link the broader clinical, privacy, entitlement,
+and backend owner gates rather than silently treating them as green.
+
+## Public-progress decision
+
+No investor-facing progress-timeline entry should be added for this period.
+Build 431 is not public and predates current required source repairs. Build 432
+also predates PR #956 and the observability finalizer, so it is not the combined
+candidate. The privacy and
+infrastructure changes are intentionally excluded from the public timeline, and
+the two relationship guides are content additions rather than a new product
+capability.

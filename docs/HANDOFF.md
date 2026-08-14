@@ -70,7 +70,7 @@ For a real iPhone test of staging changes, archive `MurrorMobileStaging`. See [`
 |---|---|---|
 | `MurrorMobile` | `staging-environment-setup` | Long-lived "staging" branch on the mobile side; `main` is promoted from this. |
 | `murror-api` | `staging` | Standard pattern. |
-| `viasr-api` | `staging` | Standard pattern. Production promoted from `main` via `workflow_dispatch` (no `production` branch — common mistake). |
+| `viasr-api` | `staging` | Integration lands on `staging`; production promotion targets the dedicated `production` branch, whose workflow accepts an approved full staging SHA. `main` is the Alpha lane. |
 
 **Never push direct to `main` on any repo.** All changes via PR. Back-merge PRs (production → staging after a hotfix) must use **merge-commit**, not squash — squashing breaks ancestry and leaves downstream promotion PRs perpetually CONFLICTING. See [`CONVENTIONS.md`](./CONVENTIONS.md).
 
