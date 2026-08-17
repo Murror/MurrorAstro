@@ -1,5 +1,58 @@
 # Murror Progress
 
+## 2026-08-17 (PDT): Production moved, and the Sentry scrubber took four rounds
+
+First production change of the 2.0.0 push. `murror-api` went `0.41.1` -> `0.41.2` on
+SGP1 `nsp-prod-murror`, rollout revision 10 -> 11, verified by pod image, fresh pod
+start times and the change-cause annotation rather than by the workflow conclusion.
+Full writeup: `docs/plans/2026-08-17-murror-api-production-deploy-and-sentry-scrub.md`.
+
+### Shipped
+
+- **#774** into `staging`: every CI contract runs in the loop. The old skip-list
+  coupled the loop to an earlier fail-fast step, so deleting that step would have
+  stopped both production contracts running anywhere while CI stayed green.
+- **#773** into `staging`: the Sentry PII scrubber, 8 commits across 4 review rounds.
+- **#771** into `production`: the staging-to-production reconcile, zero conflicts,
+  production's own commit proven byte-identical by md5 before and after.
+- **#777** into `staging`: corrected the production promotion path in CLAUDE.md.
+- **Production deploy** dispatched on the `production` ref, run `31921391503`.
+
+### Seven Important scrubber findings, every one of which passed a green suite
+
+Unscrubbed `event.user` / exception messages / `event.extra` on the transports that
+bypass the Nest filters; `Error.name` is writable so the exception `type` was
+attacker-settable; both key-validator maps reachable through the PROTOTYPE CHAIN
+(`constructor` resolves to inherited `Object`, truthy and callable, so the value
+survived); `event.spans` spread rather than rebuilt; `stacktrace` passed by reference
+carrying local variable values; the uuid guard anchored on both validators so neither
+caught an embedded id; and the six span-identity fields validated in one place and
+trusted in another.
+
+### Operating notes
+
+- The agreed Sentry precondition was UNSATISFIABLE. Alpha and staging have no
+  `SENTRY_DSN`, so "trigger a 500 on alpha and confirm no PII" passes instantly and
+  proves nothing. Production is the only tier with a DSN.
+- The documented promotion path was wrong. Production gates on `workflow_dispatch`
+  AND a `production` ref; a dispatch from `main` skips every job and reports green.
+- A diff count needs its baseline. "659 ahead of main" made a routine reconcile look
+  dangerous; against `staging`, which feeds production, it was 7 ahead / 16 behind.
+- The worktree staleness trap produced three separate wrong conclusions in one day,
+  including a Critical security finding built on an unfetched file.
+
+### 2.0.0 API readiness
+
+All 147 API paths the client can call, diffed against the 312 routes production
+registers at boot: 143 served, 4 dead code with zero callers, 4 gated dark and
+failing closed, **0 reachable gaps**.
+
+### Still unverified
+
+The PII scrubbers are deployed and have never executed anywhere. Sentry has recorded
+zero events since the roll. That is a test that has not run, not a pass.
+
+
 ## 2026-08-06 (PDT): Builds 417 and 418 shipped, and the paywall footer root cause
 
 Astro's build-416 TestFlight feedback, worked through to two shipped builds. Full
