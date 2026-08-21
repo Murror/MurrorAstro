@@ -1,5 +1,89 @@
 # Murror Progress
 
+## 2026-08-21 (PDT): Build 441 uploaded, and the archive path was the bug all along
+
+**Murror 2.0.0, build 441, is archived, uploaded to App Store Connect and attached to the
+2.0.0 record.** First successful production archive since build 432 on 08-13, ending sixteen
+consecutive failures. Full writeup:
+`docs/plans/2026-08-21-ios-archive-restored-441-uploaded.md`.
+
+### The cause was a date, not a defect
+
+Build 432 uploaded at 16:46 PDT on 08-13. `d3dce65e` landed at 21:04 the same evening and
+rewrote the app's own production bundle build phase so that `install:iphoneos:Release`, exactly
+what `xcodebuild archive` sets, routes through the hermetic lane's wrapper under `env -i`.
+From that commit a production archive was structurally impossible outside the lane. Nothing
+about the app broke. CI compiled it green the whole time.
+
+The lane could not finish because its read-only seal asserts the build never writes to its
+dependency trees, which is false for React Native. Three writers were found and patched
+individually (Hermes swap, 15 compat-header modulemaps, `react-native-config` codegen), each
+costing a re-baseline and a build number. The rest are not enumerable by inspection: the
+writes happen inside tools the phases invoke.
+
+Confirmation came from a stranded task found on 08-21 whose 08-20 run had reproduced the Pods
+digest **exactly** and still been rejected by the lane.
+
+### Shipped
+
+- **#1127** into `staging-environment-setup`: restored the build-432 stock bundle phase.
+  8 files, +18 / -3,189. One pbxproj line, checksum-verified against `5b1c2c67`.
+- **#1128**: scripted 441 bump via `ios-next-build.sh`, max(canonical 440, ASC 432) + 1.
+- **Build 441 uploaded** 21:52 +07, `VALID` in ASC by 21:57, attached to version record
+  `c89c6942`, replacing build 141 from April. Record moved `REJECTED` ->
+  `PREPARE_FOR_SUBMISSION`.
+- **#1119** vendored `@rneui` as tarballs, killing the umask-dependent lockfile hash that
+  had killed build 436.
+
+### CI caught a wrong revert target, and that was the good outcome
+
+The first attempt reverted to `d3dce65e^`. CI rejected it because that intermediate wrapper
+calls BSD `stat -f '%u'` unconditionally, which cannot pass the Ubuntu runner that has run
+every `scripts/ci` test since 08-11. **That intermediate never had a green CI run.** The only
+state proven both green and able to archive is `5b1c2c67`, where the wrapper and its
+2,143-line contract test did not exist at all.
+
+### Codex review blocked the merge, correctly, on four findings
+
+All verified against the code before acting: archive-time Sentry upload could re-enable (in
+fact it **fails** the archive when the token is invalid, and ours is revoked); the retained
+driver still `verify_tracked_tool`s the deleted wrapper; the 432 release checklist would
+resurrect Android, Fastlane and manual build-number guidance; and source changes invalidate
+440 so a scripted 441 was mandatory. Codex's separate recommendation to retry the lane from a
+standalone clone was **not adopted**: that fixes only the `.git` guard, while the wrapper still
+needs the driver-only `MURROR_RELEASE_*` bootstrap.
+
+Codex's own diagnosis of the worktree failure was right and is recorded: 440 archived from a
+linked worktree whose `.git` is a pointer file, and CI never caught it because CI builds a
+simulator with `ACTION=build`.
+
+### Operating notes
+
+- `pod install` under the repo's pinned toolchain (Ruby 3.4.1 + bundler) **reproduces**
+  canonical's `Podfile.lock`. Bare system CocoaPods under Ruby 3.2.0 rewrites ~47 spec
+  checksums. The earlier belief that canonical's lockfile was hand-maintained drift was wrong.
+- CocoaPods throws `Encoding::CompatibilityError` on its own install path when `LANG` is unset.
+- Two sets of orphaned background processes were killed: seven `gh pr checks` watchers from a
+  dead peer session running 3d21h whose `--required` exit condition can never fire on a repo
+  without branch protection, and a 22h task whose measurement had finished but whose `ugrep`
+  child had wedged.
+
+### Codex lanes in parallel
+
+- **Web parity** (murror-platform, `staging`): #356-#374, authenticated routes and contracts,
+  Home and Diary aligned with production iOS, recovery OTP completed, Family and Subscription
+  locale parity, global locale-key guard, Duo policy contracts, English-only picker.
+- **Marketing** (`feat/marketing-site`): early access became a reviewed application (#372),
+  and #378 fixed approvals that mailed nobody while claiming otherwise. Plus signup lifecycle
+  and attribution (#355), feedback-form analytics (#375), feedback media into the CRM (#367).
+- **Android** (MurrorMobile): 338 commits on branches, **zero reachable from canonical**.
+  iOS-only scope holds.
+
+### Still unverified
+
+Build 441 has never run on physical hardware. Sentry dSYM upload pending a rotated token. The
+demo account password and `MurrorTester107` offer code need human confirmation before submit.
+
 ## 2026-08-17 (PDT): Production moved, and the Sentry scrubber took four rounds
 
 First production change of the 2.0.0 push. `murror-api` went `0.41.1` -> `0.41.2` on
@@ -1766,3 +1850,111 @@ authenticated staging proof. No iOS checkout, Uni folder, API runtime, migration
 staging dispatch, image publication, deployment, or public investor page was touched.
 Authenticated staging, hosted schema, web browser, Android Gradle/device, and human
 release gates remain open.
+
+## 2026-08-04 - Five fixes were in the wrong file, and we finally proved it
+
+**Summary.** The iOS lane spent the day on build 413/414 device feedback and on
+two bugs that had each survived several previous attempts. In both cases the code
+being changed was real and correct, and simply was not the code running. Measuring
+the device, rather than reasoning about the source, is what ended both.
+
+**Key accomplishments:**
+
+- Proved the recurring "Moment to Care card overlap" lives in the pinned rail
+  (`pinned-compact-feed-card.tsx`), not in `moment-to-care.tsx`. Five consecutive
+  fixes had been written into a different rail that deliberately mirrors the first
+  one, which is why unit tests and a mutation test all passed while the device never
+  changed. Card height was the discriminator: 140pt measured against the screenshot
+  matches the pinned rail exactly, while the other rail computes to 480pt on the
+  same device.
+- Established from build 414 telemetry that the overlap was never a geometry error.
+  Stride, measured slot, face and gap all came back correct, so the cards were being
+  painted before the carousel assigned their offsets. The rail now waits for the
+  viewport to measure before mounting, and a same-height placeholder keeps Home from
+  jumping.
+- Found why connection prompts named the wrong person and used the wrong pronoun.
+  The mobile app was sending the connection all along, and the API was discarding it
+  silently: a global validation pipe configured to strip undeclared fields without
+  raising an error. Reflection prompts are now scoped to the connection they are
+  about, and the deletion of a user's prompt pool is scoped with them, which had been
+  wide enough to wipe another connection's prompts.
+- Fixed account deletion failing on shared photos the user had already soft deleted.
+  The repair is on the purge side, because relaxing the verifier instead would have
+  left the personal data in place.
+- Split the hard paywall kill switch per environment, so staging and production can
+  no longer read each other's flag value.
+- Shipped build 414 to TestFlight and confirmed it on device.
+
+**Continuation the same evening.** The "Settings shows Premium while the content is
+locked" report was root caused. RevenueCat does still entitle the account, so the
+stored INACTIVE status is wrong rather than correct. The writer is a second, unguarded
+copy of the negative subscription self heal that is reached from the transfer webhook
+path. An earlier fix had hardened the other copy of the same logic and had already
+been deployed more than three hours before the bad row was written, which is why it
+could not have helped. Production carries none of these rows.
+
+**Current boundary.** No subscription fix has been written; the direction is waiting
+on an explicit decision. The build 414 feedback branch is open as a pull request with
+formatting repaired and is not merged, so build 415 has not been cut. The Notion
+engineering log row could not be written because that connector is disconnected. The
+two proposed connection insight shapes are specified only, and the production funnel
+behind them shows the takeaway flow has been used four times in total, which suggests
+connection formation is the more valuable question.
+
+## 2026-08-14..16 — Launch observability sprint (Claude lane)
+
+- MurrorMobile #1104/#1105/#1106 merged (canonical af8db1d8): crash reports made symbolicatable
+  (frames+mechanism preserved, murror org destination pinned fail-closed, per-event tag scope),
+  Relationship Next Steps fails closed (its API 404s everywhere), and Codex's full iOS release
+  pipeline landed with android.yaml de-noised (no scripts/ci trigger, cancel-in-progress).
+- murror-api #766-#769 merged to staging + #770 backported to main; alpha verified live by pod roll
+  (0.129.3-alpha). notification-window 500 (every user, every cold start) degrades; Prisma 5xx reach
+  Sentry with transport-proven PII scrubbing (error+transaction+breadcrumb channels); dead
+  notification-window queue removed; P2003 now 400.
+- Sentry org scrubbing ON (was fully off; live 1.0.19 stored real emails+UUIDs).
+- Login hang root-caused BY EXECUTION: circular account fence; three terminal paths incl. plain
+  logout; email-path only; hidden by a spec that mocks the fence. Fix in flight on
+  fix/account-fence-resume-on-terminal-paths.
+- Topology corrections: api production deploys ONLY from the `production` branch (659/52 divergence
+  vs main; dispatch on main silently skips all jobs); prod=SGP1, alpha+staging=SFO2.
+- Docs: docs/plans/2026-08-16-launch-observability-sprint.md; continuation prompt in
+  Logs/2026-08-16-launch-continuation-prompt.md. (This section intentionally left uncommitted; file
+  carries other lanes' pending hunks.)
+
+## 2026-08-16 — Login fence closed, onboarding loop closed, build 434 (Claude lane)
+
+- **Canonical is `efa4bc04` at build 434.** `verify-build-lane.sh` returns
+  `BUILD LANE OK, safe to archive build 434`. Six PRs merged: #1106 release hardening,
+  #1107 and #1108 the account fence, #1109 build 433, #1110 the onboarding loop,
+  #1111 build 434.
+- **Login hang: five paths, not three.** #1107 closed isolation failure, provider-bind
+  rollback and plain logout. #1108 closed a bare `SIGNED_OUT` with no logout fence
+  (token expiry, server revocation) and the account-deletion wipe. Two of the six
+  findings across four review rounds were regressions the fixes themselves introduced:
+  a fail-open sign-out (Supabase resolves with an error rather than throwing) and a
+  fix that skipped itself (cleanup rethrows before the release line).
+- **Simulator-verified on build 433.** An email account that previously hung signed in.
+  First execution-level evidence for these paths. Still NOT device-verified; simulator
+  StoreKit cannot bind RevenueCat and that binding gates sign-in.
+- **Onboarding closed loop, found by running the login fix.** Email-authenticated users
+  with incomplete onboarding restarted onboarding with no explanation, lost all 24
+  answers, and landed on a sign-up screen offering only Google and Apple, while already
+  authenticated. **634 production users are in that state**, and the login fix would have
+  shipped the trap to all of them. Root cause was duplication drift: the signup gate read
+  a profile where it should have read a session. Fixed in #1110; the shared helper was
+  lifted to `src/common/settle-within.ts` rather than copied a third time.
+- **CI cost: zero hosted macOS minutes and zero Android minutes across all eight pushes.**
+- **Correction to the 08-14..16 section above:** the "659/52 divergence vs main" figure is
+  wrong. Measured against the branch that matters, production is 7 ahead and 16 behind
+  staging. The wrong number was also relayed twice to a peer session before being checked.
+- **Correction:** the Sentry claim that ~1,008 events leak user emails was wrong.
+  `has:user.email` matches events whose email is `[Filtered]`. Email IS scrubbed; `user.id`
+  and city-level geo are the real exposure and need their own rules.
+- **Verified this session, no action needed:** the OTA hot-fix channel is wired and
+  registers against 2.0.0 (prod head is v5, disabled by design; delivery proven on staging).
+  Production transactional email is fully built and wired on the production branch but
+  `RESEND_API_KEY` is absent from the production GitHub environment, absent from
+  `murror-api-secret`, and unset in the running pod, so it silently no-ops.
+- Docs: `docs/plans/2026-08-16-login-fence-and-onboarding-recovery.md`.
+  Launch board artifact `18706bde-ace5-4d13-b820-38d8dc69e0cd`.
+  (This section intentionally left uncommitted; the file carries other lanes' pending hunks.)
