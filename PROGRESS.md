@@ -1,11 +1,11 @@
 # Murror Progress
 
-## 2026-08-26 (PDT): Build 446 attached, production deployed, and a placeholder guarding billing
+## 2026-08-25 (PDT): Build 446 attached, production deployed, and a placeholder guarding billing
 
 **Build 446 is attached to the 2.0.0 record** (build id `5db830d2-408b-4a64-a6a6-2c773d41c6b9`,
 VALID), superseding 445. The production API was deployed for the first time this cycle, and a
 live security hole was closed that nobody was looking for. Full writeup:
-`docs/plans/2026-08-26-launch-hardening-446-production-deploy-and-webhook-secret.md`.
+`docs/plans/2026-08-25-launch-hardening-446-production-deploy-and-webhook-secret.md`.
 
 ### The launch blocker: nobody could sign up after logging out
 

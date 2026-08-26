@@ -1,4 +1,4 @@
-# 2026-08-26 — Launch hardening: build 446, the production API deploy, and a placeholder webhook secret
+# 2026-08-25 (PDT) — Launch hardening: build 446, the production API deploy, and a placeholder webhook secret
 
 ## Context
 
