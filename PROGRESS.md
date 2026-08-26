@@ -1,5 +1,64 @@
 # Murror Progress
 
+## 2026-08-26 (PDT): Build 446 attached, production deployed, and a placeholder guarding billing
+
+**Build 446 is attached to the 2.0.0 record** (build id `5db830d2-408b-4a64-a6a6-2c773d41c6b9`,
+VALID), superseding 445. The production API was deployed for the first time this cycle, and a
+live security hole was closed that nobody was looking for. Full writeup:
+`docs/plans/2026-08-26-launch-hardening-446-production-deploy-and-webhook-secret.md`.
+
+### The launch blocker: nobody could sign up after logging out
+
+`probeSession` showed the "We couldn't load your profile" screen when EITHER the session probe
+could not answer OR the account storage generation was not current. The logout fence
+deliberately leaves storage writes suspended and says so, so after any logout that second
+condition held for the whole process. TRY AGAIN re-probed into the same fence, USE A DIFFERENT
+ACCOUNT called logout again which cannot lift it, and only a force quit cleared it. Fixed by
+applying the generation check only when the probe reports authenticated: a signed-out person has
+nothing to commit. Review then found a second door onto the same dead button via
+`appContext.user?.id`, closed in the same PR.
+
+### Account deletion could never reach COMPLETED in production
+
+The pipeline called `refresh_continuous_aggregate` unguarded while production has no timescaledb
+extension, no such routine, and neither `_ca` relation. That step runs after purge-user-data and
+before verify-and-receipt, so the throw purged the user's rows and then stranded the request with
+`purgedAt` never stamped. Guideline 5.1.1(v) requires in-app deletion. The guard already existed
+on staging and had simply never been promoted. It is a degradation, not a cure.
+
+Promoted via the reconcile pattern rather than a fast-forward: production carried 17 commits
+staging did not, including the `user_id`-label removal from business metrics. Zero conflicts,
+verified byte-identical after merge.
+
+### The webhook secret was the string "secret-value"
+
+The only one of 18 keys in that state, on a public internet-facing endpoint that mutates
+subscription state. Found by accident when the value was pasted into a terminal and zsh reported
+command-not-found, which made it readable. An earlier probe returned 401, proving the secret was
+SET but unable to reveal it was a default. Rotated, rolled, and proven: `Bearer secret-value` now
+returns 401, with a 503-vs-401 discriminator confirming a real secret is loaded rather than
+missing. The production webhook was then configured and a RevenueCat test event landed and
+processed, so `webhook_logs` is non-empty for the first time in the system's history.
+
+### Operating notes
+
+- `strings BIN | grep -q PATTERN` exits **141** under `set -o pipefail`: grep -q quits on the
+  first match, strings dies of SIGPIPE. It stopped the ship script on both 445 and 446 with
+  "production API host NOT baked into the binary" on archives that contained the host. On 445 it
+  was misdiagnosed as a copy race and a settle-wait was added, which could not have fixed it. Use
+  `grep -c`.
+- A grep exclusion can hide its own target: `-vE 'plan-state\.ts'` also matches
+  `use-sync-plan-state.ts`, which turned into a confident wrong claim and a whole PR built on it
+  (#1146, closed).
+- The consent default is correct on the server and **inert against the shipped client**, which
+  sends `|| false`, an explicit ALLOWS. It only takes effect once 2.0.0 ships.
+
+### Still open
+
+446 is not device tested. Account deletion has never been exercised in production, 0 requests all
+time. Journaling remains the only generation flow with no safety pass. Hermes dSYMs never upload.
+Production GitHub environments have empty protection rules.
+
 ## 2026-08-21 (PDT): Build 441 uploaded, and the archive path was the bug all along
 
 **Murror 2.0.0, build 441, is archived, uploaded to App Store Connect and attached to the
