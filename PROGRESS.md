@@ -2017,3 +2017,42 @@ connection formation is the more valuable question.
 - Docs: `docs/plans/2026-08-16-login-fence-and-onboarding-recovery.md`.
   Launch board artifact `18706bde-ace5-4d13-b820-38d8dc69e0cd`.
   (This section intentionally left uncommitted; the file carries other lanes' pending hunks.)
+
+## 2026-08-29 — First production account deletion, end to end (Claude lane)
+
+**Summary.** Drove the first real account-deletion request through the production
+pipeline (test account `vinhspiration@gmail.com`, request `4eec11a5`). Nine incident
+classes surfaced; seven were code bugs, fixed and promoted across five production
+deploys (rev 20 to rev 25). The destructive chain executed successfully at 11:10Z:
+`purge-legacy-data` affected 64, `purge-user-data` affected 9, `deleteUser` fired.
+The account is deleted.
+
+**Key accomplishments.**
+- `#843` storage purge verified via `list()` after proving in-pod that `download()` of a
+  missing object returns HTTP 400 wrapped as an opaque `StorageUnknownError`, not 404.
+- `#845` Mixpanel GDPR v3.0 `results` parsed as an object with `task_id`. The old spec
+  mocked an array of `tracking_id` and stayed green while every production deletion threw.
+- `#847` **rejected by review and closed.** Its wrapup predicate was valid SQL matching
+  0 of 744 production rows, and `verifyVectorData` reuses the same predicate, so it would
+  have certified a false clean. The real parent is `public.deep_chat` (744/744).
+- `#848` legacy purge FK ordering: `message_reactions` and `cbt_message_reactions` were
+  ordered after their message parents (NO ACTION), and `milestones` was never in the
+  registry at all despite carrying its own `user_id`. Pre-delete children by parent-message
+  linkage plus wrapup via `public.deep_chat`, all before the loop reaches those parents.
+- `#850` diagnosability sweep: all 23 remaining plain `throw new Error(...)` on the
+  deletion path became `DeletionOperationalError` or `DeletionSchemaError`, vendor polls
+  wrapped with `?token=` redaction, structural spec pins zero plain throws.
+
+**Operating notes.**
+- `verify-and-receipt` is FAILED-but-retrying on the vendors' async GDPR queues
+  (Mixpanel task `146b9b16`, PostHog person `90b4c425`). `processDueRequests` re-selects
+  FAILED requests with no attempt cap, so it completes on its own. Not a bug.
+- Every promotion verified by effect (rollout revision, image sha, `change-cause`), never
+  by the workflow conclusion.
+- A plan-clean EXPLAIN proves a query is valid, not that it reaches rows. Data-touching
+  predicates need a measured matched-count probe with a stated denominator.
+- Mutation testing needs a positive control that the mutation actually applied: a
+  prettier-wrapped throw silently no-opped a single-line perl pattern and the "pass" was
+  measured against unmutated code.
+
+**Docs:** `docs/plans/2026-08-29-production-account-deletion-smoke-test.md`.
