@@ -2056,3 +2056,54 @@ The account is deleted.
   measured against unmutated code.
 
 **Docs:** `docs/plans/2026-08-29-production-account-deletion-smoke-test.md`.
+
+---
+
+## 2026-09-01 — Artwork alerting, birth-time UTC, and the 2.0.0 pre-submit checks
+
+**Summary.** Four PRs merged: the production artwork RLS policy finally has a repo
+file, birth time is stored as UTC, and artwork that never finishes generating is
+now both detected hourly and pollable over HTTP. Plus a full 2.0.0 pre-submit
+sweep against the live App Store Connect API. Nothing was submitted.
+
+**Key accomplishments.**
+- murror-backend [#910](https://github.com/Murror/murror-backend/pull/910) (`d322b443`) records ledger version `20260829013703`, the
+  users-bucket folder-read policy applied direct to production on 08-29. Named with
+  the exact ledger version so `db push` skips it on prod and staging converges.
+- murror-api [#866](https://github.com/Murror/murror-api/pull/866) (`d0b21e74`) stores birth time as UTC. Recovered from an
+  uncommitted 2026-07-09 edit that was one `git stash` from being lost.
+- murror-api [#875](https://github.com/Murror/murror-api/pull/875) (`93654c8d`) hourly job detecting COMPLETED conversations stuck
+  at `statusArtworkUrl = PENDING`.
+- murror-api [#876](https://github.com/Murror/murror-api/pull/876) (`39a30d46`) the same condition on `/health/monitoring`.
+- App Store Connect: `en-US` subtitle patched to "AI that brings people closer",
+  matching `vi` and the Night Watch brand line.
+
+**Operating notes.**
+- **Per-row beats rate-based at this volume.** Production completes ~1 conversation
+  a day. A percentage alert is noise: on a three row day, one failure reads as 33%.
+- **A schema DEFAULT is not a fault signal.** `statusArtworkUrl` defaults to
+  PENDING, so DRAFT (780 rows) and ACTIVE (36) are legitimately PENDING forever.
+  Alerting on raw PENDING would have fired on 1,330 rows and been muted day one.
+- **Sentry is deliberately neutered for metrics.** `beforeSend` replaces
+  `event.message` with `<redacted>`, deletes `tags`/`fingerprint`, and rebuilds
+  `event.extra` from an HTTP-only allowlist. A `captureMessage` with counts arrives
+  empty. Do not widen that surface for a health metric.
+- **Data-quality checks must never touch the k8s probes.** `/health` and
+  `/health/ready` drive liveness/readiness; a stuck-artwork signal there would
+  restart pods over a problem no restart fixes. `/health/monitoring` is the home.
+- **A value assertion cannot catch a timezone bug on a UTC runner.** Assert object
+  IDENTITY instead. `process.env.TZ` set inside a test does not move `Date`; V8
+  caches the zone at process start (measured).
+- **Read the branch before trusting a checkout.** A whole "dead code pointing at a
+  missing bucket" finding evaporated on inspection: it was only true on the stale
+  branch the shared `murror-api` checkout is pinned to. No code was changed.
+- CI's privacy log guard correctly rejected interpolating `error.message` into a
+  log line; a Prisma failure quotes the failing SQL with literals inlined.
+
+**2.0.0 status.** Build 452 attached and VALID, export compliance answered,
+metadata clear. Still open: the App Privacy questionnaire (not exposed by the ASC
+API, web UI only) and device testing. `PrivacyInfo.xcprivacy` declares
+`NSPrivacyCollectedDataTypes` as an **empty array**, which is untrue. The app
+requests no ATT at all, so earlier notes listing an "ATT prompt" to test are wrong.
+
+**Docs:** `docs/plans/2026-09-01-artwork-alerting-birth-time-and-presubmit.md`.
