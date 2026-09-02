@@ -1,5 +1,86 @@
 # Murror Progress
 
+## 2026-09-02 (PDT): Four days of launch readiness, 168 commits, and two PRs sent back
+
+Window 2026-08-30 to 2026-09-02 across MurrorMobile (43 commits), murror-api (91),
+viasr-api (34), plus the Codex web parity lane in murror-platform. Builds 452, 453
+and 454 attached to App Store Connect. 455 is HELD pending the location work.
+Full writeup: `docs/plans/2026-09-02-launch-readiness-aug30-sep02.md`.
+
+### Connection Reflection finally works end to end
+
+The CR card had never received the six insight fields it was designed around
+(viasr-api #637). murror-api #902 made Step 4 recognise a Connection Reflection
+rather than only a LOG task, which had left genuinely-reflected users stuck on
+Step 4 forever. #901 bounded the partner wait, `a0c43713` anchored it on the
+takeaway route, and #904 pinned the reduction with a test. MurrorMobile #1196
+made the detail-screen and Home paths actually open a card, #1192 fixed takeaway
+attribution and disclosed shared-insight AI to the receiver, #1195 stopped the
+past-sharing banner going stale.
+
+**The seam bug.** Widening who counts as having reflected (#902) broke the wait
+anchor (#901) for exactly the newly recognised population, making the wait
+unbounded again. Caught by the rebase forcing both into one head. Neither commit
+had been promoted, so nobody was exposed. The ORIGINAL unbounded wait IS live:
+5 production connections one-sided, oldest 2025-12-25, stuck until promotion.
+
+### The emotion arc would have emptied silently
+
+0 of 86 production labels were taxonomy values, and producers swallow the error.
+viasr-api #639 constrained the arc in prompt AND schema, #642 gave it its own
+45-adjective vocabulary, MurrorMobile #1185 coloured every value. Schema set must
+equal the client colour set or users see grey discs.
+
+### Privacy hardening
+
+viasr-api stopped publishing caught exceptions (#641), failed-call prompts (#648)
+and bound SQL parameters (#650) to the log stream; guarded the journal prompt,
+output and crisis sentinel (#653); closed four holes in auth, shutdown, rate
+limiting and cost (#652); and removed coordinates and addresses from
+`search_location` logging (#656). murror-api coarsened `/globe/stats` (#896) and
+purged pre-redaction takeaway audio (#871).
+
+### Review is where the value was
+
+Adversarial review found defects in the authors' own fixes at least eight times,
+including a liveness probe that would have CrashLooped the deployment, a privacy
+leak inside a privacy fix, and two PRs sent back this window:
+
+- **murror-api #903** claimed it was safe to land alone. False: the shipped App
+  Store client sends coordinates and no cycle token, so the edited branch is live
+  in production. Its change also removes the only mechanism that ever erases
+  stored coordinates while `completed_at` still advances.
+- **MurrorMobile #1198** holds the no-prompt guarantee, but mutating `check(` to
+  `request(` in the permission gate left the ENTIRE 4601-test suite green. The
+  property Option A rests on had zero coverage.
+
+### Production measurements (read-only)
+
+- `takeaway_reflections`: 9 rows, 6 senders, oldest 2026-03-20. 4 of 6
+  sender/connection pairs already past the 7 day wait limit, 1 still one-sided.
+- `user_connection_tasks`: 5 rows carry real coordinates, 5 distinct users, aged
+  176 to 222 days, ALL one-sided. Nothing will ever reap them, because cleanup
+  requires both users to have completed.
+
+### Operating notes
+
+- The merge gate hook resolves the repo from the SESSION cwd, not `--repo`. The
+  `cd` must be its own prior call.
+- macOS has no `timeout` binary; `timeout 150 npx jest` exits 127 and a prior
+  "pass" may be jest never having run.
+- An awaited macrotask under fake timers HANGS the suite instead of failing, and
+  jest's own `--testTimeout` does not rescue it.
+- The daily macOS E2E cron removed in #1191 had never actually fired: GitHub only
+  schedules from the default branch, and `e2e.yaml` on `main` has no schedule.
+
+### Open for Astro
+
+The 5 stale coordinate rows, whether a second Connection Reflection replaces its
+text or stays a no-op (today it 201s and discards the words), whether the
+Personalize location toggle needs a real persisted opt-out, whether #1197 rides
+455, and whether the co-location prompts should stop sending street addresses to
+OpenAI.
+
 ## 2026-08-25 (PDT): Build 446 attached, production deployed, and a placeholder guarding billing
 
 **Build 446 is attached to the 2.0.0 record** (build id `5db830d2-408b-4a64-a6a6-2c773d41c6b9`,
