@@ -1,5 +1,76 @@
 # Murror Progress
 
+## 2026-09-03 (PDT): Both backends promoted to production, and a red deploy that had actually succeeded
+
+Astro set a standing rule: **production is the PRIMARY environment**, not the last
+stop. It is the launch target and the surface he tests on, because his accounts
+live there. Staging is secondary and inherits. The consequence for reporting is
+that "merged to staging" is HALF DONE, and every status must say whether a fix
+still needs a promotion, a build, or both. Staging had drifted 45 commits ahead,
+which is exactly why none of the four Connection Reflection bugs he reported from
+his phone could be verified. Full writeup:
+`docs/plans/2026-09-03-production-promotion-and-build-455.md`.
+
+### Landed then promoted
+
+murror-api #903 (`03ec16f4`) and MurrorMobile #1198 (`63521a3a`) merged after
+re-review. #903's coordinate-preserving change was reverted entirely; the merged
+diff is three log calls plus a spec locking the clearing in, verified by
+comment-stripped diff against trunk. Then murror-api #906 (`1fc36891`, 45
+commits) and viasr-api #657/#659 promoted to production.
+
+Payload diffed before every dispatch. The one migration is purely additive with
+zero destructive statements and is registered in the production set. Reverse
+direction checked in both repos: 0 files unique to production, so no hotfix was
+reverted.
+
+### The deploy that lied
+
+Run 33707247142 reported **failure** at `Deploy to Kubernetes` with
+`timed out waiting for the condition` after logging "1 out of 2 new replicas have
+been updated". The CI job gave up at 5 minutes; Kubernetes finished anyway.
+Verified by effect: `/api/health` 200, the next-steps route (which had NEVER
+existed in production) returns **401** while a made-up route under the same
+prefix returns 404, the migration table and both new columns exist, and no
+migration was left broken. **A red deploy run can mean a succeeded rollout.**
+
+### Two advisories, handled differently on purpose
+
+- **nltk PYSEC-2026-3740 (viasr): suppressed.** The advisory contradicts itself,
+  naming 3.10.3 as the fixed version in its structured data while its prose says
+  "through 3.10.3". We are on 3.10.3, the newest release. It cannot be removed
+  (transitive via llama-index and newspaper3k) and every reference in `app/` is
+  commented out. Production already ran it, so blocking removed no exposure while
+  holding back the privacy fix. Scoped ignore, review by 2026-10-03.
+- **@humanfs/node GHSA-p498-v437-472g (mobile): patched.** This one had a real
+  fix, so 0.16.8 was pinned through the existing `resolutions` block rather than
+  suppressed. Lint-time only, never in the shipped bundle.
+
+### Review catches worth keeping
+
+- #903's source guard was **defeated by a Prettier line wrap**, proven by
+  mutation: the bug came back and all 7 tests stayed green. Measured headroom was
+  4 and 9 characters. `[ATOMIC_TASK_RESET]` had no other test.
+- #1198: nothing guarded the Info.plist key. We ship
+  `NSLocationAlwaysAndWhenInUseUsageDescription`; the library greps for
+  `NSLocationAlwaysUsageDescription`, one word away. Adding it would make every
+  reflection request an authorization upgrade. Now guarded.
+
+### Operating notes
+
+- macOS has no `timeout` binary; `timeout N cmd` exits 127 having run nothing.
+- The GitHub API token lacks `workflow` scope, so workflow files must be pushed
+  over git, not changed through `gh api`.
+- zsh globs an unquoted `?` in a `gh api` URL.
+- A step marked `continue-on-error` reports **success** while a later gate fails
+  the run, so reading step conclusions alone points at the wrong step.
+
+### In flight
+
+MurrorMobile #1201 (humanfs), the viasr production deploy, and the ship chain,
+which will produce build **456** rather than 455 since the bump was already
+consumed.
+
 ## 2026-09-02 (PDT): Four days of launch readiness, 168 commits, and two PRs sent back
 
 Window 2026-08-30 to 2026-09-02 across MurrorMobile (43 commits), murror-api (91),
