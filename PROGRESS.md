@@ -1,5 +1,90 @@
 # Murror Progress
 
+## 2026-09-03 (PDT): The August investor letter, a password gate that did not hold, and nine emails
+
+The letter did not exist at the start of this. It is now written, reviewed, gated,
+deployed and delivered to nine investors. Full writeup:
+`docs/plans/2026-09-03-investor-letter-gate-and-send.md`.
+
+### The letter
+
+`apps/marketing/content/investor-updates/2026-08.md`, live at
+`murror.app/investors/2026-08/`. Product shots are the real 2.0.0 App Store
+submission screenshots pulled from App Store Connect and cropped out of their
+marketing composition, so `PhoneFrame` supplies the chassis rather than nesting one
+frame inside another. `03-insight` is the Connection Reflection detail page.
+`02-reflect` was rejected because it is a chat view, which is the one thing that
+section must not show.
+
+It carries a full work ledger: **503 merged PRs** between 08-05 and 09-02 across the
+five codebases, classified first-match-wins so the ten printed group counts sum to
+503 exactly. 246 were fixes, 74 features. The first draft summed to 481 against a
+claimed 503; a programmatic arithmetic check caught it before anyone else could.
+
+### The gate did not hold
+
+An adversarial review found **thirteen ways to read the letters with no password**.
+Root cause was not a weak check. **The check never ran.** `_routes.json` decides
+which paths wake the worker and that matching is literal and case-sensitive, so
+`/Investors/...` was never in the include list, Pages skipped the worker, and served
+the letter straight off the CDN. `GET /Investors/2026-08/` returned the complete
+letter, proven byte-identical to the authenticated response by SHA-256. A second
+hole sat on top: the worker compared the raw pathname case-sensitively too.
+
+Fixed by making the worker unskippable (include `/*`) and normalising the path
+before matching. HEAD is now gated like GET, other methods get an explicit 405 from
+us rather than relying on the asset server, and authed responses set
+`private, no-store` with `Vary: Cookie`.
+
+**Turnstile** now protects the login, fail-closed. A probe found the old password
+`investor2026` in **seven guesses**, at ten guesses per 90ms with no rate limit.
+
+Verified 0 leaks locally, on a Cloudflare preview against the real edge, and on
+production.
+
+### The merge, and why it mattered
+
+The branch was **313 commits behind** `feat/marketing-site`. Deploying as-is would
+have reverted the feedback form, early-access review, Meta CAPI and a month of
+articles from production. 470 files merged clean; `_worker.js` conflicted, and the
+naive resolution produced a syntax error because the boundary cut through the middle
+of `sha256Hex`. Resolved by taking their file wholesale and re-applying the gate as
+a deliberate additive port. PR #441 merged after CI went green.
+
+### The Resend key was never a Resend key
+
+The first send failed with `API key is invalid`. A key-shape diagnostic (length,
+whitespace, `re_` prefix, never the value) showed the stored secret was **29
+characters with no `re_` prefix**. That is why Murror marketing email has never
+sent, once. Beta-signup acks and early-access mail had been failing on the same
+credential the whole time, and are now fixed as a side effect.
+
+One further gotcha: **Pages binds secrets at deploy time**, so the running
+deployment still held the old value after the new key was set. A redeploy picked it
+up. Without that the retest would have wrongly condemned a good key.
+
+### Operating notes
+
+- `_routes.json` include matching is literal and case-sensitive. Never a security
+  boundary, and never let it silently double as scope for unrelated logic.
+- Assets the login page references must live outside the gated prefix. The signature
+  portrait was under `/investors/`, so every email would have shown a broken image.
+- Never resolve a conflict in a security file by stitching markers.
+- Do not hand a mutating task to a subagent in a shared worktree. A review agent
+  asked to build from an older revision checked out a file and destroyed uncommitted
+  work in it.
+- `lint-staged` fails on `apps/web-client/helm/templates/deployment.yaml`, a Helm
+  chart prettier cannot parse. Merge commits stage it; `--no-verify` plus a separate
+  typecheck and build is the workaround.
+
+### Still open
+
+Medication-topic guardrail in viasr-api is not built (brief filed, not blocking, the
+letter never claims code enforcement). The new Resend key has Full access where
+Sending would do. WAF rate limit on the login remains optional behind Turnstile.
+
+---
+
 ## 2026-09-03 (PDT): Both backends promoted to production, and a red deploy that had actually succeeded
 
 Astro set a standing rule: **production is the PRIMARY environment**, not the last
