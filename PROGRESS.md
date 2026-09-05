@@ -2417,3 +2417,50 @@ does SIX things; all six are present in the current controller. The port dropped
 ### Docs
 - `Murror/docs/plans/2026-09-05-tester-reports-to-build-457.md`
 - `Murror/docs/CODEX-HANDOFF.md` updated with current refs and ownership.
+
+## 2026-09-05 (cont.): QA sweep to build 458, murror-api to production
+
+Second half of the day, from "resume and do an qa review of mobile iOS and Android." Full
+technical writeup: `docs/plans/2026-09-05-qa-sweep-to-build-458.md`.
+
+### Shipped
+- **murror-api is fully current in production**, three promotions (`bd1b6250` 10 throttler/logging
+  PRs; `0bcdf597` #936 orphan fix + #817 token guard; `1020b839` #937 family-seat twin), prod ==
+  staging @ `cc9525f3`. Each diffed payload-first (code only, no migrations/config), merge-commit,
+  dispatched on `production`, verified by rollout + `/api/health` 200 + a 404 control. #817 also
+  verified by effect (non-UUID token → 404 `INVITER_NOT_FOUND`).
+- **iOS build 458 attached to the 2.0.0 record** (bump PR #1230, 17-minute ship chain, VALID +
+  HTTP 204 + re-read confirmed). Carries 457 plus #1224 (retry visible + honest offline), #1226
+  (uncircumventable 30s timeout + Sentry noise sampling), #1227 (consent Agree never no-ops +
+  accept errors show the reason), #1225 (every sign-in await bounded/disclosed + provider lane
+  released on timeout).
+- **The one confirmed ASC submission blocker cleared** by two API writes: en-US localization for
+  the Monthly subscription and the Premium group. Screenshots/review/age rating verified OK.
+
+### Key fixes and the lessons behind them
+- The invite-accept orphan closed at BOTH sites (#936, #937) with a three-way failure classifier;
+  "permanent" was two opposite answers (retry-cannot-fix vs whether-to-continue).
+- murror-api has **two generated Prisma realms**; `instanceof` across them is false, which was
+  turning legacy P2003s into anonymous logs. Fixed in `describeError`.
+- Client-side: `AbortSignal.any` exists in jest's Node but not RN 0.77 (would crash on device);
+  a caller-side timeout does not release a lock the callee holds (the provider-lane bug); trace
+  bounds to the literal `return`, not a convenient intermediate; a message must work for the
+  cohort it is shown to; defer an alert past a modal dismissal.
+
+### Held / diagnosed
+- **#1229** (timeout-destination UX) held for **build 459** after a proven Critical (button
+  re-arm tore the surface down over a running attempt); round 3 `9809d127` fixes it, queued.
+- **Sentry error quota exhausted org-wide since 2026-08-25** — a billing action, not a code fix;
+  no 2.0.0 build has ever delivered an event.
+- **34 unmirrored accounts are an activation gap**, not a sync bug; a stalled no-row person lands
+  on Home permanently (#1228).
+- **Android** has zero overlap with 457/458 and is weeks out; its Codex branch hides a RevenueCat
+  major bump on iOS.
+
+### Owed before Submit
+Device pass on 458 (sign-in riskiest); Sentry billing + a test-error confirmation; Duo IAPs
+unselected and App Privacy label checked at submit.
+
+### Closed / filed
+Closed #925 #818 #496, MurrorMobile #1004 #1040. Filed murror-api #935 #938 #940, MurrorMobile
+#1228.
