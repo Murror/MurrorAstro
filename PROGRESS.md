@@ -2464,3 +2464,43 @@ unselected and App Privacy label checked at submit.
 ### Closed / filed
 Closed #925 #818 #496, MurrorMobile #1004 #1040. Filed murror-api #935 #938 #940, MurrorMobile
 #1228.
+
+## 2026-09-06: off the Sentry bill, and launch build 459
+
+From "sentry is too expensive, is there anyway to get away from this?" to build 459 attached.
+Full technical writeup: `docs/plans/2026-09-06-sentry-free-tier-and-launch-build-459.md`.
+
+### Decided (4-lens panel, Astro's call)
+- **Stay on Sentry's FREE plan** (billing page: Developer, nothing charged, period resets Sep 13).
+  The bill was self-inflicted: 70% of errors were one client warning (sampled in 458), and 92.5% of
+  spans were Prisma child spans. Sentry Team has the same 5M span cap, so paying would not have helped.
+- Error stacks go to **PostHog** (already installed, 100k free exceptions/mo) at the next build; native
+  crashes stay with **Xcode Organizer** (already symbolicated via `uploadSymbols: true`); one alarm =
+  a PostHog insight alert on hourly volume → Slack `#alert`; re-decide at day 14. Rejected: GlitchTip,
+  Crashlytics (Firebase is not on the shipped branch).
+
+### Shipped
+- **murror-api #942 → prod as #943** (16:22Z): remove `'Prisma'` from the Sentry integration
+  allowlist. Verified by effect in a clean 1h window: Prisma spans 0, `http.server` 1,310 (control) →
+  ~19% of the free cap, was 317%. Dashboard widget 14 goes blank and alert 419514's baseline halves:
+  artifacts, not wins.
+- **Launch build 459** (bump #1234, `d74e4fd4`, VALID + attached 17:56Z, read back independently),
+  carrying #1229 (recoverable slow-network sign-in surface), #1231 (no-row person routed back into
+  onboarding; the #1190 Home guard had been INERT since it shipped: leaf vs container route name),
+  #1232 (JS error stacks to PostHog via a privacy clone proven on the real SDK builder), #1233 (the
+  guard reads its verdict at fire time from the React Query cache: the navigation listener fires before
+  React re-renders). 458 superseded. Slack #beta-testing closed the loop.
+
+### Corrections recorded
+- `<unmatched>` is the privacy scrubber failing closed on EVERY route (`sentry-scrub.util.ts:338`),
+  not probes and not missing Express naming. Never drop it in a sampler.
+- The canonical `Murror/MurrorMobile` checkout is on a stale branch with divergent deps; read
+  `origin/staging-environment-setup`.
+- `triggerTestError()` has no UI entry point; the release gate is one forced failed request
+  (`react-query-error-handler.ts` captures at ERROR → `$exception` in PostHog with `$app_build`).
+- The deletion `conversation_wrapup` leak was already fixed by #917; memory and #940 corrected.
+
+### Owed before Submit
+Device pass on 459 ("Launch Build Device Pass" checklist); PostHog connector auth → gate event, alert,
+retention; privacy disclosure bullet via the privacy-docs lane; at Submit: Duo IAPs unselected, ASC
+Diagnostics Linked to You = Yes + Other Diagnostic Data.
