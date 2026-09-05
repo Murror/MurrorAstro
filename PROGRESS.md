@@ -2344,3 +2344,76 @@ API, web UI only) and device testing. `PrivacyInfo.xcprivacy` declares
 requests no ATT at all, so earlier notes listing an "ATT prompt" to test are wrong.
 
 **Docs:** `docs/plans/2026-09-01-artwork-alerting-birth-time-and-presubmit.md`.
+
+## 2026-09-04 / 09-05: two tester reports to build 457
+
+**Summary.** Two `#beta-testing` reports on build 456, both traced to one cause:
+456 was the first build in which the global react-query error handler had ever
+executed, so errors every prior build swallowed now opened blocking modals.
+24 PRs merged across three repos, iOS build 457 archived and attached to the
+2.0.0 record, viasr-api promoted to production, and a 121-row production
+backfill on Astro's sign-off.
+
+### Shipped
+- **iOS build 457**, `PREPARE_FOR_SUBMISSION`. Twelve MurrorMobile PRs
+  (#1211, #1212, #1214 to #1223), all verified as ancestors of the bump head
+  before archiving.
+- **viasr-api promoted to production**, verified by effect inside the running
+  container: a spam-filter crash dead since 2025-09-19 (350 days), returning a
+  hard HTTP 500 on `POST /chat/voice`, is gone.
+- **murror-api staging** carries ten PRs (#922, #923, #926 to #933). NOT
+  promoted, awaiting Astro.
+
+### Fixed, from the reports
+- **Mona's 429.** 16 rejections in two one-second bursts, one device firing ~19
+  requests in one second against a 10/sec tier. Requests now paced (#1219) and
+  background failures no longer interrupt (#1211).
+- **Khanh's 403.** All 13 forbidden responses in three hours were
+  `zodiac-insight`. 65 of 68 production connections returned 403 by design
+  because a MISSING privacy row counts as opted out. Backfill took 3 of 68
+  passing to 65 of 68.
+
+### Fixed, nobody reported
+- The connection screen printed "Personalization level: Max" while AI sharing was
+  OFF: it rendered the AI toggle's label above the share-level value, and its
+  ternary fell through to "Max" on undefined (#1216).
+- An expired session cleared the login and left the user on an authenticated
+  screen. Navigation was handed to a `ToastService` method whose body is entirely
+  commented out, so it never ran (#1217).
+- The blocked zodiac card said "check back a little later" about a reading that
+  was never coming (#1216).
+
+### Diagnosed, deliberately not fixed
+- **34 unmirrored accounts are an activation drop-off, not a sync bug.** Both
+  database hypotheses died with clean controls. 9 of 34 (26%) never signed in at
+  all, versus 0 in the mirrored September control. Mirroring is lazy on first
+  authenticated call; they never made one. Syncing would hide the funnel.
+- **A stuck Mixpanel GDPR receipt.** Purge complete, but Mixpanel has returned
+  PENDING since 08-29 with `num_retries: 3` on their side. Queried from inside
+  the production pod so the token never left it.
+- **#925 held.** The blocker is production's legacy HS256, not the guard.
+  staging and dev already publish ES256 + JWKS where rotation is graceful.
+- **The orphan connection's cause.** The legacy invite-accept controller writes
+  connections at two sites and calls `ensureUserExists` zero times.
+
+### Edge Function audit, closed
+Read the deployed `protected-apis-relationships` source. `handleAcceptedInvitation`
+does SIX things; all six are present in the current controller. The port dropped
+`initializeRelationshipProgresses`, since restored. **No fourth omission.**
+
+### Operating notes
+- `CLEAN` means no merge conflicts, never "up to date". #1213 was CLEAN while
+  five commits behind; archiving then would have shipped one of twelve fixes.
+  `git merge-base --is-ancestor` is now a mandatory pre-archive step.
+- `git push` from a worktree whose branch name differs from its upstream pushes
+  NOTHING, silently, when quieted. Verify by the PR's head SHA.
+- A jest hang emits no failure output, so it presents as a stuck job. Two CI
+  hangs cost ~50 minutes each, both from fake-timer loops stepping coarser than
+  a pacing interval.
+- The CI cost leak amplified: the relevance job diffed the merge commit, so once
+  one merged commit touched `scripts/`, every later PR inherited a 54 minute
+  hosted macOS build. Fixed in #1223.
+
+### Docs
+- `Murror/docs/plans/2026-09-05-tester-reports-to-build-457.md`
+- `Murror/docs/CODEX-HANDOFF.md` updated with current refs and ownership.
