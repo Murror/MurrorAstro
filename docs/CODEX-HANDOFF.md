@@ -4,7 +4,141 @@
 Read this at the start of any Murror session; update it when you ship something the other tool
 would trip over.**
 
-Last updated: **2026-09-05**, by Codex (Murror AI Android v79 is available to the existing internal testers on the production backend; exact artifact, Play, and emulator evidence is recorded below, while Google-signed physical-device QA and every public-production action remain explicit gates).
+Last updated: **2026-09-06 07:00 ICT**, by Claude (v81 PUBLISHED to Murror AI Internal testing, -10.1 MB download; Sentry quota root cause) after Codex (Murror AI Android v79 is available to the existing internal testers on the production backend; exact artifact, Play, and emulator evidence is recorded below, while Google-signed physical-device QA and every public-production action remain explicit gates).
+
+---
+
+## ANDROID v81 PERF SLICE ON THE CODEX BRANCH (2026-09-05 23:30 ICT, Claude)
+
+Astro's pick after the panel: "startup noise + safe size wins first". Branch
+`codex/android-launch-readiness-20260901`, five commits after `d0a8adbf`, pushed, zero hosted minutes:
+
+| Commit | What | Evidence |
+|---|---|---|
+| `448cc1e8` | Android copies of SF Pro Display subset to Latin-plus (`scripts/subset-android-fonts.sh`) | 7 x ~2.2 MB -> 206-248 KB; `scripts/ci/android-font-subset-contract.test.mjs` parses cmap+name (34 code points incl. Vietnamese) and caps size at 400 KB; iOS `src/assets/fonts` untouched |
+| `b6728a40` | secure-storage read cache + coalescing (`src/common/secure-storage.ts`) | auth-js 2.68 reads storage on every getSession() and its 30 s tick; emulator cold launch Keystore reads **10 -> 1**; 7 specs, 2 mutants proven |
+| `b434a4c7` | versionCode 81 | five sites |
+| `721c8097` | **review-found race fixed**: a read in flight across `clearSecureStorage(preserve)` / backend swap could cache the OUTGOING account's session | read epoch captured per in-flight read; 2 specs fail on the old code |
+| (next) | `android-font-subset-contract` added to android.yaml's explicit contract list | ci.yaml globs it, android.yaml did not |
+
+Measured on the API-36 emulator, local DEBUG-signed v81 vs v80: universal APK 85.9 -> 76.3 MB, AAB
+120.4 -> 110.7 MB, SF Pro in APK ~15 -> 1.6 MB, PSS 235 -> 225 MB, cold start unchanged within noise
+(310-540 ms vs 330-700 ms). First screen renders the subset fonts correctly (screenshot kept in the
+session scratchpad). Full lane: 543 Jest suites / 5,289 tests, tsc 0, exact ESLint baseline, 183+29
+Android contracts.
+
+Diagnosed, deliberately NOT changed:
+- **Facebook 15-29 `GraphRequest can't be used` errors per launch**: `com.facebook.internal.FacebookInitProvider`
+  (auto-merged from facebook-core, still in the built manifest) runs `sdkInitialize` on the main thread
+  before `Application.onCreate`; with `AutoInitEnabled=false` nothing calls `fullyInitialize` until JS
+  (`app.tsx` `Settings.initializeSDK()` == `FacebookSdk.fullyInitialize()` only). Removing the provider
+  breaks the SDK because fbsdk-next never calls `sdkInitialize`; a real deferral needs a small native
+  module. Gain ~10 ms of cold start + log noise. Meta events DO send later (consent auto-grants on Android).
+- **Branch before SoLoader** in `MainApplication.onCreate`: not a perf issue; the ordering is deliberate
+  (tracking disabled before MainActivity.onStart). Left alone.
+- **RNSkia `updateAndRelease() failed` / EGLConsumer lines**: react-native-skia says "can safely be ignored".
+- **x86/x86_64 in release** (`reactNativeArchitectures`): dropping them would shrink the upload/CI time
+  but Play lists 72 supported Chromebook models, Intel ones would lose the app. Astro's call; not done.
+- **v81 Play-signed AAB EXISTS (Astro approved the dispatch, 2026-09-06 00:02 ICT):** hosted run
+  `33979707582` on `19312969` (ubuntu-latest, 61 min) succeeded; artifact downloaded, all 15 CI production
+  checks re-run on the bytes (signer `CN=Murror Android Upload` `f44e00d4…`, env digest `1782ad73…`),
+  sealed at `android/app/build/outputs/play-ready-19312969/Murror-2.0.0-81-production-release.aab`
+  SHA-256 `1361112457c6ce36aea8057f1f8f97f54b61f333fc92701401120630c6c3d16c`, universal APK
+  `b59efd2c7afb712e1a3c4af79d615518bb255a96528f43cf9efed5e9439018f1`; 110.7 MB AAB / 76.3 MB APK
+  (v80: 120.4 / 85.9). Copied to `~/Desktop/Murror-Android-v81/` for the drag-in upload.
+  **PUBLISHED to `Murror AI` Internal testing (Astro's explicit yes, 2026-09-06 06:53 ICT):** release 38 =
+  `81 (2.0.0) - Startup and size`, en-US notes only. Track summary reads
+  `Active, Latest release: 81 (2.0.0) - Startup and size`, Available to internal testers, 1 version code.
+  Play's own review numbers confirm the font work: **download 46.4 MB (-10.1 MB), time to download 26s (-6s)**,
+  update size 41.4 MB, **0 devices lost on every form factor** (Chromebook stays 72 - the reason all four ABIs
+  were kept). Sole warning is the same non-blocking deobfuscation-file note as v80.
+  🚨 **Uploading the bundle RESETS the release name and notes to Play's placeholders**, including the `<vi>`
+  block, even when they were filled before the upload. Refill and re-verify AFTER the bundle attaches.
+
+---
+
+## SENTRY IS DARK ORG-WIDE BECAUSE THE QUOTA RAN OUT (2026-09-05 19:10 ICT, Claude)
+
+- Sentry org `murror` is on the free **Developer plan, 5,000 errors per usage period (Aug 14 – Sep 13)**.
+  Billing page reads "Usage Exceeded": 5,191 accepted, 906 dropped as Rate Limited. Org-wide
+  query: **0 accepted events in the last 7 days across every project** (mobile prod/dev, viasr-api,
+  murror-api). This is the whole "client Sentry dark since 08-26" incident; not iOS, not the SDK.
+- Positive control: `am crash com.murrormobile` on the v80 emulator (network VALIDATED, ingest host
+  reachable, RNSentry started with the prod DSN) never appeared. Do not spend effort on release
+  tags, symbolication or native init until Astro restores quota (upgrade / on-demand / Sep 13 reset).
+- Android gates measured today (Play Console + RevenueCat, read-only): Play subscription
+  `app.murror.premium` with base plans `monthly` + `yearly` Active and a live `3-day-trial` offer;
+  RevenueCat Android app `app188f5718b2` with both products in the current `premium` offering.
+  Google-managed app-signing cert is SHA-256 `03:A1:60:F6…` (upload cert `F4:4E:00:D4…`); whether
+  GCP project `844186200639` has an Android OAuth client for that cert is UNVERIFIED (passkey wall).
+- Perf baseline v80 on the API-36 emulator: cold start to first frame 330–700 ms, warm 59 ms,
+  PSS 235 MB, download 56.5 MB (dex 21.5 MB, fonts 10.7 MB, arm64 libs 9.1 MB, res 9.0 MB,
+  Hermes bundle 4.4 MB). `enableProguardInReleaseBuilds=false`; release ships x86/x86_64 ABIs;
+  Facebook SDK is never initialized (15 GraphRequest errors per launch, app events never sent);
+  the missing auth token is read from Keystore 10× in the first second; Branch inits before SoLoader.
+
+---
+
+## ANDROID LANE CONTINUED BY CLAUDE — v80 DEBUG-SIGNED TEST BUILD, PLAY SIGNING IS THE GATE (2026-09-05 17:45 ICT)
+
+Astro chose (AskUserQuestion, 2026-09-05): WIP-commit and push Codex's uncommitted tree, finish the
+fence work, build v80 locally, and **Codex keeps ownership of the fence work**. Branch
+`codex/android-launch-readiness-20260901` is now at `d0a8adbf`, pushed. Zero hosted minutes spent
+(branch is not an `android.yaml` push trigger; verified with `gh run list --branch` after each push).
+
+- **`2f098775` wip(codex)** = Codex's working tree exactly as it was left at 12:17 (97 modified +
+  22 untracked, ~5.5k product + ~4.9k spec lines: onboarding commit fence, auth/session isolation,
+  secure-storage watchdog, first-chat storage). Not reviewed as a release. All three P1s from
+  Codex's own 11:20 Stage-1 review are implemented (sentinel, file:line). Full lane on it:
+  type-check 0 errors, jest 543 suites green, exact ESLint baseline, 174 Android contracts.
+- **`0fb3d103` test(onboarding)**: the two failing specs in `connections-add-friend.spec.tsx`
+  asserted the pre-change route-Home policy; aligned to the source's "unknown storage is not
+  absence, keep Continue retryable" rule that the neighbouring spec already encoded. Added the
+  missing `resetOnboardingCommitFenceForTests()` to `use-onboarding-signin.spec.tsx` (module-level
+  `activeCommits` Map leaked across tests in that file only).
+- **`d0a8adbf` chore(android)**: versionCode 79 -> 80 at the five sites; versionName stays 2.0.0.
+- **Local production build works from this worktree** with three things CI does that the
+  worktree did not: `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`,
+  `./gradlew generateCodegenArtifactsFromSchema` FIRST (else CMake fails in 22s on absent
+  `codegen/jni` dirs), and `SENTRY_DISABLE_AUTO_UPLOAD=true` (else it dies after 5 min at the
+  Sentry upload task). Env: `MurrorMobile/.env.production` (digest `fb748163`), copied in at 0600,
+  passes `check-android-environment.mjs --expected-env production --expected-scheme murror`.
+- **Artifact:** `android/app/build/outputs/test-ready-d0a8adbf/Murror-2.0.0-80-production-DEBUGSIGNED.aab`
+  SHA-256 `826f64643668da7305d86b053a7e3cfcef9eb12823e3dac9c189dd6930de5cc2` and the universal APK
+  `027607edb621b8fd4a68d7aa3f8c979391ebc1a3daab57b833fb3332846acb0e`. Passes every CI production
+  check (badging, v2 signature, no AD_ID permissions, compiled ENV/BASE_API_URL/scheme) EXCEPT the
+  upload certificate: **signed with the stock debug key** (`fac61745...`), because
+  `android/local.properties` points `APP_PROD_UPLOAD_STORE_FILE` at `debug.keystore`. The real
+  replacement upload key (`F4:4E:00:D4...`) exists only in the iCloud signing vault (passwords in
+  Keychain) and in GitHub's `play-production` environment. **This AAB must not be uploaded.**
+  Cold-launch on API-36 emulator-5556: PASS (`verify-android-device.mjs`, versionCode 80 installed).
+- **Open for Codex (owner of the fence work):** (1) `isSectionWithinAnimationWindow` in
+  `relationship-detail-screen.tsx:719-729` is not platform-gated, so a rendering change lands on iOS
+  with no device evidence; decide whether it needs `Platform.OS === 'android'` before this branch
+  ever targets `staging-environment-setup`. (2) A stale first-chat seed now makes Continue a silent
+  no-op tap (released, retryable); confirm that is the intended UX rather than a dead end.
+  (3) Untracked `patches/react-native-date-picker+5.0.10.patch` (48dp touch targets) is now
+  committed; it is applied in node_modules here.
+- **Play-signed v80 EXISTS (Astro approved the hosted dispatch, 2026-09-05 18:00 ICT).** Run
+  `33962152315` (workflow_dispatch, `release_environment=production`, ubuntu-latest, 62 min) on
+  `d0a8adbf` succeeded. Artifact `android-production-release-d0a8adbf...` (249 MB, expires
+  2026-09-12) downloaded and sealed at
+  `android/app/build/outputs/play-ready-d0a8adbf/Murror-2.0.0-80-production-release.aab`,
+  SHA-256 `c96f89608f759eb0f3420993ecde766c6da0bf155e8a26acb28a529bf9a73e3e`; universal APK
+  `4200fcee5b7e00344826f01a603f56722bfd03bc44b8bfada6aab38371c36a50`; native-debug-symbols
+  `18102f747fdaa32541b3de8b86be4f7a0357e7ba6dbef5ca97e9cd00d023f7db`. Signer
+  `CN=Murror Android Upload`, digest `f44e00d4...` = the reset Play upload key. All 15 CI
+  production checks re-run locally on the downloaded bytes: pass. CI's provenance receipt pins
+  the approved production env digest `1782ad73...`; the local `fb748163` file is NOT that, so the
+  debug-signed local build above also differs from prod in at least one env value.
+  **PUBLISHED to `Murror AI` Internal testing (Astro's explicit yes, 2026-09-05 ~18:40 ICT):**
+  release 37 = `80 (2.0.0) - Onboarding and session hardening`, en-US notes only (a stray `<vi>`
+  placeholder was removed before publish). Play review: 0 errors, 1 warning (no deobfuscation map,
+  same as v79), 0 devices lost/gained, 56.5 MB download (+41.8 KB). Track summary reads
+  `Active, Latest release: 80 (2.0.0)`. Native debug symbols were NOT attached (skipped by choice;
+  zip is on Astro's Desktop). Route: Astro dragged the 126 MB AAB in himself (the Chrome extension
+  upload tool caps at 10 MB; local-server injection was blocked by the permission classifier).
+  The Fold physical-QA gate still stands, now for v80; only the emulator was connected all day.
 
 ---
 
@@ -7058,3 +7192,33 @@ both schema generators have explicit `output` paths under `src/generated`, and
   MurrorMobile checkout remains preserved. Strict production readiness remains
   0% pending API reconciliation, legacy credentials, and physical-device
   acceptance.
+
+## Claude web lane decision checkpoint (2026-09-06 00:30 PST)
+
+- **The web production candidate is the `staging` lineage, by Astro's decision on 2026-09-05.**
+  Production web (`prod-a79b0ab2`) is an ancestor of `origin/staging` and NOT of `origin/dev`;
+  `dev` forked at `42a21ff2` (2026-06-22) and lacks 231 files production serves today plus the
+  August parity train (760 web-client files differ; `dev` has 94k fewer lines). Promoting `dev`
+  would regress production. Full measurement in the Claude memory note
+  `project_web_lineage_fork_dev_vs_staging`.
+- **Do not deploy `dev` to `staging.app.murror.app` again.** Codex's dev-lineage build (digest
+  `sha256:9f1517fd…`, Helm rev 215) WAS replaced on 2026-09-06 00:08 PST by a build of
+  `origin/staging` (`030a1a40`): build run 33979839420, deploy run 33979972679, digest
+  `sha256:d016638d…a8fd`, Helm rev 216, verified by effect (digest, ready pod, host 200).
+  The `staging` GitHub environment's branch policy now allows `staging` as well as `dev`. Alpha may keep
+  the `dev` lineage until Astro says otherwise.
+- murror-platform PR #463 merged into `staging` (`030a1a40`, 8/8 Ubuntu checks): #438 recovery
+  `redirectTo` port, banned-copy sweep (104 strings, three locales) + `banned-words.test.ts`
+  guard, `deploy-web-client-production.yml` (new, gated, digest-pinned, verifies by effect),
+  `build-web-client.yml` CANONICAL=`staging`, chart appends the managed pull secret instead of
+  the script replacing production's `ghcr-secret`, growth-source wire mapping, onboarding
+  `inert` + progressbar, dark color-scheme + scoped autofill, 44px sign-in targets.
+- Production paywall: Astro chose to ship web with `WEB_CLIENT__VITE_ENABLE_HARD_PAYWALL=false`
+  in the `production` GitHub environment (build-time; takes effect at the next production
+  build). No RevenueCat Web Billing app exists for production; do not create one without Astro.
+- Codex's dev-only work worth porting onto `staging` as small reviewed slices: iOS-style auth
+  shell (#443), founder-letter beat (#459). Do NOT port #460/#461 (dev-specific) or re-run
+  visual "alignment" PRs against `staging` wholesale.
+- Still owed before a production dispatch: `GHCR_TOKEN` in the `production` environment
+  (absent), an authenticated staging pass by Astro, the other seven charts' pull-secret
+  override (`useValuesFilePullSecrets` is set only for web-client).
