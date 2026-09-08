@@ -2580,3 +2580,57 @@ offline #2 through #5 including an offline banner that falsely promises "changes
 sync"; 16 stuck quiz days; duplicate user messages (web only); tab-switch delay; four
 product/copy items including Brian's "would you open this tomorrow? No."; and one open
 question to Mona (notification body, or the "Manage Notifications" button?).
+
+## 2026-09-08: Android builds 79 to 90, Fold hardening, and Internal testing
+
+Full writeup: `docs/plans/2026-09-08-android-builds-79-90-internal-testing.md`.
+
+### Available to testers
+
+- **Build 90** (`618f7228`, PR #1251) is available on Play Internal testing as
+  **2.0.0 (90)**. The exact-SHA CI run and protected Android build passed; signed AAB and
+  APK hashes were recorded; the `Murror Team` list contains 10 testers, including
+  `nkhanhpham99@gmail.com`.
+- Internal testing link:
+  <https://play.google.com/apps/internaltest/4701017521848127510>
+
+### What the Android run changed
+
+- Builds 79 to 86 established the Android launch foundation: production parity and
+  account isolation, smaller assets, secure-storage work, Fold-aware dimensions,
+  Fabric-safe visible controls, complete SVG geometry, dark app/notification icons,
+  notification sound, all-tab FAB actions, multi-photo send, and early Connection scroll
+  work.
+- Builds 88 to 90 repaired History and Research detail loading, reduced repeated
+  Connection and overlay renders, made image-detail sheets opaque, centered reaction
+  feedback in the live viewport, fixed settings icon color and Android voice finalization,
+  persisted interrupted reflections, refreshed Memory Room after completion, and kept
+  mental-health and panic actions reachable on short Fold screens.
+- Verification for build 90: 665 Jest suites passed with 1 skipped; 6,554 tests passed
+  with 3 skipped; TypeScript, scoped formatting, Android release contracts, workflow
+  contracts, exact-SHA CI, and the signed Android build passed. Repo-wide formatting still
+  reports 77 pre-existing unrelated files.
+
+### Evidence boundaries and remaining work
+
+- **Not Fold 8 verified after publication.** The next pass must cover long Connection
+  scrolling, History/Research recovery, image-detail containment, reflection resume,
+  Memory Room arrival, voice interruption, feedback centering, and assessment/panic
+  reachability across cover, unfolded portrait, unfolded landscape, and split-screen.
+- PR #1238 (`7a6035e3`) and build 90 PR #1251 (`618f7228`) remain distinct. The former is
+  not an ancestor of the latter, so both tracks must be reconciled before a trunk build can
+  be called complete.
+- Highest remaining performance work: serial analytics at startup, Home orbital Skia
+  rebuilds, per-friend query/channel fan-out, non-virtual conversation/Connections/Memory
+  Room lists, suspected navigator re-renders, and offscreen Galaxy animation loops.
+- Highest remaining Fold work: relationship-next-step clipping, preview call-to-action
+  reachability, frozen-width shared primitives, portrait-only onboarding assumptions, and
+  a true two-pane unfolded layout.
+- No public progress-page entry was made because this is an Internal testing release and
+  regression-hardening record, not a publicly available Production capability.
+
+### Work accounting
+
+Combined tool-reported processing volume across Claude and Codex was
+**3,210,384,991 tokens**. This includes cache reads and delegated work; it is not a billing
+estimate.
