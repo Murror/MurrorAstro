@@ -2504,3 +2504,79 @@ Full technical writeup: `docs/plans/2026-09-06-sentry-free-tier-and-launch-build
 Device pass on 459 ("Launch Build Device Pass" checklist); PostHog connector auth → gate event, alert,
 retention; privacy disclosure bullet via the privacy-docs lane; at Submit: Duo IAPs unselected, ASC
 Diagnostics Linked to You = Yes + Other Diagnostic Data.
+
+## 2026-09-08: Statsig ungating, builds 463/464, and nine launch fixes queued for 465
+
+Full writeup: `docs/plans/2026-09-08-launch-blockers-to-build-465.md`.
+
+Three strands that turned out to be one: a data-plane probe of Statsig proved several
+shipped features were gated behind a control plane the app cannot reach; two tester rounds
+surfaced four launch blockers; and a read-only security investigation found an IDOR that
+went to production the same day.
+
+### Shipped to TestFlight
+
+- **Build 463** (`83efb1b5`, bump PR #1250) = **#1248** Council renders by default +
+  **#1249** the send button no longer waits on a flag resolving. Both are the same root
+  cause: `useFeatureGate` returns `false` while unresolved and the Statsig SDK never
+  resolves in production, so a gated surface is permanently absent, not merely off.
+- **Build 464** (`386f331c`, bump PR #1254, VALID + attached to 2.0.0 at 12:02) =
+  **#1252** ungate five shipped features (five other gates deliberately KEPT: Duo, Galaxy,
+  relationship-next-steps, hard paywall, onboarding length) + **#1253** Memory Room made
+  safe to ship, including a PostHog-backed kill switch that fails safe.
+
+### murror-api
+
+- **#949 `3a7a856c`** legacy quiz IDOR, both routes scoped to the caller's own connections.
+  Merged, promoted as **#950 `04ddbf16`**, **deployed to production** (real deploy job
+  green, smoke test green). 7 tests, 5 red on revert. Routes were verified still in use by
+  the mobile client before scoping rather than deleting; prod row counts checked first.
+- **#951 `32b7e6f9`** save without AI processing: `skipAiProcessing` on `CreateJournalDto`
+  skips `publishToAI` and completes the entry locally. Merged to staging.
+- **#952** Council 400 becomes `{results: [], status: 'GENERATING'}` in **both**
+  `requestAnalysis` and `requestLearning`. **Still open.**
+
+### Queued for 465 (`fix/composer-draft-data-loss`, PR #1255, NOT merged)
+
+Six commits, nine fixes, four of them launch blockers: composer data loss inside a
+conversation (`aab034ec`), offline logout wiping the device then reporting failure
+(`a9081d40`), new-user signup dead end and invite links dead for every non-subscribed user
+(`6bf95b5b`), plus continued-thread cache staleness (`1e61da73`) and a declined AI consent
+no longer blocking saving (`0dd5167d`). `bb773cd2` corrects six findings an adversarial
+review made on my own first two fixes.
+
+Gates: tsc 0, lint baseline, 649 suites / 6,475 tests.
+
+### Operating notes
+
+- **#1252 was merged without the required adversarial review**; the gate hook fired after
+  the merge. The review was run anyway before building and found 3 Criticals in the
+  newly-live Memory Room. That is what #1253 is.
+- **My first offline-logout fix was wrong and the review proved it.** `GoTrueClient._signOut`
+  issues `POST /logout?scope=` for *every* scope and only calls `_removeSession()` on
+  success, so a "local scope fallback" is a retry of the same failing request. The spec had
+  asserted the false premise in a comment and then mocked it true.
+- **A killed mutation left buggy code in the working tree.** `diary-screen.tsx` still had
+  the reverted History fix. Re-verify the tree after mutation testing, always.
+- **`toContain` cannot catch a flag lost at one of two call sites.** Count the handoffs and
+  require the flag on every one.
+- **`ValidationPipe` (`whitelist: true, forbidNonWhitelisted: false`) silently strips
+  undeclared fields.** So `0dd5167d` must not reach production before #951 does, or
+  `skipAiProcessing` vanishes with no error anywhere.
+
+### Corrections recorded
+
+- `connectionId` **is** always on the wire; Mona's bug is not a missing id.
+- The council tap fires **no request**; the 400s come from three sibling mutations.
+- "65% of days broken" was really **16** days; 91 were future days by design.
+- `deep_chat` no longer gates the send button (fixed in 463).
+- Dominich's "lost" messages were present in production (08:13:29 / 08:13:31,
+  `deleted_at` null). N1 is a cache bug, not data loss.
+
+### Owed
+
+465 not cut (PR #1255 needs review then merge); #952 needs merge and deploy; Khanh's
+offline #2 through #5 including an offline banner that falsely promises "changes will
+sync"; 16 stuck quiz days; duplicate user messages (web only); tab-switch delay; four
+product/copy items including Brian's "would you open this tomorrow? No."; and one open
+question to Mona (notification body, or the "Manage Notifications" button?).
