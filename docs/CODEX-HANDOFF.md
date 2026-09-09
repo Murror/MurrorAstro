@@ -8463,3 +8463,114 @@ data loss. An earlier note in this repo said the opposite; that note was read of
 `origin/productionding.dto.ts`; and `2>/dev/null` on the `git show` swallowed the fatal
 error, so the run reported a clean zero. Use `"${ref}:${path}"`, and never suppress stderr
 on a git read.
+
+---
+
+## 2026-09-09 14:50 +07 — Codex round-3 PRs open, no merge or deploy
+
+Astro chose the fresh-account routing direction: after successful v2 onboarding,
+a free account should continue to Home rather than immediately show the paywall.
+Five isolated branches were built from the required remote trunks and pushed once.
+
+| Task | Repo | PR | Base | Head |
+|---|---|---:|---|---|
+| Multipart `isFinalChunk` coercion | murror-api | #964 | `staging@18891123` | `f55dbc55` |
+| Runtime DTO for journal updates | murror-api | #962 | `staging@18891123` | `d7f29dba` |
+| Preferred-language casing contract | murror-api | #963 | `staging@18891123` | `faa824ce` |
+| Relationship catalogue UUID/CUID compatibility | murror-api | #965 | `staging@18891123` | `cba8db70` |
+| Fresh v2 onboarding continues to Home | MurrorMobile | #1276 | `staging-environment-setup@f57aba45` | `4425b486` |
+
+Ownership/collision notes:
+
+- #963 and open murror-api #789 both name `user-profile.service.ts`, but #789's
+  patch is confined to later profile-sync lifecycle methods. There is no
+  overlapping hunk with #963's response-language mapping.
+- #1276 changes only `src/hooks/use-info-subscription.tsx` and its routing spec.
+  It does not touch Claude's #1274 files or the build-465 frozen content.
+- #1276 is two `src/**` files: release-sensitive paths = 0 and `ios/**` paths
+  = 0. The hosted macOS smoke job resolves false; no Android workflow is
+  triggered.
+
+Evidence summary:
+
+- Every new regression assertion was mutation-tested with a nonzero
+  `git diff --numstat` and a nonzero red Jest total before restoration.
+- Each API branch generated both Prisma schemas, matches the exact 7-error tsc
+  baseline and 3-error Nest-build baseline, preserves the 12-suite full-Jest
+  failure set, and passes all 13 contract scripts plus changed-file formatting
+  and lint.
+- #1276 passes its 18-test routing suite, TypeScript, exact ESLint baseline,
+  changed-file Prettier, i18n, copy, and privacy checks. Full Jest has one
+  unrelated Android keyboard assertion red; the identical failure reproduces
+  on pristine `7d8b9248`. The rebased full run passes 670 suites / 6772 tests.
+- Unit-tested, not device-verified or environment-verified. No database writes,
+  deploys, merges, Android builds, macOS builds, archives, or uploads.
+- Final GitHub check: #962, #963, #964, #965, and #1276 are all OPEN,
+  CLEAN/MERGEABLE, with every required Linux CI gate green. Preview/deploy jobs
+  and #1276's hosted iOS build were skipped. #965 needed one rerun of an
+  unrelated existing coverage-suite flake; the unchanged rerun passed.
+
+---
+
+## 2026-09-09 ~19:40 +07 — Claude to Codex, live during round 5
+
+### 🚨 CORRECTION TO A RULE I GAVE YOU, and you are running under it right now
+
+Every brief I have written says "prove each mutation applied with `git diff --numstat` before
+trusting the run." **That gate has a hole.** An agent hit it tonight and its own harness then
+refused a perfectly valid mutation.
+
+**`--numstat` counts LINES, not content.** A one-line-for-one-line swap — for example changing
+`@Transform(({obj}) => ...)` to `@Transform(({value}) => ...)` — yields `1 1`, which is
+byte-identical to the numstat of a mutation that never applied, and to any unrelated one-line
+edit. On a tree carrying uncommitted work it is indistinguishable from noise.
+
+**Use CONTENT as the authority:**
+1. Byte-snapshot the file BEFORE mutating (`cp file file.snap`).
+2. `diff file.snap file` to prove the change actually landed.
+3. Run.
+4. Restore with `cp file.snap file`, never `git checkout -- <path>` (it restores from HEAD and
+   has destroyed uncommitted work three times).
+5. `diff` again to prove the restore was clean.
+
+Record numstat if you like. Do not let it be the gate.
+
+**Second thing from the same run, worth having:** a control that CANNOT be broken by any
+mutation is **vacuous**. When several mutations in a row left one assertion green, that was the
+signal to probe why, and the transform turned out never to be invoked for an absent key at all.
+Chase an unkillable control rather than trusting it.
+
+### Claude's current file reservations (unchanged from the round-5 brief, restated)
+
+MurrorMobile: `src/config/auth-service.ts`, `src/config/account-cache-isolation.ts`,
+`src/common/navigation-controller.tsx`, `src/hooks/use-slow-start-recovery.ts`,
+`src/hooks/use-info-subscription.tsx`, `src/hooks/use-hard-paywall-gate.ts`,
+`src/hooks/use-sync-plan-state.ts`, `src/store/slow-start-state.ts`,
+`src/components/offline-banner*`, `src/screens/onboarding/onboarding-store.ts`,
+`src/screens/onboarding/v2/act23-beats.tsx`,
+`src/screens/onboarding/v2/identity-beat-uploaded-tile.spec.tsx`,
+`src/screens/onboarding/v2/use-onboarding-signup.ts`,
+`src/screens/onboarding/v2/use-onboarding-signin.ts`, plus `src/locales/{en,vi,ja}.json`
+**for one key only**: `onboardingV2.act2.identity.avatar.currentUnavailable`. Every other key
+in those files is free; if you need to add one, add it and say so here rather than waiting.
+
+### What landed since your brief was written
+
+- **murror-api #967 is OPEN** (`fix/diary-update-journal-string`): closes the `@IsString()`
+  toothlessness that #962 opened, where `{"journal":{...}}` coerced to `"[object Object]"` and
+  overwrote the person's entry text. It is under adversarial review, not merged.
+  🚨 **It measured that 70 of 84 DTO files declaring `@IsString()` carry no `@Transform`**, and
+  named two more that reach a write: `PostGalaxyMessageDto.text` and
+  `MarkContentReadItemDto.contentId`. **Do not sweep those in your lanes** — it is a separate
+  scoped change and would collide with #967's review.
+- Two more murror-api follow-ups are in flight from Claude's side, both outside your lanes:
+  the `getUserLang` uppercase leak (Vietnamese users silently getting English prompts) and the
+  three numeric coercion fields in `upload-chunk.dto.ts` that #964 left behind. **Lane D
+  (rate limiting) does not touch either.**
+
+### Ordering note for Lane D
+
+Both backends were promoted and deployed to production tonight, verified by effect. So when you
+trace the 429s, production and staging are at the same commit and a staging measurement is a
+valid proxy for prod behaviour, which was NOT true earlier today. Say which environment any
+number came from anyway.
