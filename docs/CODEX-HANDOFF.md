@@ -4,7 +4,140 @@
 Read this at the start of any Murror session; update it when you ship something the other tool
 would trip over.**
 
-Last updated: **2026-09-06 07:00 ICT**, by Claude (v81 PUBLISHED to Murror AI Internal testing, -10.1 MB download; Sentry quota root cause) after Codex (Murror AI Android v79 is available to the existing internal testers on the production backend; exact artifact, Play, and emulator evidence is recorded below, while Google-signed physical-device QA and every public-production action remain explicit gates).
+Last updated: **2026-09-06 13:00 ICT**, by Claude (build 84 signed + staged for Astro to upload; QA sweep of 13 commits; targetSdk 36 unlocked landscape on the Fold inner display)
+
+---
+
+## 🧹 QA SWEEP + FOLD FIX BATCH -> BUILD 84 (2026-09-06, Claude)
+
+Astro: "fix everything then make a new build for me to test everything." Branch
+`codex/android-launch-readiness-20260901` @ `82ade76f`, pushed. Hosted run `34012638097`
+(61 min) produced the Play-signed AAB, verified: signer `f44e00d4` (the upload key), all 15
+CI production checks re-run on the downloaded bytes, sealed at
+`android/app/build/outputs/play-ready-82ade76f/`, SHA-256
+`7771d44c0e257eee0d9da2ef828e9dd64a165d6dd2faddac17e9f7cb983281c5`. Staged at
+`~/Desktop/Murror-Android-v84/`. **NOT uploaded** — Astro drags it in; the browser tool caps
+uploads at 10 MB. Gates: 567 jest suites / 5,648 tests, tsc 0, exact ESLint baseline, 187
+Android contracts, i18n + workflow contracts. **NOTHING IS DEVICE-VERIFIED.**
+
+### Fixed (13 commits, `e6932081..82ade76f`)
+| Area | Cause |
+|---|---|
+| Tap-twice dead screens | `custom-modal-bounce` rested transparent AND one window below the viewport, recovered only by an unguarded mount effect; transparentModal + `detachPreviousScreen=false` left the previous screen visible with an invisible modal eating taps |
+| Share photo bare X (2 entry points) | RN `Modal` fixes `isRendered` in its constructor and runs the open path ONLY on a false->true `visible` transition, so a modal born visible never opens |
+| Connections looked unselected | unselected ring `#E3E3E3` was BRIGHTER than 7 of 8 selected hues; plus `removeClippedSubviews` on a horizontal list nested in a ScrollView |
+| Multi-photo silent failure | `react-native-image-picker` RESOLVES with `{errorCode}` and never rejects, so failure read as cancel. 3 sites fixed |
+| Fold orbit cropped | height manufactured as `W*0.92`, so the `Math.min` radius guard could never fire from Home |
+| Fold stretch | rneui `ScreenWidth` = module-scope `Dimensions.get`, baked into module-scope `StyleSheet.create`. **20 screens** migrated to live dimensions |
+| Home 90 idle animations | paint-window context defaults to null and `moment-to-care` never provided it, so sparkles took the continuous branch ungated |
+| Analytics queue unbounded | every nav queues, flush every 30 s, whole batch unshifted back on failure. Every flush stringifies the WHOLE queue on the JS thread; a test proved a 5,001-event single POST |
+| Keystore hang | reads had no deadline while writes did; Supabase holds its auth lock across each |
+| CDP scroll | solid borders at 6 InsightCard sites (Astro REVERSED his 09-04 rejection), Android-gated `removeClippedSubviews`, paint window `display`->`opacity` |
+
+### 🚨 Findings that overturned earlier conclusions
+- **`COMPLETED` is NOT terminal.** I reported the feed predicate as backwards and it is CORRECT:
+  `COMPLETED` = both reflected, AI writing (poll it); `PENDING` waits on a HUMAN for days.
+  Flipping it would have killed the real poll and started a worse one. The actual defect was no
+  expiry; now budget-bounded off the server timestamp + focus gate.
+- **Reanimated `entering` is DISQUALIFIED on Fabric/Android.** The commit hook clones views whose
+  entering carries opacity 0, only a UI-thread progress frame restores it, and the
+  cancel-to-final-state net is deliberately disabled for react-native-screens. A dropped entering
+  animation = permanently invisible, with LESS recourse than the original bug. 🚨 The T12 note's
+  stated cause is contradicted by the installed source; ~30 call sites carry this exposure.
+- **Do NOT add `density`/`fontScale` to configChanges.** Fabric sets pixel density ONCE at instance
+  creation; `fontScale` refreshes only in `onHostResume`. Declaring them = permanent disagreement
+  between layers. Samsung publishes both Fold displays at EQUAL density. Also: the stale-width
+  stretch could not have manifested if JS restarted on fold, so the symptom itself proves the
+  Activity survived.
+- **2 of 3 "ungated BlurView" findings were FALSE** (`bond-screen`, `journey-screen`,
+  `subscription-screen` are all already gated). One file imports both `isIOS` (rneui, for a style)
+  and `isiOS` (the real gate), which fools a grep. Treat that audit's remaining claims with care.
+- **The channel Map is bounded, not growing** — those channels are never subscribed, so no socket
+  and no heartbeat. Does not explain instability.
+
+### 🚨 targetSdk 36 removed the portrait lock on large screens
+`e54c46f2` (2026-09-01, first commit of this branch) moved 35 -> 36. At 36 Android IGNORES
+`screenOrientation` on displays >= 600dp smallest width. The Fold's INNER display qualifies, the
+cover does not. So the inner screen can rotate and resize freely and no landscape layouts exist.
+Astro chose to SUPPORT rotation rather than opt out (the compat property expires at API 37).
+Build 84 makes screens REFLOW (clamped at 480dp) but they are not DESIGNED for wide. That work
+has not started.
+
+### Still open
+1. **Landscape layouts** — the funded project above. Not started.
+2. **Error boundary built but NOT WIRED** (`src/components/section-error-boundary.tsx`). One bad row
+   still blanks the app. Adoption sites listed in the component and in the lane report.
+3. **`murror-header` MaskedView** pays 2 saveLayers + a blend EVERY scroll frame; it passes a REAL
+   two-colour gradient so the flag is inert and collapsing it is an unapproved visual change.
+4. **7 channel call sites** still on the caching accessor (`diary-screen.tsx`, `relationship-mission.tsx`).
+5. **`devError` redacts the picker breadcrumb** — `dev-logger.ts` allowlists keys and redacts string
+   values, so `error_code` logs as `{redacted:true}`. The diagnostic is currently blind.
+6. **`activity-service` should migrate** to `recordBatchEventsResult`; a 2xx with an empty envelope
+   is falsy today and re-queues accepted events.
+7. `insight-card` save failure is still silent; `pickErrorKeyFor` duplicated; `globalMocks.js`
+   lacks a `Dimensions` stub so `useWindowDimensions` throws at unmount in specs.
+8. **Sentry still out of quota** — zero telemetry from the device. Highest leverage item.
+
+---
+
+## 📱 FIRST PHYSICAL FOLD QA — 3 BUGS, 3 CAUSES, ALL PRE-EXISTING (2026-09-06, Claude)
+
+Astro ran v81 on a real **Samsung Galaxy Z Fold 8** — the physical-device gate Codex had open since v78
+is now partially closed. He found three defects. All three are byte-identical in builds 79, 80 and 81
+(`git diff 1a8f7131 19312969` empty over every implicated file), so **none is a regression from the
+WIP commit `2f098775` or from the v81 perf slice**. Root-caused per the house rule; fixes in flight on
+four parallel lanes with exclusive file ownership.
+
+**A. First tap on a history entry / Research tab / conversation detail does nothing; exit and retry works.**
+The FAB hiding is the *proof* the navigation SUCCEEDED: `app.tsx:79-90` renders `MurrorBubble` only while
+`MAIN_ROUTER.includes(currentRoute)`, so the FAB can only vanish if the route actually changed. The screen
+mounts, then `custom-modal-bounce.tsx:44-49` starts BOTH `animationProgress` and `opacityProgress` at 0 and
+`:71-79` interpolates `translateY` over `[windowHeight, 0]` — the resting state is fully transparent AND one
+whole screen below the viewport, recovered only by a single unguarded `useEffect(..., [])`. These routes are
+`presentation: 'transparentModal'` with `detachPreviousScreen=false` (`navigation-controller.tsx:769-785,
+865-882`), so a missed effect leaves the PREVIOUS screen visible with an invisible full-screen modal eating
+taps — exactly the report. 🚨 **Fail-closed by design.** WHY the effect misses on that device is NOT proven;
+surviving candidates are `enableFreeze(true)` (`index.js:19`) deferring passive effects, and foldable
+`useWindowDimensions()`. The fail-open fix is self-discriminating: if screens then appear WITHOUT the bounce,
+the effect never ran (freezing); if they animate, it was dimensions.
+Killed hypotheses (do not re-chase): `lazy-screen.tsx` is fully synchronous (cold require 5.16 ms per Codex's
+own probe) and `modal-presentation-state` is a closed 5-id union excluding detail screens.
+
+**B. Share photo from the FAB shows a bare X and no upload UI on the first press.**
+`butterfly-action-chooser.tsx:165-170` sets `setSheetMounted(true)` and `setSheetOpen(true)` in ONE batched
+tick while `onDismiss()` tears down the chooser overlay, so `<MomentShareSheet>` mounts with `visible={true}`
+already set and its RN `<Modal>` (`moment-share-sheet.tsx:628`) attaches its Android window on its first
+render. Header draws, body does not lay out. `sheetMounted` never resets, so every later press is an ordinary
+false->true transition and works. Introduced 2026-07-11 in `ac0b8d9f`.
+
+**C. Z Fold: Home orbit cropped, and the UI stretches on fold/unfold.** Two unrelated causes.
+Crop: `home-orbital-view.tsx:414-416` reads width ONLY and manufactures `H = W * 0.92`; with
+`home-orbital-geometry.ts:60` `R = Math.min(W*0.44, H*0.46)`, substituting H makes the second term
+`0.4232W` — always smaller — so **the `Math.min` guard is dead code** and R is unconditionally 0.4232x width.
+On the Fold's wide inner screen H balloons past the band (`home-screen.tsx:958-963`, `overflow:'hidden'`) and
+is clipped rather than scaled.
+Stretch: `@rneui/base/dist/helpers/index.js:18-20` captures `Dimensions.get('window')` at MODULE SCOPE once at
+bundle load; ~57 source files import `ScreenWidth`/`ScreenHeight`, including module-scope `StyleSheet.create`
+at `home-screen.tsx:928,940` and `avatar-circle-view.tsx:59`, which can never re-read after a fold.
+🚨 The manifest is NOT at fault — `AndroidManifest.xml:47` already declares
+`screenLayout|screenSize|smallestScreenSize|uiMode`, so the config change arrives and JS simply ignores it.
+Both are reproducible WITHOUT a Fold: `adb shell wm size 1812x2176` is a live config change, `wm size reset`
+restores.
+
+**D. Not yet diagnosed:** no visible selected-state for connections in the share sheet ("no ui indicator like
+on iOS"). Under investigation — the leading suspicion is an iOS-only shadow used as the selection affordance,
+which is a no-op on Android without `elevation`.
+
+**Secondary bug found, not the cause of anything above:** `getPresentOptions()`
+(`navigation-controller.tsx:310`) is spread inline into `options={}` at `:774, :783, :870, :880, :1114`, so it
+is evaluated during `NavigationController`'s render while `present()`/`push()` mutate the module-level
+`NavigationOptions.isPresent` at tap time — a genuine stale read. Cosmetic today (both branches end visible).
+
+**✅ Google Sign-In gate CLOSED** (Astro passed the GCP passkey, 2026-09-06): GCP project `murrorv2`
+(`844186200639`) client `AndroidProductionRelease`, package `com.murrormobile`, SHA-1
+`F8:7D:52:2B:EC:74:20:B9:C3:FD:50:09:02:C0:CF:76:9C:6C:B8:8A` == Play's Google-managed app-signing SHA-1.
+Play-delivered builds can sign in with Google. 🚨 That fingerprint is not page text — prime the clipboard with
+a sentinel, click "Copy SHA-1 certificate fingerprint", then `pbpaste`.
 
 ---
 
@@ -7222,3 +7355,1063 @@ both schema generators have explicit `output` paths under `src/generated`, and
 - Still owed before a production dispatch: `GHCR_TOKEN` in the `production` environment
   (absent), an authenticated staging pass by Astro, the other seven charts' pull-secret
   override (`useValuesFilePullSecrets` is set only for web-client).
+
+## Claude Android entrance-animation checkpoint (2026-09-06)
+
+Branch `codex/android-launch-readiness-20260901`, three commits, **local only**
+(`32bdbbba`, `944c20ab`, `06d1f47f`). The push guard denies this branch twice, so
+they are unpushed. A push starts NOTHING: `android.yaml` is the only workflow with
+a push trigger and its branches are `[main, develop, staging-environment-setup]`;
+no workflow references `codex`. The guard matches the branch's whole diff against
+staging, not the push target, which is the known false positive.
+
+### 🚨 CORRECTION: `LayoutAnimationConfig skipEntering` has a ONE-COMMIT scope
+
+An earlier option offered to Astro, "one global guard near the navigator root
+removes this entire bug class", is **WRONG**. Proven from
+react-native-reanimated 3.17.1 source, and independently re-verified:
+
+- `src/component/LayoutAnimationConfig.tsx:29-33` - `SkipEntering` does
+  `useRef(shouldSkip)` then a `useEffect` resetting it to `false` with
+  `[skipValueRef]` deps, a stable ref, so it runs EXACTLY ONCE on the guard's
+  own mount.
+- `src/createAnimatedComponent/createAnimatedComponent.tsx:165-181` - on Fabric,
+  ENTERING is registered ONLY in the AnimatedComponent CONSTRUCTOR, reading the
+  context once at that child's first render. The other site (`:583-594`) is gated
+  on `!isFabric()`. `android/gradle.properties` has `newArchEnabled=true`.
+
+So the guard protects only children that render in its OWN first commit. At a
+navigator root it would cover roughly one tick at launch and nothing after.
+Do not re-propose it.
+
+Consequences for choosing a fix:
+- Same-file guard around a subtree that renders unconditionally: WORKS.
+- Guard hoisted around a swap area: protects the FIRST page only. Often exactly
+  right, since the first mount is the risky one.
+- Guard around a QUERY-GATED branch: INERT. Remove the `entering` instead.
+
+### What shipped
+
+1. `relationship-more-insight.tsx` - entrance REMOVED. The X calling `goBack()`
+   is the only exit from this full-screen modal and sat inside the fading
+   subtree. Both ternary branches are `Animated.View` at the same position with
+   no `key`, so React updates ONE instance; on the cold path it was constructed
+   while the skeleton showed and the fade never registered at all, while on the
+   warm path it registered and could strand the exit. Dead on the slow path,
+   live on the fast one.
+2. `setting-privacy.tsx` - guard hoisted around the page-swap area PLUS seeding
+   `typePagePrivacy` from `initTypePage`. The hoist ALONE did nothing: three of
+   four entry points deep-link past the overview
+   (`relationship-detail-screen.tsx:2431`, `:2534`, `:2542`) and the state seeded
+   to a hardcoded `'overview'`, so the requested page arrived a commit too late.
+   Drill-in fades kept on purpose, with a test asserting they still register.
+3. `onboarding-language-screen.tsx` - guarded, as prescribed.
+4. Typography: the three 16px Playfair line heights collapsed onto 22, on the
+   font's own metrics (declared line box 21.33px at 16px, so 21 was BELOW it).
+   Two redundant variants deleted, not aliased.
+5. Two emoji-as-icon sites replaced with SVGs; the envelope reuses the icon the
+   sibling orbital avatar already draws.
+
+### Enumeration for the next lane
+
+111 production `entering=` sites across 47 files. A lookback heuristic flags
+about 40 as gated behind async state, where a guard would be inert, but it
+OVER-COUNTS: two false positives confirmed by hand. Needs a per-site read.
+
+Top candidate: `knowledge-screen.tsx:102` (the Research/Knowledge TAB) wraps
+EVERY list card in `FadeInDown.duration(1000)`, mounting after the query
+resolves. The cards are the tap targets. That matches Astro's device report
+"same with Research tab" and is a plausible SECOND cause, independent of the
+CustomModalBounce mount-order fix. SUSPECTED, not proven.
+
+### Not verified
+
+Unit-tested, not device-verified. Nothing here ran on an Android device or a
+Fabric build. The stall is modelled by a test double whose fidelity is argued
+from source and checked with a mutation that removes its mount latch.
+
+Full suite: 580 suites, 5,775 passed, 3 skipped, exit 0. `tsc --noEmit` 0.
+ESLint baseline exact. i18n-check, copy-lint, i18n-unused all clean.
+
+## Claude Android entrance sweep, complete (2026-09-06)
+
+Eight commits on `codex/android-launch-readiness-20260901`, **all local, push
+blocked** (see the previous section for why a push starts no CI).
+`32bdbbba 944c20ab 06d1f47f ffc3d454 349bbe89 dcf7270d c302c823 6c19b7b9`
+
+Full suite 604 suites / 5,882 passed, exit 0. `tsc --noEmit` 0. ESLint exact
+baseline. i18n-check, copy-lint, i18n-unused all clean.
+
+### 🚨 T12 NEVER PROTECTED ITS SCREEN
+
+`relationship-detail-screen.tsx:275-320` sets `ANIM_DURATION = 1`, believing a
+1ms entrance lands at its visible end state. The Fabric registration branch
+(`createAnimatedComponent.tsx:165-181`) tests only whether `entering` is truthy,
+plus reduced motion, `skipEntering` and `isFabric`. **Duration is never
+consulted.** The opacity-0 clone happens regardless, and an animation that never
+starts is as invisible at 1ms as at 800ms. The screen stayed exposed from the
+T12 change until now. Corollary: NO "make it shorter/zero/instant" mitigation can
+ever work on this bug class. Only not registering helps.
+
+Removing those four is a visual no-op: `maybeSetConfigValue` is truthiness-gated
+(`ComplexAnimationBuilder.ts:274-281`), so `.delay(0)` was already discarded.
+
+### Two shapes that decide guard vs removal
+
+1. **Shared instance across branches.** Same element type, same position, no
+   `key` means ONE instance, so whichever branch was constructed first owns the
+   registration. Seen both ways: `relationship-more-insight.tsx` never registered
+   on the cold path (both branches animated), `streak-view.tsx` does (its
+   skeleton branch is a plain `View`).
+2. **Inherited stall.** `journal-view.tsx` has four root branches sharing one
+   instance. Removing `entering` from only the load-bearing ones left the content
+   branch inheriting a stall from a decorative sibling. **Partial removal inside
+   a shared-instance group is not a fix.** Measured.
+
+Also: `weekly-result-screen.tsx`'s two returns must reconcile to DIFFERENT root
+types, or the guard goes inert when `hasResult` flips late. A comment on the
+other branch says so.
+
+### Totals
+
+111 production `entering=` sites. 91 classified across four lanes plus the three
+fixed earlier. Roughly 30 fixed, the rest left as decoration with reasons in the
+commit messages.
+
+### Astro's Research tab report: still unexplained, two candidates eliminated
+
+- The article-card entrance CANNOT explain it: a stalled card is invisible but
+  still tappable, so the push fires, and `knowledge-screen-detail.tsx` has ZERO
+  entrances so it cannot be blanked.
+- The Home Research card root pushes to `KnowledgeScreen`, whose cards DID stall
+  behind a 400ms `isReady` gate plus the query. That path is now fixed.
+- The row-geometry theory (`getItemLayout`/`snapToInterval` from a stale
+  `containerHeight`) was ALREADY FIXED in `82db4d05`, which is in build 84.
+  Astro reported against 81.
+
+### 🚨 emoji-as-icon was a RECURRENCE
+
+`d90e6cc0` (2026-06-22) swapped eight settings SVGs for emoji "instead of the SVG
+glyphs that were not rendering". Real cause: **59 of 138 icons declare width and
+height with NO `viewBox`**, so react-native-svg maps 1:1 and CLIPS rather than
+scaling. The emoji were a workaround for a missing attribute. Call sites now pass
+the missing viewBox rather than editing shared assets.
+
+**Owed follow-up:** add `viewBox` to `bell-icon`, `hand-icon`, `document-icon`,
+`globe-icon`, then drop the call-site compensation. The other 55 remain a trap.
+
+### Flagged, not fixed
+
+- `galaxy-home-slot.tsx`: structurally the worst site found. Once the mode flips,
+  the Home fallback is gone, so a stall leaves a blank screen whose only exit is
+  a gesture on an invisible surface. Unreachable behind a dark Statsig gate, and
+  its fade has a documented masking job. **Blocker to enabling that gate.**
+- `privacy-page.tsx:189`: the error branch holds the retry button and swaps in on
+  a query result, so the hoisted host guard misses it. Not a trap, the back arrow
+  stays visible.
+
+### Not verified
+
+Nothing is device-verified. No Android device or emulator was used. Every
+conclusion is source reading plus a fail-open double that models registration and
+withholds the progress frame.
+
+## Claude Android: entrances removed app-wide + icon viewBox (2026-09-06)
+
+Astro ruled twice here: remove EVERY entrance animation app-wide, and fix all 59
+icon assets rather than compensating at call sites.
+
+**Remote is at `6c19b7b9`. Four commits are LOCAL ONLY, blocked by the push
+guard:** `15153c15 89f5fe6b 5d756972 bf79cc4c`. The guard denies this branch
+whenever `android/` is in the diff, regardless of push target. It let one push
+through earlier and refused the next two, so treat it as unreliable rather than
+a rule. A push starts NOTHING: `android.yaml` is the only workflow with a push
+trigger and its branches are `[main, develop, staging-environment-setup]`; every
+Android run on this branch has been `workflow_dispatch`.
+
+```
+git -C Murror/MurrorMobile-worktrees/android-launch-readiness-20260901 \
+  push origin codex/android-launch-readiness-20260901
+gh workflow run android.yaml --ref codex/android-launch-readiness-20260901 \
+  -f release_environment=production
+```
+
+Full suite 607 suites / 5,975 passed, jest exit 0 (verified without a pipe, so
+the exit code is real). `tsc` 0. ESLint exact baseline. i18n-check, copy-lint,
+i18n-unused clean. versionCode 85 across all five sites, both contract checks
+green.
+
+### Entrances: 81 removed, 9 guards removed, 0 remain
+
+Guards could never have closed this. `skipEntering` resets in a one-shot passive
+effect and Fabric reads it in the AnimatedComponent CONSTRUCTOR, so a guard only
+covers children rendering in its OWN first commit. Every guard added earlier on
+this branch is therefore removed as dead code.
+
+**The durable artefact is `src/entrance-animations-removed.contract.spec.ts`**,
+which fails if any production file reintroduces an entrance. It strips comments
+(many doc blocks warn about this defect) and carries positive controls: it must
+flag a synthetic entrance, must NOT flag one quoted in a comment, `exiting=`,
+`layout=`, or the word "centering", and must assert it scanned real files. CI
+runs jest on PRs to `main` and `staging-environment-setup`, so it is enforced
+there already.
+
+Known gap, documented in the gate: a spread-form `{...props}` carrying an
+`entering` key is not caught. None exist today.
+
+### Icons: all 59 fixed at the asset
+
+Rule applied: viewBox is the DECLARED width/height, widened only where the ink
+provably does not fit. That makes 58 of 59 a strict identity at natural size.
+**`email-icon` is the only visible change** (ink 37x32, declared 24x24, so it was
+losing a third of the envelope) and it has no call sites. Cropping to the ink
+instead would have zoomed every icon and broken a deliberate 2px Home-tab nudge.
+
+The 4 call-site compensations from `6c19b7b9` are now deleted, which the existing
+either/or contract demanded once the assets carried their own boxes.
+
+### 🚨 Still open
+
+- **`target-icon.tsx` cannot be recoloured.** Probed, not inferred: passing a
+  stroke yields black paths because each child hardcodes its own. Zero call
+  sites, so it is a prerequisite before use, not a live bug.
+- **`eye-close-icon.tsx` exports `EyeSplash` and `eye-splash-icon.tsx` exports
+  `EycCloseIcon`.** The names are swapped; one call site renames on import.
+- **`galaxy-home-slot.tsx`** entrance is gone now, so that blocker is cleared.
+- **13 shared values still rest at opacity 0** revealed only from an effect, a
+  DIFFERENT mechanism from the entering clone but the same shape. Two checked by
+  hand and both are fine (a decorative sparkle; a chooser whose touch handling is
+  React state, not the animation). The other 11 are unreviewed and mostly
+  decorative by name.
+
+### Not verified
+
+Nothing is device-verified. No Android device or emulator was used at any point
+in this work. The visual cost of removing 81 animations has not been seen.
+
+## Codex heartbeat checkpoint (2026-09-07 05:22Z)
+
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `206374a85c` (build 460); murror-api
+  `origin/staging` is `b64e7b5c16`; viasr-api `origin/staging` is
+  `3450603006`; murror-backend `origin/main` is `7e459ea0e0`. Mobile build 460
+  is anchored by merged PR #1237 / bump commit `2955c8b4f4`; 26 project-version
+  settings and all four app plist versions read 460, and its CI run
+  `34075796461` passed.
+- API staging's exact-head Deploy run `34077474626` passed from `b64e7b5c16`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 is now closed and unmerged at
+  `ef2a50545a`; comparing PR head to current staging remains diverged (staging
+  370 commits ahead, PR 40 commits ahead). No merge or forced reconciliation was
+  attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34077482686` passed from `3450603006`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  Consequently APNs delivery, dedicated ringtone audibility, notification
+  routing, consent, quiet-hours behavior, and current-build install/runtime
+  proof remain unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. An unrelated Android Build run
+  `34085244221` was already in progress in Actions; it was not started,
+  cancelled, or inspected by Codex to avoid interfering with another session.
+- The local live tracker page was updated and committed as
+  `9d2220e0` in the isolated tracker worktree; it was not pushed. GitHub core
+  quota was `4,951/5,000` and GraphQL was `5,000/5,000` at this checkpoint.
+  Storage check: 118 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-08 06:24Z, final EOF)
+
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared changes were preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `386f331c1f` (build 464); murror-api
+  `origin/staging` is `f7c2f3a8b0`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source
+  has 26 `CURRENT_PROJECT_VERSION` settings and all four app plist versions at
+  464.
+- Build 464 is anchored by merged PR #1254 / bump commit `6241ccc4db`; its
+  existing CI run `34187994975` passed, with the native iOS job skipped because
+  no native/release-sensitive source changed. The merged bump is the current
+  staging tip. No archive or TestFlight action was started.
+- API staging's exact-head Deploy run `34138865177` passed from `f7c2f3a8b0`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 372 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe timed out while
+  CoreDeviceService was initializing, so no iPhone listing or app-info query was
+  possible. APNs delivery, dedicated ringtone audibility, notification routing,
+  consent, quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The live tracker page was updated
+  and committed locally as `0d944193` in the isolated tracker worktree; it was
+  not pushed. The read-only quota check returned core `4,991/5,000` and
+  GraphQL `5,000/5,000`, with resets at `07:19:21Z` and `07:26:30Z`.
+- Storage check: 88 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. The process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-07 10:23Z)
+
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `7220c350b8` (build 461); murror-api
+  `origin/staging` is `b64e7b5c16`; viasr-api `origin/staging` is
+  `3450603006`; murror-backend `origin/main` is `7e459ea0e0`. Mobile build 461
+  is anchored by merged PR #1242 / bump commit `ce7e7f613c`; 26 project-version
+  settings and all four app plist versions read 461, and its CI run
+  `34110241137` passed.
+- API staging's exact-head Deploy run `34077474626` passed from `b64e7b5c16`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; comparing PR head to current staging remains diverged (staging
+  370 commits ahead, PR 40 commits ahead). No merge or forced reconciliation was
+  attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34077482686` passed from `3450603006`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  Consequently APNs delivery, dedicated ringtone audibility, notification
+  routing, consent, quiet-hours behavior, and current-build install/runtime
+  proof remain unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The local live tracker page was
+  updated and committed as `55602579` in the isolated tracker worktree; it was
+  not pushed. GitHub core quota was `4,904/5,000` and GraphQL was
+  `5,000/5,000` at this checkpoint.
+- Storage check: 104 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-07 20:23Z, EOF)
+
+- This EOF checkpoint is authoritative for the current heartbeat; an earlier
+  20:23Z note remains above an existing historical section and was preserved.
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared Android-related changes were
+  preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `482e93a0af` (source build 462);
+  murror-api `origin/staging` is `f7c2f3a8b0`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source has
+  26 project-version settings and all four app plist versions at 462. Build 462
+  is anchored by merged PR #1247 / bump commit `6e511a78c3`, whose CI run
+  `34139218319` passed, but the current staging head is newer than that bump;
+  the official lane must be rechecked before archiving.
+- API staging's exact-head Deploy run `34138865177` passed from `f7c2f3a8b0`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 372 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  APNs delivery, dedicated ringtone audibility, notification routing, consent,
+  quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The local live tracker page was
+  updated and committed as `8ed47885` in the isolated tracker worktree; it was
+  not pushed. GitHub core and GraphQL quotas were both `5,000/5,000` at this
+  checkpoint.
+- Storage check: 105 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-08 01:24Z, final EOF)
+
+- This final EOF copy is authoritative for the current heartbeat; earlier
+  01:24Z and 20:23Z material was preserved in place because the handoff is
+  shared.
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared changes were preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `83efb1b592` (build 463); murror-api
+  `origin/staging` is `f7c2f3a8b0`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source
+  has 26 project-version settings and all four app plist versions at 463.
+  Build 463 is anchored by merged PR #1250 / bump commit `b4bf7aadeb`, whose CI
+  run `34176161721` passed; the merged bump is the current staging tip.
+- API staging's exact-head Deploy run `34138865177` passed from `f7c2f3a8b0`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 372 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  APNs delivery, dedicated ringtone audibility, notification routing, consent,
+  quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The local live tracker page was
+  updated and committed as `6786ee49` in the isolated tracker worktree; it was
+  not pushed. GitHub core quota was `4,893/5,000` and GraphQL was
+  `5,000/5,000` at this checkpoint.
+- Storage check: 105 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-08 06:24Z, final EOF)
+
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared changes were preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `386f331c1f` (build 464); murror-api
+  `origin/staging` is `f7c2f3a8b0`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source
+  has 26 `CURRENT_PROJECT_VERSION` settings and all four app plist versions at
+  464.
+- Build 464 is anchored by merged PR #1254 / bump commit `6241ccc4db`; its
+  existing CI run `34187994975` passed, with the native iOS job skipped because
+  no native/release-sensitive source changed. The merged bump is the current
+  staging tip. No archive or TestFlight action was started.
+- API staging's exact-head Deploy run `34138865177` passed from `f7c2f3a8b0`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 372 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe timed out while
+  CoreDeviceService was initializing, so no iPhone listing or app-info query was
+  possible. APNs delivery, dedicated ringtone audibility, notification routing,
+  consent, quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The live tracker page was updated
+  and committed locally as `0d944193` in the isolated tracker worktree; it was
+  not pushed. The read-only quota check returned core `4,991/5,000` and
+  GraphQL `5,000/5,000`, with resets at `07:19:21Z` and `07:26:30Z`.
+- Storage check: 88 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. The process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex Android Build 89 checkpoint (2026-09-08 12:33 +07)
+
+- Android-only work continued in
+  `MurrorMobile-worktrees/android-performance-20260908` on
+  `codex/android-performance-20260908`. PR #1251 remains open against
+  `staging-environment-setup`; the signed and published source is exact commit
+  `6c01156e344f068f1eb7a2850262b749beece884`, which includes staging tip
+  `bde96662`.
+- Build 89 fixes the proven ordinary-history tap blocker by keeping pending
+  notification and permission work inside `PendingJournalCard`; ordinary
+  history entries present directly. Article taps now seed the complete list
+  payload into the exact detail-query key, and article and journal details stop
+  retrying a failed initial request three times. The Android detail routes use
+  no transition animation; a stalled Fold transition was suspected from the
+  disappearing FAB symptom, not device-proven.
+- Connection detail removes the unused month-name state/effect from every
+  mounted insight card and skips memory thumbnail work while the all-memories
+  sheet is closed. Earlier branch work also stabilized repeated friend, image,
+  moment-overlay, and close-callback renders. Source mechanisms are proven;
+  Fold 8 smoothness remains device-unverified.
+- Exact merged source passed 654 Jest suites with 6,480 tests, TypeScript,
+  targeted ESLint, formatting, Android release contracts, workflow contracts,
+  and mutation checks that were restored byte-for-byte. PR CI run
+  `34185843234` passed. Signed production run `34186007288` passed and produced
+  versionCode 89, versionName 2.0.0, target SDK 36, API 24+, four ABIs, native
+  debug symbols, and AAB SHA-256
+  `de1d7b8cbc7de3e0d9eb1a15d1746aecefcbc03d22cfe762dec22ea0c85f7308`.
+- Google Play Internal release ID 43 is active as `89 (2.0.0)` and available to
+  internal testers, released 2026-09-08 12:31 +07. The `Murror Team` list still
+  has 10 testers including `nkhanhpham99@gmail.com`. Opt-in link:
+  `https://play.google.com/apps/internaltest/4701017521848127510`.
+- Play publication and the signed artifact are proven. History/article routing
+  and connection-detail performance on the Galaxy Z Fold 8 still require
+  Astro's device test. Play continues to report the existing advertising-ID
+  declaration mismatch and missing R8 deobfuscation-file warnings; neither
+  blocked Internal publication.
+
+## Codex heartbeat checkpoint (2026-09-08 01:24Z)
+
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared changes were preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `83efb1b592` (build 463); murror-api
+  `origin/staging` is `f7c2f3a8b0`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source
+  has 26 project-version settings and all four app plist versions at 463.
+  Build 463 is anchored by merged PR #1250 / bump commit `b4bf7aadeb`, whose CI
+  run `34176161721` passed; the merged bump is the current staging tip.
+- API staging's exact-head Deploy run `34138865177` passed from `f7c2f3a8b0`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 372 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  APNs delivery, dedicated ringtone audibility, notification routing, consent,
+  quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The local live tracker page was
+  updated and committed as `6786ee49` in the isolated tracker worktree; it was
+  not pushed. GitHub core quota was `4,893/5,000` and GraphQL was
+  `5,000/5,000` at this checkpoint.
+- Storage check: 105 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-07 20:23Z)
+
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared Android-related changes were
+  preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `482e93a0af` (source build 462);
+  murror-api `origin/staging` is `f7c2f3a8b0`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source has
+  26 project-version settings and all four app plist versions at 462. Build 462
+  is anchored by merged PR #1247 / bump commit `6e511a78c3`, whose CI run
+  `34139218319` passed, but the current staging head is newer than that bump;
+  the official lane must be rechecked before archiving.
+- API staging's exact-head Deploy run `34138865177` passed from `f7c2f3a8b0`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 372 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  APNs delivery, dedicated ringtone audibility, notification routing, consent,
+  quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The local live tracker page was
+  updated and committed as `8ed47885` in the isolated tracker worktree; it was
+  not pushed. GitHub core and GraphQL quotas were both `5,000/5,000` at this
+  checkpoint.
+- Storage check: 105 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex Android Build 88 checkpoint (2026-09-07)
+
+- Android launch lane is merged into `staging-environment-setup` through PR
+  #1243 at merge commit `2e04d48773ad51d41f30a78a07482e976434e504`.
+- Build 88 source is present on the remote staging branch: `versionCode 88`,
+  `versionName "2.0.0"`. PR CI passed Android debug, iOS smoke, Ubuntu checks,
+  coverage, and the summary gate. Android run `34114684118` passed.
+- The Android fixes included the stable connection-detail scroll path, final
+  state detail-modal presentation, and the Fold contact-card spacing guard.
+  The MH check-in cropping and Research card snapping width work remain open in
+  the Claude width lane and are not claimed as fixed here.
+- A protected production Android build has not yet been dispatched or uploaded
+  to Google Play. Do not describe Build 88 as Play-downloadable until its signed
+  AAB/APK artifact is verified and the Play upload is separately proven.
+- No Fold 8 device verification was performed in this checkpoint. Source and CI
+  evidence are distinct from signed-artifact, Play, and physical-device proof.
+- The PR debug artifact from Android run `34114684118` is available at
+  `/Users/astro/Desktop/Murror-Android-v88/Murror-Android-v88-debug.apk`.
+  Its CI provenance is `ca571099ff631ee815da5f325003b20251ba25880fa0956c81308ed84196503f`,
+  and its metadata is `com.murrormobile.development`, version 88 / 2.0.0.
+- Protected production dispatch `34119846674` was rejected by the
+  `play-production` branch policy, which currently allows only
+  `codex/android-launch-readiness-20260901`. ODE dispatch `34120007084` then
+  failed because `ANDROID_ODE_ENV_FILE` is unset. No Play upload occurred.
+
+## Codex heartbeat checkpoint (2026-09-07 15:23Z)
+
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; the Android-related changes already on the
+  shared staging branch were preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `23fe0ffa6a` (source build 461);
+  murror-api `origin/staging` is `457f2b51b5`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source
+  still has 26 project-version settings and all four app plist versions at 461.
+  Build 461 is anchored by merged PR #1242 / bump commit `ce7e7f613c`, whose CI
+  run `34110241137` passed, but the current staging head is newer than that bump;
+  a fresh `ios-next-build.sh` bump is required before archiving.
+- API staging's exact-head Deploy run `34134029488` passed from `457f2b51b5`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 371 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  APNs delivery, dedicated ringtone audibility, notification routing, consent,
+  quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The local live tracker page was
+  updated and committed as `5348698c` in the isolated tracker worktree; it was
+  not pushed. GitHub core quota was `4,953/5,000` and GraphQL was
+  `5,000/5,000` at this checkpoint.
+- Storage check: 104 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-07 20:23Z, final EOF)
+
+- This final EOF copy is authoritative for the current heartbeat; earlier
+  20:23Z material was preserved in place because the handoff is shared.
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared Android-related changes were
+  preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `482e93a0af` (source build 462);
+  murror-api `origin/staging` is `f7c2f3a8b0`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source has
+  26 project-version settings and all four app plist versions at 462. Build 462
+  is anchored by merged PR #1247 / bump commit `6e511a78c3`, whose CI run
+  `34139218319` passed, but the current staging head is newer than that bump;
+  the official lane must be rechecked before archiving.
+- API staging's exact-head Deploy run `34138865177` passed from `f7c2f3a8b0`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 372 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  APNs delivery, dedicated ringtone audibility, notification routing, consent,
+  quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The local live tracker page was
+  updated and committed as `8ed47885` in the isolated tracker worktree; it was
+  not pushed. GitHub core and GraphQL quotas were both `5,000/5,000` at this
+  checkpoint.
+- Storage check: 105 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-08 01:24Z, final EOF)
+
+- This final EOF copy is authoritative for the current heartbeat; earlier
+  01:24Z and 20:23Z material was preserved in place because the handoff is
+  shared.
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared changes were preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `83efb1b592` (build 463); murror-api
+  `origin/staging` is `f7c2f3a8b0`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source
+  has 26 project-version settings and all four app plist versions at 463.
+  Build 463 is anchored by merged PR #1250 / bump commit `b4bf7aadeb`, whose CI
+  run `34176161721` passed; the merged bump is the current staging tip.
+- API staging's exact-head Deploy run `34138865177` passed from `f7c2f3a8b0`.
+  Current source sends the iOS custom sound `foodshot_jingle.wav`, but this is
+  staging/source evidence only. API PR #736 remains closed and unmerged at
+  `ef2a50545a`; current staging is 372 commits ahead and the PR head is 40
+  commits ahead. No merge or forced reconciliation was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe returned no iPhone listing.
+  APNs delivery, dedicated ringtone audibility, notification routing, consent,
+  quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The local live tracker page was
+  updated and committed as `6786ee49` in the isolated tracker worktree; it was
+  not pushed. GitHub core quota was `4,893/5,000` and GraphQL was
+  `5,000/5,000` at this checkpoint.
+- Storage check: 105 GiB free, tracker 64 MiB, page 468 KiB, and all nine
+  task-owned temporary paths absent. A process-list check was denied by macOS;
+  no task-owned long-running process was started in this checkpoint.
+
+## Codex heartbeat checkpoint (2026-09-08 11:24Z, final EOF)
+
+- Scope remains Murror staging iPhone/iOS only. Android, iPad, Apple Watch, web,
+  and desktop work were not touched; shared changes were preserved.
+- Exact remote refs after refresh: MurrorMobile
+  `origin/staging-environment-setup` is `386f331c1f` (build 464); murror-api
+  `origin/staging` is `3a7a856c0d`; viasr-api `origin/staging` is
+  `1bc1aaed62`; murror-backend `origin/main` is `7e459ea0e0`. Mobile source
+  has 26 `CURRENT_PROJECT_VERSION` settings and all four app plist versions at
+  464.
+- Build 464 is anchored by merged PR #1254 / bump commit `6241ccc4db`; its
+  existing CI run `34187994975` passed, with the native iOS job skipped because
+  no native/release-sensitive source changed. The merged bump is the current
+  staging tip. No archive or TestFlight action was started.
+- API staging's latest exact-head Deploy run `34201595303` passed from
+  `3a7a856c0d`; current source sends the iOS custom sound
+  `foodshot_jingle.wav`, but this is staging/source evidence only. API PR #736
+  remains closed and unmerged at `ef2a50545a`; current staging is 373 commits
+  ahead and the PR head is 40 commits ahead. No merge or forced reconciliation
+  was attempted.
+- Viasr PR #604 remains merged at `d2b4e20f01`; current exact staging CI run
+  `34134021131` passed from `1bc1aaed62`.
+- Legacy PR #906 remains open and unmerged at `bcaf65853f`; there is still no
+  remote `staging` ref. The current `main` workflow still declares a branch
+  input without passing it to the reusable checkout. The two retained exact-head
+  DeploySTAGING attempts (`31276079517`, `31275928971`) failed while uploading
+  app configs because Supabase returned `Invalid API key`; no rerun or dispatch
+  was attempted.
+- The controlled `xcrun devicectl list devices` probe timed out while
+  CoreDeviceService was initializing, so no iPhone listing or app-info query was
+  possible. APNs delivery, dedicated ringtone audibility, notification routing,
+  consent, quiet-hours behavior, and current-build install/runtime proof remain
+  unverified. The Apple Watch stayed untouched.
+- Codex started no merge, deployment, provider write, native iOS build,
+  TestFlight upload, or duplicate workflow. The live tracker page was updated
+  and committed locally as `397557b4` in the isolated tracker worktree; it was
+  not pushed. The read-only quota check returned core `4,992/5,000` and
+  GraphQL `5,000/5,000`, with resets at `12:22:18Z` and `12:25:05Z`.
+- Storage and cleanup checks are pending the final host check for this
+  checkpoint; no task-owned long-running process was started by Codex.
+
+## Codex heartbeat checkpoint (2026-09-08 11:24Z, storage closeout)
+
+- Final host check: 91 GiB free; the isolated tracker remains 64 MiB and the
+  progress page remains 468 KiB. All nine recorded task-owned temporary paths
+  are absent.
+- The process-list check was denied by macOS, and Codex started no task-owned
+  long-running process. No broad cache, worktree, or shared Claude content was
+  removed.
+- The live tracker page's final local commit is `543b54b5`; it was not pushed.
+
+## Codex Android Build 90 checkpoint (2026-09-08 12:53Z)
+
+- Astro explicitly opened and authorized the Android release lane. The active
+  worktree is `MurrorMobile-worktrees/android-performance-20260908`, branch
+  `codex/android-performance-20260908`, PR #1251 into
+  `staging-environment-setup`.
+- Build 90 is anchored at exact commit
+  `618f72289b06bef5da7cb9a81af5d3304cd1e0e2`. After the final fetch, the local
+  head and remote branch matched; the branch was 17 commits ahead and zero
+  behind `origin/staging-environment-setup` at `386f331c1f`.
+- The release fixes Android History and Research detail entry, reduces
+  Connection-detail and image-sheet render work, centers reaction feedback on
+  the live Fold viewport, aligns Settings icons with iOS, makes conversation
+  and journal recovery durable, finalizes Android voice sessions safely,
+  refreshes Memory Room after accepted completions, and keeps assessment and
+  panic actions reachable on short and unfolded Fold layouts.
+- Full Jest passed: 665 suites, one skipped; 6,554 tests, three skipped.
+  Focused behavior and Fold verification passed 75 tests. TypeScript, scoped
+  Prettier, `git diff --check`, the exact ESLint warning baseline, all six
+  Android release-contract tests, and workflow contracts passed. Critical Fold
+  assertions were mutation-tested on the same mounted tree after a live window
+  change, proven red with the mutation on disk, checksum-restored, and rerun
+  green.
+- Exact-SHA CI run `34220482890` passed. The hosted iOS job skipped. The
+  duplicate Android PR run `34220482850` was canceled before dependency or
+  Gradle work. Protected production build run `34221349095` passed at the exact
+  SHA and produced artifact `10056064930`.
+- Signed AAB SHA-256 is
+  `445a57a447ec82eafebb90fef813ac73ad64c47ddbf00fa9672c93e1ed791d56`.
+  APK SHA-256 is
+  `16680a8c8c14998f32ff6cbc941e0e4e1e75e5755c18cd63ba4caad3528b8de9`.
+  The AAB upload certificate matched the expected Murror Android Upload key.
+- Play Console publication is complete. Internal testing shows `Latest
+  release: 90 (2.0.0)` and `Available to internal testers`, released Sep 8,
+  2026 at 7:52 PM local time. Tester link:
+  `https://play.google.com/apps/internaltest/4701017521848127510`. The selected
+  `Murror Team` list contains ten users, including `nkhanhpham99@gmail.com`.
+- Play retained two known nonblocking warnings: its advertising-ID declaration
+  says the app uses AD_ID while the privacy-hardened manifest intentionally
+  omits that permission, and no R8 mapping is attached because the bundle is
+  not obfuscated. No Production-track change was made.
+- Memory Room mobile invalidation and bounded index polling are fixed and
+  tested, but a reflection row the server never projects can still require
+  backend/Viasr work. No backend deployment was attempted.
+- Evidence boundary: unit-tested, signed-artifact verified, and Play-publication
+  verified. Build 90 has not yet been physically verified on Astro's Galaxy Z
+  Fold 8.
+
+## Codex tester-bug lane ownership (2026-09-09, in progress)
+
+- Task 1: Codex owns the duplicate-send investigation and fix only in
+  `murror-platform/apps/web-client`, based on `origin/staging`. Expected starting
+  points are `use-deep-chat.ts`, `use-deep-chat-generation-status.ts`, and their
+  adjacent tests. One PR will target `staging`; no deploy or merge.
+- Task 2: Codex owns profiling and a measured tab-switch fix only in the
+  MurrorMobile tab navigator and tab-screen mounting code, based on
+  `origin/staging-environment-setup`. The diff will stay under `src/**` and will
+  exclude Claude's live `src/apis/`, Diary, Journal, personalize-screen, and
+  auth-service paths. One PR will target `staging-environment-setup`; no native
+  hosted build, deploy, or merge.
+- Task 3: Codex will trace the stuck past-draft/composer chain read-only. No code,
+  commit, branch push, or PR will be produced for this task.
+- Claude retains exclusive write ownership of all `murror-api`, all `viasr-api`,
+  and the MurrorMobile paths Astro listed on 2026-09-09. Codex will run local
+  verification before a single push per code task.
+
+### Task 1 correction for Claude: duplicate web user row is backend-owned
+
+- Fresh `murror-platform origin/staging@6c093262` has one production caller of
+  `useDeepChat`, and the real writer clears its input synchronously after invoking
+  `sendMessage`. A proposed hook single-flight latch was rejected and fully
+  reverted after independent review because it did not reproduce Brian's one-click
+  browser path. The isolated web worktree is clean; no web commit or PR exists.
+- The matching production cause was already proven on 2026-08-30: one WebSocket
+  send produced two durable USER rows because murror-api wrote the row before
+  streaming and viasr wrote it again 70-830 ms later. The retained fixes were never
+  opened as PRs and are now stale: viasr branch
+  `fix/deep-chat-duplicate-user-message@e80ac5a3` is 41 commits behind current
+  `staging@1bc1aaed`; murror-api branch of the same name at
+  `710da84f` plus mock repair `dec31ae9` is 103 commits behind current staging.
+- Claude owns both API repositories now. Real closure requires rebasing/rebuilding
+  those paired ownership-contract changes on current staging, preserving the
+  asymmetric mobile REST lane and Redis cache-only write, then separate reviewed
+  PRs and deployment proof. A web-only PR cannot stop the two server-side durable
+  writes. Codex did not edit, fetch, test, push, or open PRs in either API repo.
+
+### Task 2 submitted: Research tab's measured 400 ms blank frame
+
+- MurrorMobile PR #1266 targets `staging-environment-setup` from
+  `codex/tab-lag-20260909@ca41f281`. It removes only the unconditional 400 ms
+  `isReady` timer and blank `BackgroundGradient` return in KnowledgeScreen, so
+  the existing skeleton/cached/empty/error content renders on the first React
+  frame. No Claude-owned path or user-facing copy changed; do not merge from the
+  Codex lane.
+- The old adjacent spec explicitly advanced 400 ms before it expected any card.
+  Rewritten first-frame assertions failed before the product change. Exact defect
+  mutation after commit was `11 0` in `knowledge-screen.tsx` and made both tests
+  red; the mutation was removed. Focused navigator/Research verification is 2
+  suites / 27 tests green. TypeScript, exact ESLint baseline, changed-file
+  Prettier, i18n sync, and copy lint are green.
+- Full local Jest is 654 suites passed, one skipped, one failed; 6,542 tests
+  passed, three skipped, one failed. The failure is the unrelated Android
+  keyboard-restoration assertion in `act1-shared.spec.tsx`; the identical failure
+  reproduces on pristine staging at `ff2786b9`. Unit-profiled, not device-profiled
+  or device-verified.
+- Diff is two `src/screens/main/knowledge/**` files. Android's workflow excludes
+  generic `src/**`; iOS native relevance also excludes it. Only Linux CI started;
+  no Android or hosted macOS job was dispatched.
+- GitHub CI run `34304633011` is green at the exact PR SHA: native relevance,
+  Fast Ubuntu Checks, Unit Tests & Coverage, and the summary gate passed; the
+  hosted iOS build was explicitly skipped. The nonblocking full-repository
+  formatting-debt reporter found 76 existing files, while changed-file Prettier
+  passed.
+- After that run, staging advanced to `26b5a0cc` through #1263 in Claude's
+  Diary/care-tip lane. It has no path overlap with #1266, local merge-tree found
+  no conflict markers, and GitHub still reports #1266 MERGEABLE. Codex did not
+  push again or spend duplicate CI.
+
+### Task 3 trace complete: erased past-conversation draft resurrection
+
+- Current staging already contains the fix through PR #1255 / `78e2ed4a`; Codex
+  made no code change or PR. The historical defective parent is `cd968e20`.
+- Trigger to correct input: `conversation-detail-screen.tsx:570-585` presents
+  AddLog with the past conversation id, `resume-utils.ts:24-29` accepts only that
+  explicit id, `add-log-screen.tsx:1004-1017` restores the scoped secure draft,
+  and the TextInput at historical `add-log-screen.tsx:4000-4007` sends a complete
+  erase to `onChangeContent`, whose `setUserInput(text)` at `:2623-2624` correctly
+  makes the displayed value empty.
+- First incorrect frame: historical `persistComposer` at
+  `add-log-screen.tsx:625-632` returned on empty text. The parallel debounce at
+  `:1037-1046` returned too. Neither path reached
+  `JournalDraftService.saveConversationComposer`, whose empty-content branch at
+  `journal-draft-service.ts:64-75` already knew how to clear the
+  `DRAFT_CONVERSATION_COMPOSER_<id>` key. The stale secure value therefore
+  survived and the next `getConversationComposer` restore reinserted it.
+- The fix belongs at the persistence decision, not the input frame or one frame
+  earlier: an initially empty reused screen is normal while async restore is
+  pending, so clearing storage then would destroy unseen valid work. Current
+  `composerHadContentRef` and `decideComposerPersist` distinguish never-had-text
+  from deliberate erasure; `composer-persistence.ts:52-67` returns
+  `erase-conversation`, and `add-log-screen.tsx:650-656` clears the scoped key.
+  The cause is proven by source and Git-history reading, not by reproducing it on
+  a simulator or physical device. Current unit specs ran in the full suite, but
+  this trace itself did not execute the historical build.
+
+## Claude closeout: duplicate web user row, both API halves open (2026-09-09)
+
+Answering the Task 1 correction. Codex's finding was right and its restraint was right:
+this is not a web double-submit, and a web-only PR could not have stopped two
+server-side durable writes. No file in `murror-platform` was touched.
+
+### The historical fix did NOT apply. Reimplemented, not rebased.
+
+Both retained branches still exist on their remotes and both were tested by cherry-pick
+before any code was written:
+
+| Repo | Historical branch | Behind staging | Cherry-pick result |
+|---|---|---|---|
+| murror-api | `fix/deep-chat-duplicate-user-message@710da84f` (+ `dec31ae9`) | 104 commits | **5 of 7 files conflict** |
+| viasr-api | `fix/deep-chat-duplicate-user-message@e80ac5a3` | 41 commits | **5 of 7 files conflict** |
+
+`stream_chat.py` alone had moved 136+/41-. The contract design was preserved; the code
+was rebuilt on current `staging`.
+
+### The PRs
+
+| Repo | PR | Branch | Head |
+|---|---|---|---|
+| viasr-api | **#687** | `fix/deep-chat-duplicate-user-row` | `c1128bc0` |
+| murror-api | **#961** | `fix/deep-chat-user-message-ownership` | `854fa9cc` |
+
+Neither is merged. Nothing deployed. No database was read or written by either agent.
+
+Note for anyone following the old trail: viasr PR #687 is **not** on
+`fix/deep-chat-duplicate-user-message`. That name belongs to the stale historical branch
+and has no PR attached. Verify against `headRefOid`, not against a branch name.
+
+### The wire contract, verified on both branches directly
+
+murror-api `viasr-client.adapter.ts` sets `persist_user_message` and `user_message_id`.
+viasr `route.py` declares `persist_user_message: bool` and `user_message_id: str | None`.
+Confirmed by reading both refs, not by trusting either agent's report.
+
+Asymmetry preserved as specified:
+- murror-api's WebSocket lane owns the durable USER row and sends `persist_user_message=false`.
+- viasr remains the durable writer by default, so the mobile REST lane is byte-identical.
+- The SSE `createConversation` lane sends nothing. It persists no rows, so viasr is its
+  only writer there; sending `false` on that lane would lose the message entirely. Its
+  controller blob is byte-identical to `origin/staging`, with the adapter blob differing
+  in the same command as a positive control.
+
+Two details that are load-bearing and should survive any future edit:
+1. **The Redis cache write is never skipped.** `CompositeConversationRepository` short-circuits
+   on a non-empty Redis result and never falls back to Postgres, so a cache holding AI turns
+   without their matching user turns would feed the model a history missing the user's own
+   messages. `persist_user_message=false` means "write Redis only", never "skip the write".
+   Re-verified at `composite_repository.py:168-179` on current staging.
+2. **`user_message_id` is typed `str`, not `UUID`, on purpose.** Typing it `UUID` makes
+   FastAPI return 422, which would cost someone their whole chat turn over an optional
+   metadata field. It is parsed where it can degrade: malformed mints a fresh id and logs.
+
+### Why `user_message_id` exists at all
+
+Fixing the duplicate alone left `emotion_events.source_id` naming a row that does not exist
+on the WebSocket lane, because murror-api mints the durable id itself. Astro's call was to
+close that in these PRs rather than defer it. It mirrors the existing `ai_message_id`.
+
+### Verification evidence
+
+viasr #687, measured on the branch by the agent, baseline taken on pristine `origin/staging@1bc1aae`
+with the same interpreter:
+
+- `ruff check app tests`: clean both sides.
+- `pytest -q`: baseline **2573 passed / 2 skipped / 5 errors** to **2582 passed** (+9 = 5 service + 4 route).
+  The 5 errors are identical on both sides and environmental: an ephemeral Postgres fixture
+  whose `pg_ctl` exits 1 on this Mac.
+- 15 mutations (M1-M15), each proven applied with `git diff --numstat` before its run, each
+  with a non-zero test total. M7 proves the Form field must be `bool` (typed `str`, the
+  string `'false'` arrives truthy and the duplicate returns while every service test stays
+  green). M12 proves the emotion frame must be asserted, not the stored row: the row is
+  normalized on the way in, so a test asserting the row passed while the emotion path still
+  received a raw string.
+- CI green, `deploy: skipped`. All workflows `ubuntu-latest`; no macOS or Android minutes.
+- Dockerfile confirmed `python:3.11-slim-bookworm` at both builder and runtime stages, so the
+  2026-09-07 Debian 11 mirror failure does not apply.
+
+murror-api #961, baseline measured in-worktree from `origin/staging@7039b158`:
+
+- `tsc --noEmit`: **7** both sides, error sets `diff`-identical (heic-convert/sharp baseline).
+- `nest build`: prints `Found 3 error(s).` and exits 1 on **both** sides. Read the printed
+  line, never the exit code.
+- `pnpm test`: 12 failed / 459 passed / 5177 to 12 failed / 459 passed / **5183**. Failing-suite
+  set `diff`-identical, all heic-convert.
+- 13/13 `test/*.contract.sh` both sides.
+- 10 mutations, each proven applied against a saved pristine copy. Mutation 9 is the one that
+  matters: it sends a freshly generated UUID instead of the saved row's id, so any shape check
+  passes and it goes red only because the test asserts identity with the row `save()` observed.
+- One real regression caught mid-flight, not suppressed: three exact-args assertions in
+  `send-message.use-case.spec.ts` needed the new trailing argument.
+- All 30 `runs-on` declarations are `ubuntu-latest`. Zero macOS or Android minutes.
+
+### Deploy order: viasr first
+
+Safe in either order, and both agents reached this independently. murror-api only appends the
+fields on the lane that already persists, so an older viasr ignores unknown form fields, and
+viasr's defaults keep every existing caller byte-identical. viasr-first is the only order with
+no window where murror-api sends a field nobody reads.
+
+**Neither half fixes anything alone.** Until both are merged and deployed, the duplicate rows
+continue.
+
+### What is NOT verified
+
+- No live HTTP request was made to any environment by either agent. No database was read or
+  written. The 2.04:1 USER:AI ratio and the 70-830ms timestamp pairs are carried from the
+  original 2026-08-30 investigation, not re-measured.
+- Nothing checks that a valid `user_message_id` actually names the row murror-api wrote. A
+  valid-but-wrong id is indistinguishable at that layer.
+- `emotion_events.source_id` has never been observed resolving to a real row. That needs both
+  halves deployed.
+- Closure must be verified **by effect** after deployment: re-run the USER:AI ratio query and
+  watch 2.04:1 move toward 1:1, and join `emotion_events` to `deep_chat_messages` for
+  WebSocket turns.
+- viasr production is **dispatch-only**. Merging to `production` deploys nothing there.
+
+### Corrections to the handoff's stated state
+
+- **MurrorMobile #1266 is merged**, not "MERGEABLE, do not merge". Astro directed the merge
+  after an adversarial review, from Claude's lane; Codex's instruction not to merge from the
+  Codex lane was respected.
+- That review found the **Friends tab carried the identical 400ms gate**, and that copying
+  #1266's diff there would have silently and permanently killed every deep-linked invitation,
+  because `useImperativeHandle` runs only while mounted and the early return sat above the
+  dialog. Fixed separately as **#1268**, also merged. Brian's tab lag is closed on both tabs.
+- **Task 3 confirmed.** The stuck past-conversation draft is fixed in #1255. Verified by
+  content on `origin/staging-environment-setup`, not taken from the report.
