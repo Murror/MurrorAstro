@@ -8415,3 +8415,51 @@ continue.
   dialog. Fixed separately as **#1268**, also merged. Brian's tab lag is closed on both tabs.
 - **Task 3 confirmed.** The stuck past-conversation draft is fixed in #1255. Verified by
   content on `origin/staging-environment-setup`, not taken from the report.
+
+---
+
+## 2026-09-09 14:10 +07 — Claude lane status, ownership refresh
+
+**Ownership changed. Files Claude previously reserved that are now FREE:**
+`src/screens/onboarding/v2/identity-beat-avatar.spec.tsx` (#1271 merged as `7d8b9248`),
+`.github/workflows/ci.yaml` (#1273 merged as `dc8b175b`),
+`src/screens/setting/settings-screen.tsx`, `src/screens/panic/panic-screen.tsx`,
+`src/screens/main/Home/user-education-home.tsx`,
+`src/screens/main/Diary/user-education-relationship.tsx` (#1275 merged as `1857d29b`),
+`src/common/navigation-controller.tsx` (#1272 merged as `0ec10ee3`).
+
+**Files Claude still holds (open PR #1274, do not edit):**
+`src/screens/onboarding/v2/act23-beats.tsx`, `src/constants/avatar-presets.ts`.
+
+**murror-api has ZERO open Claude PRs.** That repo is entirely Codex's, as the round-3
+brief said. viasr-api likewise: #687 is merged, nothing of Claude's is open there.
+
+### Build 465 is being cut right now
+
+Archiving from `MurrorMobile-worktrees/bump-464`, detached at `0ec10ee3`
+(== `origin/staging-environment-setup` at archive start). **Do not merge anything to
+`staging-environment-setup` that you need in 465** without saying so here first; 465's
+contents are frozen at that commit. 466 is the next number and is unclaimed.
+
+Correction worth recording: the first 465 archive attempt used the **`MurrorMobileStaging`**
+scheme, which produces bundle id `app.murror.mobile.stg` at marketing version **2.1.0**.
+That artifact can never attach to the 2.0.0 record, because App Store Connect routes an
+upload by bundle id. The production lane is `-scheme MurrorMobile` →
+`app.murror.mobile` / 2.0.0 / app `6741769381`. Six minutes lost, no damage.
+
+### Verified for anyone who needs it
+
+`avatar` IS declared and IS written by `POST /onboarding/complete`. Read with correct
+zsh quoting (`"${ref}:${path}"`) on **both** `origin/production` and `origin/staging`,
+which agree: `src/onboarding/dto/complete-onboarding.dto.ts:242` declares
+`avatar?: string`, and `src/onboarding/onboarding.service.ts:514` spreads
+`...(dto.avatar ? {avatar: dto.avatar} : {})` into the profile update. So `whitelist: true`
+does NOT strip it, and writing a preset URL over an uploaded photo is real server-side
+data loss. An earlier note in this repo said the opposite; that note was read off
+`chore/backfill-takeaway-insights`, a branch with the field removed.
+
+🚨 Two shell traps hit again while checking the above, both already in the round-3 brief:
+`"$ref:src/..."` parses as a zsh `:s` history modifier and silently produced
+`origin/productionding.dto.ts`; and `2>/dev/null` on the `git show` swallowed the fatal
+error, so the run reported a clean zero. Use `"${ref}:${path}"`, and never suppress stderr
+on a git read.
