@@ -2634,3 +2634,74 @@ Full writeup: `docs/plans/2026-09-08-android-builds-79-90-internal-testing.md`.
 Combined tool-reported processing volume across Claude and Codex was
 **3,210,384,991 tokens**. This includes cache reads and delegated work; it is not a billing
 estimate.
+
+## 2026-09-12/13 — Builds 467 to 471, Mona's Home reports, and what review caught
+
+### Summary
+
+Two days on iOS 2.0.0 only. Builds 467, 468, 469 and 470 were cut, uploaded, processed
+`VALID` and attached to the 2.0.0 record, each confirmed by RE-READING the App Store
+Connect record rather than trusting the attach call. 471 was cut from `7a1ec2a4`. The
+record sits at `PREPARE_FOR_SUBMISSION`; `releaseType=AFTER_APPROVAL`, so submitting is
+the release, and it was not done.
+
+### Key accomplishments
+
+- Closed the whole 467 tester round from Khanh and Mona: draft persistence (`#1308`,
+  `#1309`), the dismissed-share confirmation (`#1310`), voice streak days marked without
+  audio and stacked note cards (`#1312`), and the localized recovery notices plus the
+  cross-device task gap (`#1314`).
+- murror-api `#998` to `#1002` gave real HTTP statuses to refusals across connections,
+  check-in, streaks, invitations and articles, promoted to production as `#1003`.
+- Mona's two build-470 Home reports traced to cause and fixed: the pinned rail blanking
+  (`#1316`) and Home asserting an identity before its data loaded (`#1317`, `#1319`).
+- `#1320` instruments the rail so a recurrence is diagnosable rather than re-guessed.
+- Test tracking moved from the Claude artifact to a Notion database, after the capability
+  contract settled that an artifact can never be writable by testers without claude.ai
+  accounts.
+
+### Operating notes
+
+- **Three adversarial reviews found four real defects in code that already had green CI,
+  passing tests and mutation proof.** A false safety claim written into a docstring; an
+  offline dead end the repo had already solved in `query-load-state.ts`; two tests that
+  could not fail, proven by reintroducing the exact regression and watching them pass; and
+  a privacy path where a failed account wipe plus an unguarded cleanup result could put one
+  person's name on another's Home. Green was green throughout. The gate is what caught
+  them, not the test suite.
+- A far more elaborate version of the rail fix was killed by review before merge: its
+  changed carousel key reset the user's scroll position mid-read (Critical), its frozen
+  snapshot kept dismissed cards tappable, and its premise was contradicted by the carousel
+  library source. The shipped fix is one line.
+- Measurement traps that cost real time: `grep -c` counts lines not occurrences (the status
+  board was called 112 rows for days; it is 122); `xcodebuild` returned exit 0 on a failed
+  build; `prettier --check` prints success on zero matches and exits 2; zsh does not
+  word-split an unquoted parameter, so two linters silently received one nonsense path; and
+  a pipeline's `$?` is the last stage's, which hid an eslint failure behind `tail`.
+- **Nothing in this record is device-verified.** All of it is unit-level.
+
+### Still open
+
+- `account-cache-isolation.ts` discards the cleanup result on its no-owner branch while
+  both siblings guard it. A latent gap for every per-account key, wanting its own change
+  and its own review.
+- `#1318` ("Android Build 92 parity candidate") merged into `staging-environment-setup` and
+  is in the 471 tree. Despite the title it touched shared `src/` files and added a
+  `react-native-voice` patch, which `patch-package` applies on both platforms.
+- Mona's original seven-second black screen is still not confirmed as the one `#1306`
+  closed, and Brian's notification freeze remains the oldest unexplained report.
+
+### Doc pointers
+
+- `docs/plans/2026-09-13-build-470-471-home-fixes-and-review-findings.md`
+- Notion tracker: `Build 470 test board`, under `Murror team updates`.
+
+### Public progress page
+
+No entry. This is an internal testing and regression-hardening record; 2.0.0 is not
+publicly available yet.
+
+### Work accounting
+
+Tool-reported processing volume for this session was **10,367,294,193 tokens**. This
+includes cache reads and delegated subagent work; it is not a billing estimate.
