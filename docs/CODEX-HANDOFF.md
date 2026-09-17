@@ -4,7 +4,38 @@
 Read this at the start of any Murror session; update it when you ship something the other tool
 would trip over.**
 
-Last updated: **2026-09-06 13:00 ICT**, by Claude (build 84 signed + staged for Astro to upload; QA sweep of 13 commits; targetSdk 36 unlocked landscape on the Fold inner display)
+Last updated: **2026-09-17 17:43 ICT**, by Codex (Build 158 remains on Play Internal; three Fold 8 repairs are local-only in `0147e5672`)
+
+---
+
+## ANDROID BUILD 158 FOLD REPAIR CANDIDATE, NOT YET SIGNED (2026-09-17, CODEX)
+
+Build 158 (`88c95628`) remains the current Play Internal release. Astro's Fold 8 test reopened
+three issues. Their causes are proven and repaired in local candidate
+`0147e5672325247efd3486fd02753f32a18b7e42`, branch
+`codex/android-ui-stability-build150-20260916`:
+
+| Finding | First wrong frame | Repair and evidence |
+|---|---|---|
+| Memory Detail comment composer hidden by keyboard | `memory-detail-sheet.tsx` received live keyboard geometry but Android always returned the resting safe-area inset | Reused `useKeyboardLayout` and `resolveKeyboardOverlayInset`; measured the modal viewport so overlay and already-resized Dialog modes are distinct. The isolated 66-test suite and mutation red passed. |
+| Connection Detail sheets laggy or missing slide | Settings rendered inline through fail-open `CustomModalBounce`; Memory Detail explicitly used Android `animationType='none'`; View All dismissal and detail presentation raced two Dialog windows in one commit | Added a scoped Android native slide host for Settings, native slide for Memory Detail, and serialized Add Memory/View All/detail handoffs with pending state plus `InteractionManager.runAfterInteractions`. Connection suites passed 113 tests; three source mutations went red. The global fail-open rule is unchanged. |
+| Mental Check-in lower answer cropped | Shared metrics kept a 50dp top gap and reserved only 160dp for a four-row answer stack needing about 201dp | Metrics now accept answer count and font scale, spend the top gap down to 8dp, reserve answers before shrinking the card, and retain scroll fallback. Six suites and 84 tests passed; three mutations went red. |
+
+Combined verification after merging official
+`origin/staging-environment-setup@f9af9fc53`: branch relationship `0 187`; 8 suites and 237
+tests passed with a fresh Jest cache; TypeScript, scoped ESLint, Prettier, diff hygiene, Android
+release contracts, workflow contracts, the single-React-Native guard, production environment
+contract, and codegen passed. `assembleProductionDebug` passed in 1m 37s. Its debug-signed APK
+is 129,415,869 bytes with SHA-256
+`036949248da0bf34df50779470186a1609c12735f3ecaafaee04baf6dbda1db7`.
+
+🚨 Do not call this shipped. Version metadata still says 158. No hosted Android workflow was
+dispatched, no Play-signed artifact exists for these repairs, and no Fold 8 retest has occurred.
+The next release would be Build 159 and needs Astro's explicit approval for that specific hosted
+build.
+
+Progress hub:
+<https://app.notion.com/p/3de3af4aaa9281e88b9af24cb0fd9528?pvs=204>
 
 ---
 

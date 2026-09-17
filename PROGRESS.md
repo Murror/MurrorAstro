@@ -2705,3 +2705,74 @@ publicly available yet.
 
 Tool-reported processing volume for this session was **10,367,294,193 tokens**. This
 includes cache reads and delegated subagent work; it is not a billing estimate.
+
+## 2026-09-17: Android builds 91 to 158 and the live progress ledger
+
+Full writeup:
+`docs/plans/2026-09-17-android-builds-91-158-internal-testing.md`.
+
+### Available to testers
+
+- **Build 158** (`88c95628`) is available on Play Internal testing as
+  **2.0.0 (158)**.
+- Hosted workflow `35190344899` passed from that exact SHA. The signed AAB SHA-256 is
+  `ed3bc4597967c7fd31d9eea0b21905b999fed6e3e8d4dadb8d0ffd1bef22b14f`.
+- Internal testing link:
+  <https://play.google.com/apps/internaltest/4701017521848127510>
+
+### What the run changed
+
+- Nineteen numbered releases reached Play Internal testing: 91 to 96, 98 to 100,
+  143 to 148, 150, 151, 157, and 158.
+- Builds 101 to 142 formed one continuous source-and-test performance program that
+  was signed together as Build 143. Builds 152 to 156 were later candidate checkpoints
+  consolidated into Build 157. Build 149 was built but deliberately not published.
+- The work reduced offscreen image decode and hidden render work, virtualized Memory
+  surfaces, bounded carousels and lists, removed scroll bookkeeping from hot paths,
+  hardened Fold reflow, repaired repeated native-modal presentation, restored detail
+  navigation, contained sheet windows, and reduced hidden Home work behind detail routes.
+- A new Notion **Android Progress Hub** now separates canonical work items, release
+  provenance, and physical-device runs:
+  <https://app.notion.com/p/3de3af4aaa9281e88b9af24cb0fd9528?pvs=204>.
+
+### Build 158 Fold feedback
+
+- **PROVEN and locally repaired:** Memory Detail recorded Android keyboard height but
+  discarded it when calculating the pinned comment composer inset. Candidate
+  `0147e5672` now distinguishes an overlaid IME from a Dialog Android has already
+  resized, and moves only the composer.
+- **PROVEN and locally repaired:** Connection Settings and Memory Detail could not
+  animate on Android by construction. They now use scoped native slide presentation,
+  while View All to Memory Detail and Add Memory to View All transitions are serialized
+  so two Dialog windows cannot race in one commit.
+- **PROVEN and locally repaired:** the shared short-screen assessment metric reserved
+  only 160dp for a four-answer stack that needs about 201dp, while retaining a 50dp
+  top gap. It now reserves the real answer stack, consumes the gap down to 8dp, and
+  shrinks the question card before falling back to scrolling.
+- The repaired candidate is current with official staging, 0 commits behind and 187
+  ahead. Eight suites and 237 tests pass, the load-bearing assertions were mutation-
+  tested, and a production-configured debug APK built locally with SHA-256
+  `036949248da0bf34df50779470186a1609c12735f3ecaafaee04baf6dbda1db7`.
+- It is not Play-signed, not published, and not Fold 8 device-verified. Build 158 remains
+  the current Play Internal release.
+
+### Evidence boundaries
+
+- Candidate `0147e5672` has merged `origin/staging-environment-setup@f9af9fc53` and is
+  now 0 commits behind and 187 ahead. This source relationship does not substitute for a
+  signed artifact or Play publication.
+- The exact Connection Detail native crash tombstone and physical frame traces remain
+  missing. Source/render reductions do not prove native-feeling device performance.
+- Play still shows the existing advertising-ID declaration mismatch and missing
+  R8/ProGuard mapping warnings.
+
+### Public progress page
+
+No entry. This is an Internal testing and regression-hardening record for an Android
+release that is not ready for Production submission.
+
+### Work accounting
+
+Exact Codex processing volume since the previous Android run record is
+**1,811,678,296 tokens**. This includes cache reads and delegated work and is not a
+billing estimate.
