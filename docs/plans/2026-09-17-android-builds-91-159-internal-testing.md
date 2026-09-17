@@ -1,24 +1,24 @@
-# 2026-09-17: Android builds 91 to 158, performance hardening, and regression recovery
+# 2026-09-17: Android builds 91 to 159, performance hardening, and regression recovery
 
 Repo: `MurrorMobile`.
 
 Primary Android device: Samsung Galaxy Z Fold 8.
 
-Current Play Internal testing release: version `2.0.0`, version code `158`.
+Current Play Internal testing release: version `2.0.0`, version code `159`.
 
 Progress hub:
 <https://app.notion.com/p/3de3af4aaa9281e88b9af24cb0fd9528?pvs=204>
 
 ## Outcome
 
-Build 158 is available to the Play Internal testing group. It is the latest signed release
+Build 159 is available to the Play Internal testing group. It is the latest signed release
 in a long Android hardening run that began after Build 90 and concentrated on Memories,
 Connection Detail, repeated modal presentation, navigation recovery, Fold reflow, and
 foreground render cost.
 
-This run produced 68 build-number records:
+This run produced 69 build-number records:
 
-- 19 releases reached Play Internal testing;
+- 20 releases reached Play Internal testing;
 - 42 performance candidates from Builds 101 through 142 were consolidated into Build 143;
 - 5 intermediate candidates from Builds 152 through 156 were consolidated into Build 157;
 - Build 149 was discarded before publication;
@@ -28,30 +28,31 @@ This run produced 68 build-number records:
 Publication did not close the Android launch gate. Astro's Build 158 Fold 8 test reopened three
 issues: the Memory Detail comment composer sits behind the keyboard, several Connection Detail
 sheets do not share the smooth bottom-up presentation, and the Mental Check-in still crops its
-lowest answer on a short window. Their source causes are proven and repaired in local candidate
-`0147e5672`; the candidate is unit-tested and locally built, but not signed, published, or
-device-verified.
+lowest answer on a short window. Their source causes are proven and repaired in Build 159. The
+repair is unit-tested, locally built, signed by the hosted release workflow, and published to
+Internal testing. It is not yet verified on the Galaxy Z Fold 8.
 
 ## Source and release provenance
 
 | Item | Evidence on 2026-09-17 |
 |---|---|
-| Build 158 branch | `codex/android-ui-stability-build150-20260916` |
-| Exact signed source | `88c95628dbb7d88166c4399c3a1a4dffd14e06c8` |
-| Build 158 source fix | `82101627a` (`fix(android): route moment composer outside native modal`) |
-| Shared mobile trunk | `origin/staging-environment-setup@f9af9fc53` |
-| Repaired local candidate | `0147e5672325247efd3486fd02753f32a18b7e42` |
-| Branch relationship | Repaired candidate is 187 commits ahead and 0 commits behind current staging |
+| Build 159 branch | `codex/android-ui-stability-build150-20260916` |
+| Exact signed source | `baf7d1678b5c5d8effec19400720dc08d2625d8a` |
+| Source repair before release metadata | `0147e5672325247efd3486fd02753f32a18b7e42` |
+| Shared mobile trunk reconciled before release | `origin/staging-environment-setup@92e5897e9b0a69f2d2f851870da9d6af79f87238` |
+| Staging merge on release branch | `ed51c6fd4` |
 | Reconciled staging changes | Android SDK setup naming plus the iOS release, pod, privacy, and shared-source safeguards already landed on trunk |
-| Hosted workflow | `35190344899` |
-| Signed AAB SHA-256 | `ed3bc4597967c7fd31d9eea0b21905b999fed6e3e8d4dadb8d0ffd1bef22b14f` |
-| Play state | Build 158, Available to internal testers |
+| Hosted workflow | `35213510525` |
+| Signed AAB SHA-256 | `ee46eaee24430fbe24bf2f4662af1965b19820a3ecd085849c5f0d7d1e55677a` |
+| Signed APK SHA-256 | `b4f62afffcd33321b698a97501cc3fb8d906ce0692c85d99f3f7089cb019c472` |
+| Play state | Build 159, Available to internal testers |
 | Production track | Unchanged |
 
-Build 158 must not be called trunk-equivalent because its Android work is carried on a feature
-branch. The repaired local candidate has now merged the current official staging head and is zero
-commits behind it. That source relationship is not release proof: version metadata still says 158,
-the candidate has not been pushed for a hosted build, and no new signed artifact exists.
+Build 159 must not be called trunk-equivalent because its Android work is carried on a feature
+branch. The release branch merged the official staging head immediately before the version bump,
+then produced one exact-SHA hosted run and one signed artifact set. That release proof is still
+separate from physical-device proof: Build 159 is available to Internal testers, but the three
+repairs have not yet been retested on the Fold 8.
 
 ## Published release timeline
 
@@ -76,6 +77,7 @@ the candidate has not been pushed for a hosted build, and no new signed artifact
 | 151 | Sep 16 | `0aea25d2` | Chat and Memory-sheet interaction stabilization plus Home motion-state integration | Signed workflow `35104614090`; Play Internal. Dedicated handoff entry and AAB hash were not recovered |
 | 157 | Sep 17 | `b8a3f9cb` | Fail-open visible FAB sheet, scoped header glass, reused Memory image geometry, paused hidden Home work | Signed workflow `35171538491`; Play Internal |
 | 158 | Sep 17 | `88c95628` | Routed Moment composer outside the native modal presentation boundary | Signed workflow `35190344899`; Play Internal; current Fold test has three reopened defects |
+| 159 | Sep 17 | `baf7d167` | Keyboard-safe Memory comments, native Connection sheet slides with serialized Dialog handoffs, and short-screen Mental Check-in answer reservation | Signed workflow `35213510525`; Play Internal; Fold 8 retest pending |
 
 The tester link is:
 <https://play.google.com/apps/internaltest/4701017521848127510>
@@ -235,42 +237,26 @@ Every new assertion in this lane must therefore be mutation-tested and must prov
 reached disk. Source is restored from a scratch copy with a matching checksum, never with
 `git checkout`.
 
-## Build 158 verification ledger
+## Build 159 verification ledger
 
 | Layer | Result |
 |---|---|
-| Focused suites | 13 suites, 124 tests passed |
-| Mutation proof | Load-bearing assertions were forced red and restored from verified scratch copies |
-| TypeScript | Passed |
-| ESLint | Exact baseline preserved: 127 warnings across 106 unique tuples |
-| Android release contracts | Passed |
-| Workflow contracts | Passed |
-| Codegen | Passed before native compilation |
-| Local native build | Production-flavor debug build passed; not Play-signed |
-| Hosted signed build | Workflow `35190344899` passed from exact SHA `88c95628` |
-| Signed AAB | SHA-256 `ed3bc4597967c7fd31d9eea0b21905b999fed6e3e8d4dadb8d0ffd1bef22b14f` |
-| Play Internal | Build 158 Available to internal testers |
-| Fold 8 | Device-tested with three reopened defects; repaired candidate not yet available |
-
-## Repaired local candidate verification
-
-| Layer | Result for `0147e5672` |
-|---|---|
-| Staging reconciliation | `origin/staging-environment-setup...HEAD` = `0 187` |
 | Focused suites | 8 suites, 237 tests passed with a fresh Jest cache and explicit spec paths |
 | Mutation proof | Settings slide, Memory Detail slide, serialized Dialog handoff, keyboard inset, and short-screen geometry assertions each failed when their source repair was deliberately reverted |
 | Mutation restoration | Every edited source was restored from a scratch copy and its SHA-256 was verified; `git checkout` was not used |
 | TypeScript | Passed |
 | Scoped ESLint | 0 errors; 2 existing inline-style warnings in `memory-detail-sheet.tsx` |
 | Prettier and diff hygiene | Passed |
-| Android release contracts | 7 of 7 passed; version metadata intentionally remains 158 |
+| Android release contracts | 7 of 7 passed for version code 159 |
 | Workflow and single-React-Native contracts | Passed |
 | Production environment contract | Passed for scheme `murror`, 18 required keys |
 | Codegen | Passed before native compilation |
-| Local native build | `assembleProductionDebug` passed in 1m 37s; debug-signed, 129,415,869-byte APK |
-| Local APK SHA-256 | `036949248da0bf34df50779470186a1609c12735f3ecaafaee04baf6dbda1db7` |
-| Hosted signed build | Not dispatched |
-| Play Internal | Still Build 158; candidate is not published |
+| Local native build | `assembleProductionDebug` passed; debug-signed, 124,323,414-byte APK |
+| Local APK SHA-256 | `058d98425233c4bd2aa58288435d2b35592c94abb7b185e36af40d26c74725ff` |
+| Hosted signed build | Workflow `35213510525` passed from exact SHA `baf7d1678b5c5d8effec19400720dc08d2625d8a` |
+| Signed AAB | SHA-256 `ee46eaee24430fbe24bf2f4662af1965b19820a3ecd085849c5f0d7d1e55677a` |
+| Signed APK | SHA-256 `b4f62afffcd33321b698a97501cc3fb8d906ce0692c85d99f3f7089cb019c472`; APK v2 signature and expected upload certificate verified |
+| Play Internal | Build 159 Available to internal testers |
 | Fold 8 | Unit-tested and locally built, not device-verified |
 
 Play still reports two non-blocking warnings:
@@ -286,9 +272,9 @@ failed.
 
 | Canonical item | State | Proven next step |
 |---|---|---|
-| `AND-COMMENT-001` | Repaired in local candidate | Request a signed candidate, then retest overlay and resized-keyboard modes on the Fold 8 |
-| `AND-CDP-SHEET-001` | Repaired in local candidate | Request a signed candidate, then retest Settings, Add Memory, View All, and Memory Detail twice each |
-| `AND-MHC-001` | Repaired in local candidate | Request a signed candidate, then retest all Fold postures and larger font scale |
+| `AND-COMMENT-001` | Published in Build 159; awaiting device verdict | Retest overlay and resized-keyboard modes on the Fold 8 |
+| `AND-CDP-SHEET-001` | Published in Build 159; awaiting device verdict | Retest Settings, Add Memory, View All, and Memory Detail twice each |
+| `AND-MHC-001` | Published in Build 159; awaiting device verdict | Retest all Fold postures and larger font scale |
 | `AND-CDP-001` | Reopened across releases | Capture a physical crash tombstone and Android frame trace on a content-heavy Connection |
 | `AND-MEM-001` | Improved, still reported laggy | Measure decode, GPU, UI, and JS frame time on the Fold 8 rather than infer from render counts |
 | `AND-CAM-001` | Repeatedly reopened | Retest first open, dismiss/reopen, tab-switch/reopen, rotation, and keyboard paths on one installed build |
@@ -317,7 +303,7 @@ failed.
 The Notion Android Progress Hub is now the live operational ledger:
 
 - **Android Work Items and QA** keeps one canonical row per problem and reopens it when it returns;
-- **Android Build Ledger** contains all 68 build numbers from 91 through 158 and separates candidate,
+- **Android Build Ledger** contains all 69 build numbers from 91 through 159 and separates candidate,
   signed, Play, discarded, superseded, and provenance-gap states;
 - **Android Device Runs** records the exact build, Fold posture, orientation, start state, scenario,
   evidence, and tester verdict.
@@ -327,13 +313,13 @@ neither one substitutes for signed-artifact or physical-device evidence.
 
 ## Documentation scope
 
-No public progress-page entry was added. Builds 91 through 158 are Internal testing releases and
+No public progress-page entry was added. Builds 91 through 159 are Internal testing releases and
 regression hardening for an Android product that is not yet ready for Production submission.
 Publishing this work as a publicly shipped capability would overstate its release tier.
 
 ## Work accounting
 
-Exact Codex processing volume since the Build 79 to 90 record is `1,811,678,296` tokens.
-This value is calculated from the native Codex thread token counter at the first record after the
-previous document commit and the final counter after this document is complete. It includes cache
-reads and delegated work and is not a billing estimate.
+The prior Build 91 to 158 run document recorded `1,811,678,296` Codex tokens. No new exact native
+counter snapshot was taken for the Build 159 release work, so this update does not invent a
+replacement total. The earlier number includes cache reads and delegated work and is not a billing
+estimate.

@@ -4,16 +4,15 @@
 Read this at the start of any Murror session; update it when you ship something the other tool
 would trip over.**
 
-Last updated: **2026-09-17 17:43 ICT**, by Codex (Build 158 remains on Play Internal; three Fold 8 repairs are local-only in `0147e5672`)
+Last updated: **2026-09-17 19:16 ICT**, by Codex (Build 159 is available on Play Internal; Fold 8 retest is pending)
 
 ---
 
-## ANDROID BUILD 158 FOLD REPAIR CANDIDATE, NOT YET SIGNED (2026-09-17, CODEX)
+## ANDROID BUILD 159 PUBLISHED TO PLAY INTERNAL (2026-09-17, CODEX)
 
-Build 158 (`88c95628`) remains the current Play Internal release. Astro's Fold 8 test reopened
-three issues. Their causes are proven and repaired in local candidate
-`0147e5672325247efd3486fd02753f32a18b7e42`, branch
-`codex/android-ui-stability-build150-20260916`:
+Build 159 (`baf7d1678b5c5d8effec19400720dc08d2625d8a`) is available to Internal testers on
+the `Internal` track. It carries the three repairs reopened by Astro's Build 158 Fold 8 test on
+branch `codex/android-ui-stability-build150-20260916`:
 
 | Finding | First wrong frame | Repair and evidence |
 |---|---|---|
@@ -21,18 +20,31 @@ three issues. Their causes are proven and repaired in local candidate
 | Connection Detail sheets laggy or missing slide | Settings rendered inline through fail-open `CustomModalBounce`; Memory Detail explicitly used Android `animationType='none'`; View All dismissal and detail presentation raced two Dialog windows in one commit | Added a scoped Android native slide host for Settings, native slide for Memory Detail, and serialized Add Memory/View All/detail handoffs with pending state plus `InteractionManager.runAfterInteractions`. Connection suites passed 113 tests; three source mutations went red. The global fail-open rule is unchanged. |
 | Mental Check-in lower answer cropped | Shared metrics kept a 50dp top gap and reserved only 160dp for a four-row answer stack needing about 201dp | Metrics now accept answer count and font scale, spend the top gap down to 8dp, reserve answers before shrinking the card, and retain scroll fallback. Six suites and 84 tests passed; three mutations went red. |
 
-Combined verification after merging official
-`origin/staging-environment-setup@f9af9fc53`: branch relationship `0 187`; 8 suites and 237
-tests passed with a fresh Jest cache; TypeScript, scoped ESLint, Prettier, diff hygiene, Android
-release contracts, workflow contracts, the single-React-Native guard, production environment
-contract, and codegen passed. `assembleProductionDebug` passed in 1m 37s. Its debug-signed APK
-is 129,415,869 bytes with SHA-256
-`036949248da0bf34df50779470186a1609c12735f3ecaafaee04baf6dbda1db7`.
+Before the release bump, the branch merged official
+`origin/staging-environment-setup@92e5897e9b0a69f2d2f851870da9d6af79f87238`. Local verification
+passed 8 suites and 237 tests with a fresh Jest cache, all required mutation reds, TypeScript,
+scoped ESLint, Prettier, diff hygiene, Android release contracts, workflow contracts, the
+single-React-Native guard, the production environment contract, codegen, and
+`assembleProductionDebug`.
 
-🚨 Do not call this shipped. Version metadata still says 158. No hosted Android workflow was
-dispatched, no Play-signed artifact exists for these repairs, and no Fold 8 retest has occurred.
-The next release would be Build 159 and needs Astro's explicit approval for that specific hosted
-build.
+Astro approved this specific hosted build. One manual production Android workflow was dispatched:
+<https://github.com/Murror/MurrorMobile/actions/runs/35213510525>. It passed from the exact release
+SHA. The independently downloaded signed artifacts matched the provenance receipt:
+
+- AAB SHA-256: `ee46eaee24430fbe24bf2f4662af1965b19820a3ecd085849c5f0d7d1e55677a`
+- APK SHA-256: `b4f62afffcd33321b698a97501cc3fb8d906ce0692c85d99f3f7089cb019c472`
+- native symbols SHA-256: `18102f747fdaa32541b3de8b86be4f7a0357e7ba6dbef5ca97e9cd00d023f7db`
+- package/version: `com.murrormobile`, `2.0.0 (159)`, min SDK 24, target SDK 36
+- APK signer: expected Murror Android upload certificate; APK v2 signature passed
+
+Google Play processed release ID 65 without a blocking error. Build 159 is visibly `Available to
+internal testers`; the Production track was not changed. The install link is:
+<https://play.google.com/apps/internaltest/4701017521848127510>.
+
+Two non-blocking Play warnings remain: the Console Advertising ID declaration disagrees with the
+manifest intentionally omitting `AD_ID`, and no deobfuscation file is attached because release
+obfuscation is disabled. Unit-tested, locally built, hosted-signed, and Play-published. Not yet
+device-verified on the Galaxy Z Fold 8.
 
 Progress hub:
 <https://app.notion.com/p/3de3af4aaa9281e88b9af24cb0fd9528?pvs=204>
