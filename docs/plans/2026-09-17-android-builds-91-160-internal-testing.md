@@ -1,24 +1,24 @@
-# 2026-09-17: Android builds 91 to 159, performance hardening, and regression recovery
+# 2026-09-17: Android builds 91 to 160, performance hardening, and regression recovery
 
 Repo: `MurrorMobile`.
 
 Primary Android device: Samsung Galaxy Z Fold 8.
 
-Current Play Internal testing release: version `2.0.0`, version code `159`.
+Current Play Internal testing release: version `2.0.0`, version code `160`.
 
 Progress hub:
 <https://app.notion.com/p/3de3af4aaa9281e88b9af24cb0fd9528?pvs=204>
 
 ## Outcome
 
-Build 159 is available to the Play Internal testing group. It is the latest signed release
+Build 160 is available to the Play Internal testing group. It is the latest signed release
 in a long Android hardening run that began after Build 90 and concentrated on Memories,
 Connection Detail, repeated modal presentation, navigation recovery, Fold reflow, and
 foreground render cost.
 
-This run produced 69 build-number records:
+This run produced 70 build-number records:
 
-- 20 releases reached Play Internal testing;
+- 21 releases reached Play Internal testing;
 - 42 performance candidates from Builds 101 through 142 were consolidated into Build 143;
 - 5 intermediate candidates from Builds 152 through 156 were consolidated into Build 157;
 - Build 149 was discarded before publication;
@@ -30,28 +30,33 @@ issues: the Memory Detail comment composer sits behind the keyboard, several Con
 sheets do not share the smooth bottom-up presentation, and the Mental Check-in still crops its
 lowest answer on a short window. Their source causes are proven and repaired in Build 159. The
 repair is unit-tested, locally built, signed by the hosted release workflow, and published to
-Internal testing. It is not yet verified on the Galaxy Z Fold 8.
+Internal testing. Build 160 additionally bounds the live Android Memory Detail surface to 480dp
+on wide Fold windows, reducing the image texture area without changing phone or iOS geometry.
+That source mechanism and its resize regression are proven. The performance benefit is not yet
+verified on the Galaxy Z Fold 8.
 
 ## Source and release provenance
 
 | Item | Evidence on 2026-09-17 |
 |---|---|
-| Build 159 branch | `codex/android-ui-stability-build150-20260916` |
-| Exact signed source | `baf7d1678b5c5d8effec19400720dc08d2625d8a` |
-| Source repair before release metadata | `0147e5672325247efd3486fd02753f32a18b7e42` |
-| Shared mobile trunk reconciled before release | `origin/staging-environment-setup@92e5897e9b0a69f2d2f851870da9d6af79f87238` |
-| Staging merge on release branch | `ed51c6fd4` |
-| Reconciled staging changes | Android SDK setup naming plus the iOS release, pod, privacy, and shared-source safeguards already landed on trunk |
-| Hosted workflow | `35213510525` |
-| Signed AAB SHA-256 | `ee46eaee24430fbe24bf2f4662af1965b19820a3ecd085849c5f0d7d1e55677a` |
-| Signed APK SHA-256 | `b4f62afffcd33321b698a97501cc3fb8d906ce0692c85d99f3f7089cb019c472` |
-| Play state | Build 159, Available to internal testers |
+| Build 160 branch | `codex/android-ui-stability-build150-20260916` |
+| Exact signed source | `09640a08284523609d87f35f5c032c44cbefbcb6` |
+| Source repair before release metadata | `c89216575` |
+| Shared mobile trunk included through | `origin/staging-environment-setup@4384e34fee777048c28180696fd99dcb1a1b730e` |
+| Current shared mobile trunk after dispatch | `origin/staging-environment-setup@3867c48b88bc1e02c0d0186fdb0a00abd611075c` |
+| Later trunk changes not in Build 160 | Chat fork refusal, local-save Home reminder settlement, and saved Settings location preservation |
+| Hosted workflow | `35222533412` |
+| Signed AAB SHA-256 | `533ddcbbd621fa0a3b276b857594a2b1e232cb9eb478e4d034938391d02b5210` |
+| Signed APK SHA-256 | `83179e38fcb07abbb9c59355554675289f3d258af69ddb98d01c3bb8cede2759` |
+| Native symbols SHA-256 | `18102f747fdaa32541b3de8b86be4f7a0357e7ba6dbef5ca97e9cd00d023f7db` |
+| Play state | Build 160, Available to internal testers |
 | Production track | Unchanged |
 
-Build 159 must not be called trunk-equivalent because its Android work is carried on a feature
-branch. The release branch merged the official staging head immediately before the version bump,
-then produced one exact-SHA hosted run and one signed artifact set. That release proof is still
-separate from physical-device proof: Build 159 is available to Internal testers, but the three
+Build 160 must not be called trunk-equivalent because its Android work is carried on a feature
+branch and staging advanced after the immutable candidate was dispatched. The release branch
+included official staging through `4384e34f`, then produced one exact-SHA hosted run and one signed
+artifact set. That release proof is still separate from physical-device proof: Build 160 is
+available to Internal testers, but its Memory Detail performance repair and the three Build 159
 repairs have not yet been retested on the Fold 8.
 
 ## Published release timeline
@@ -78,6 +83,7 @@ repairs have not yet been retested on the Fold 8.
 | 157 | Sep 17 | `b8a3f9cb` | Fail-open visible FAB sheet, scoped header glass, reused Memory image geometry, paused hidden Home work | Signed workflow `35171538491`; Play Internal |
 | 158 | Sep 17 | `88c95628` | Routed Moment composer outside the native modal presentation boundary | Signed workflow `35190344899`; Play Internal; current Fold test has three reopened defects |
 | 159 | Sep 17 | `baf7d167` | Keyboard-safe Memory comments, native Connection sheet slides with serialized Dialog handoffs, and short-screen Mental Check-in answer reservation | Signed workflow `35213510525`; Play Internal; Fold 8 retest pending |
+| 160 | Sep 17 | `09640a08` | Fold-safe live Memory Detail width to reduce wide-screen image texture area | Signed workflow `35222533412`; Play Internal; Fold 8 retest pending |
 
 The tester link is:
 <https://play.google.com/apps/internaltest/4701017521848127510>
@@ -268,6 +274,27 @@ Play still reports two non-blocking warnings:
 These warnings are tracked as release-hygiene work and are not evidence that the Internal release
 failed.
 
+## Build 160 verification ledger
+
+| Layer | Result |
+|---|---|
+| Focused suites | 2 suites, 124 tests passed with a fresh Jest cache and explicit spec paths |
+| Mutation proof | Replacing the live Fold-safe width with the raw 882dp window width made the resize regression fail: expected 480, received 882 |
+| Mutation restoration | The edited source was restored from a scratch copy with matching SHA-256; `git checkout` was not used |
+| TypeScript | Passed |
+| ESLint | Passed with the existing project baseline of 127 warnings and 106 unique warning tuples |
+| Prettier and diff hygiene | Passed |
+| Android release contracts | 7 of 7 passed for version code 160 |
+| Workflow contracts | Passed |
+| Production environment contract | Passed for scheme `murror`, 18 required keys |
+| Codegen | Passed before native compilation |
+| Local native build | `assembleProductionDebug` passed; debug-signed |
+| Hosted signed build | Workflow `35222533412` passed from exact SHA `09640a08284523609d87f35f5c032c44cbefbcb6` |
+| Signed AAB | SHA-256 `533ddcbbd621fa0a3b276b857594a2b1e232cb9eb478e4d034938391d02b5210` |
+| Signed APK | SHA-256 `83179e38fcb07abbb9c59355554675289f3d258af69ddb98d01c3bb8cede2759`; hosted signature verification passed |
+| Play Internal | Build 160 Available to internal testers; released Sep 17 at 8:52 PM local Console time |
+| Fold 8 | Unit-tested and locally built, not device-verified |
+
 ## Current open work
 
 | Canonical item | State | Proven next step |
@@ -276,7 +303,7 @@ failed.
 | `AND-CDP-SHEET-001` | Published in Build 159; awaiting device verdict | Retest Settings, Add Memory, View All, and Memory Detail twice each |
 | `AND-MHC-001` | Published in Build 159; awaiting device verdict | Retest all Fold postures and larger font scale |
 | `AND-CDP-001` | Reopened across releases | Capture a physical crash tombstone and Android frame trace on a content-heavy Connection |
-| `AND-MEM-001` | Improved, still reported laggy | Measure decode, GPU, UI, and JS frame time on the Fold 8 rather than infer from render counts |
+| `AND-MEM-001` | Build 160 bounds Memory Detail texture width; awaiting device verdict | Measure decode, GPU, UI, and JS frame time on the Fold 8 rather than infer from render counts |
 | `AND-CAM-001` | Repeatedly reopened | Retest first open, dismiss/reopen, tab-switch/reopen, rotation, and keyboard paths on one installed build |
 | `AND-LANDSCAPE-001` | Funded, incomplete | Scope and implement true unfolded landscape/two-pane layouts after P0 regressions close |
 | `AND-REL-ADID` | Open warning | Reconcile the Play declaration with the manifest intentionally omitting `AD_ID` |
@@ -303,7 +330,7 @@ failed.
 The Notion Android Progress Hub is now the live operational ledger:
 
 - **Android Work Items and QA** keeps one canonical row per problem and reopens it when it returns;
-- **Android Build Ledger** contains all 69 build numbers from 91 through 159 and separates candidate,
+- **Android Build Ledger** contains all 70 build numbers from 91 through 160 and separates candidate,
   signed, Play, discarded, superseded, and provenance-gap states;
 - **Android Device Runs** records the exact build, Fold posture, orientation, start state, scenario,
   evidence, and tester verdict.
@@ -313,13 +340,13 @@ neither one substitutes for signed-artifact or physical-device evidence.
 
 ## Documentation scope
 
-No public progress-page entry was added. Builds 91 through 159 are Internal testing releases and
+No public progress-page entry was added. Builds 91 through 160 are Internal testing releases and
 regression hardening for an Android product that is not yet ready for Production submission.
 Publishing this work as a publicly shipped capability would overstate its release tier.
 
 ## Work accounting
 
 The prior Build 91 to 158 run document recorded `1,811,678,296` Codex tokens. No new exact native
-counter snapshot was taken for the Build 159 release work, so this update does not invent a
+counter snapshot was taken for the Build 159 or 160 release work, so this update does not invent a
 replacement total. The earlier number includes cache reads and delegated work and is not a billing
 estimate.
