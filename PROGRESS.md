@@ -3124,3 +3124,36 @@ billing estimate.
 The active goal used **81,306 additional tokens** in this cycle, bringing the
 reported total to **59,506,882 tokens**. This is processing volume, not a
 billing estimate.
+
+### Follow-up correction: defer the complete Personal Note tree
+
+- **PROVEN:** the earlier Personal Note patch removed Android's storage lookup
+  and roughly nine-second word stream, but deliberately kept the complete
+  static letter mounted in the route's first frame. A fresh audit found that
+  its artwork, gradient, scroll tree, avatar media, ambient component, and
+  markdown layout still competed with the native slide.
+- Patch `09fffaf802db33c05f9aecdbd6126b5a7f53ef16` preserves the existing
+  letter as one child tree but keeps that tree unmounted behind an opaque
+  Android presentation frame until `transitionEnd`. The final static Android
+  text still mounts without storage or word-stream work. iOS remains immediate.
+- The revised contract failed before the wrapper was added and passed after it.
+  A verified mutation that bypassed only the readiness gate turned the focused
+  test red; restoring the exact source SHA returned it to green.
+- Seven focused Personal Note, ambient, navigation, and presentation suites
+  passed with 86 tests. Prettier, TypeScript, the exact ESLint baseline,
+  production environment validation, React Native code generation, and a JDK
+  17 Android debug build also passed.
+- The debug APK is 129,354,252 bytes with SHA-256
+  `766e6fbc92720ea1c8c9585c42a3dabe417f09bafc64532b1aa1363a4c3d284d`.
+- This corrects the preceding broad coverage statement: the three-route batch
+  closed Quiz Compare, Connection Settings, and Reflect Back, while this patch
+  closes the Personal Note whole-tree exception. The branch exactly matches
+  the remote, remains zero commits behind staging, has no PR, and started no
+  workflow.
+- The result is source-proven and locally built, not physically measured on a Z
+  Fold 8. The APK is debug-signed. Play Internal remains Build 168; no Build 169
+  workflow was dispatched without build-specific approval.
+
+The active goal used **500,739 additional tokens** in this cycle, bringing the
+reported total to **60,007,621 tokens**. This is processing volume, not a
+billing estimate.
