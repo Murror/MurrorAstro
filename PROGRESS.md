@@ -432,7 +432,6 @@ failing closed, **0 reachable gaps**.
 The PII scrubbers are deployed and have never executed anywhere. Sentry has recorded
 zero events since the roll. That is a test that has not run, not a pass.
 
-
 ## 2026-08-06 (PDT): Builds 417 and 418 shipped, and the paywall footer root cause
 
 Astro's build-416 TestFlight feedback, worked through to two shipped builds. Full
@@ -857,6 +856,7 @@ the short arm at Astro's request. Full detail:
 `docs/plans/2026-07-31-onboarding-length-ab.md`.
 
 ### Highlights
+
 - **Four-agent panel (forge/heart/prism/oracle) brainstormed the cut before any code.** Consensus: Act 1 (orbital hook -> chip -> Share -> AI "their side" Merge reveal) stays untouched in every variant, it is the entire value demo. Only Act 2/3 (the 15-beat question block) shortens, using Heart's rule: keep beats that GIVE the user something, cut beats that only TAKE.
 - **A visual screen-by-screen storyboard was shown to Astro and approved before implementation** (phone mockups in the app's dark orbital language, the flag-switch diagram, the experiment design).
 - **Mobile PR #976** (`staging-environment-setup`, merged): `ACT23_STEPS_SHORT` cuts Act 2/3 from 15 beats to 4 (`identity`, `hearUs`, `relImprovement`, `insightPreview`); the arm is resolved once at the letter -> Act 2/3 transition and **persisted per install** so a relaunch can never switch someone between arms mid-experiment; RevenueCat subscriber gets re-tagged with the arm after `Purchases.logIn` (RC does not merge anonymous attributes on login, so the pre-signup tag alone would have been unattributable). 2 adversarial review rounds, all findings fixed. 52 tests green.
@@ -864,6 +864,7 @@ the short arm at Astro's request. Full detail:
 - **PostHog flag `onboarding_v2_length`** (id 792796) created disabled first, multivariate full/short 50/50, then armed scoped to `env=staging` only at 100% short. Verified live against the `/decide` API for staging, production, and no-env; production is untouched two ways over (condition excludes it, and no prod build carries the code yet).
 
 ### Operating notes
+
 - **Kill switches, zero build:** flip the flag's condition to serve 100% `full`, or disable the flag entirely (client fail-safes to `full` either way).
 - `evaluation_runtime: 'client'` (the PostHog create-flag default) silently excludes a flag from `/decide` responses; use `'all'` for any flag you need to verify or that a server-side path might read.
 - The next staging TestFlight build cut from `staging-environment-setup` carries the short arm; existing builds predate the merge and ignore the flag. Alpha/dev already defaults to the short arm (no PostHog key ships there).
@@ -871,9 +872,11 @@ the short arm at Astro's request. Full detail:
 - For the real 50/50 launch A/B (not staging-only): replace the flag's `env=staging` condition with the launch targeting and drop the forced `short` override.
 
 ### Docs
+
 - `docs/plans/2026-07-31-onboarding-length-ab.md`
 
 ### Still open
+
 - Real 50/50 launch targeting on the flag (currently staging-only, 100% short).
 - Live-device end-to-end proof of a short-arm signup completing.
 - Cut the next staging TestFlight build to actually surface the short arm to testers.
@@ -881,6 +884,7 @@ the short arm at Astro's request. Full detail:
 ## 2026-07-26 (PDT): Duo/Together reaches a real staging test surface
 
 ### Highlights
+
 - **Staging and alpha are at API + web parity** and both run the Duo rule set clean: the state-machine harness scores **14/14 on BOTH** environments, including `Duo resolves to 2 seats`.
 - **The RevenueCat silent-success bug is dead.** Root cause was Prisma dropping an `undefined` `eventId` from a where clause, so the idempotency lookup matched an unrelated processed event and discarded the purchase while answering 201. Fixed at three sites; two were found by grepping consumers rather than by the repro. `storeAnonymousEvent` was arguably worse than the original, silently dropping pre-login purchases.
 - **The Duo claim flow works end to end on staging.** `staging.app.murror.app/family/join` is live, the seat token now survives the sign-out/sign-in switch, and new invitees are routed back to the claim page after sign-up (previously they finished onboarding and silently never claimed, which hit every new invitee).
@@ -889,6 +893,7 @@ the short arm at Astro's request. Full detail:
 - Mobile build **372** carries Duo enabled for staging testers, with production still gate-only.
 
 ### Operating notes
+
 - **Merging to `staging` does NOT deploy alpha.** The deploy matrix fires only `nsp-staging-murror`; alpha needs a separate `Build & Push Image` dispatch. Assuming otherwise leaves alpha silently on the old image.
 - **A `web-client` deployment has existed in `nsp-staging-murror` for 49 days** at `staging.app.murror.app`. The missing `staging` git branch in murror-platform was never the blocker for a staging web surface.
 - **RC enforces one webhook per URL per project** (409 on the second). A distinguishing query param makes the URL unique while hitting the same endpoint; verified live that auth still enforces.
@@ -898,10 +903,12 @@ the short arm at Astro's request. Full detail:
 - A mock that does not do what production does converts a guard into false confidence: the join-page "keeps the token" spec passed throughout because its logout mock never ran the storage sweep.
 
 ### Docs
+
 - `docs/plans/2026-07-26-duo-staging-parity-week.md` (this week, full detail)
 - `docs/plans/2026-07-25-duo-claim-and-webhook-silent-success.md`
 
 ### Still open
+
 - Device pass on staging. Everything proven so far is rules-level; the harness says so itself.
 - Alpha's webhook secret is a literal `kubectl set env` value drifted from the k8s Secret.
 - V1 stage 2: delete the ~29 unreachable pages/routes. `/onboarding/invite` is shared with v2 and must survive.
@@ -911,12 +918,14 @@ the short arm at Astro's request. Full detail:
 Took Together Duo on Alpha from UI-only to a real sandbox purchase, stood up the RevenueCat store side in the correct project, and corrected a stale infra assumption that had sent a session chasing a dead cluster. Full detail: `docs/plans/2026-07-18-alpha-duo-revenuecat-and-infra-truth.md`.
 
 ### Highlights
+
 - Mobile Duo Milestone B, builds 174 -> 346 (dev scheme, flag-dark): first Duo UI (picker, invite, joined pop-up, stop-sharing), a Home crash fix (unwrap the murror-api envelope), a stale-plan-card fix (focus refresh), device-feedback rounds (night-sky Settings card, no stock photo/butterfly, right-side stop-sharing, honest Manage Subscription), and finally real RevenueCat sandbox purchases (PR #778 + bump #779). Duo matcher fixed to the real custom-package shape; buy path wired purchase -> refresh -> invite. 53 tests green, sentinel review = SHIP.
 - RevenueCat store side complete in project MurrorDev (projb32bb370): two Duo products attached to the Premium entitlement + custom packages in the current offering; matching App Store Connect subscriptions readied via the ASC API. Earlier RC work in the PROD project was the wrong project and is orphaned (a prod launch-gate risk noted below).
 - Seat map corrected on the real dev backend (nsp-dev-murror, sfo2): was phantom ids (app.murror.mobile.duo.*), now app.murror.premium.duo.{monthly,yearly}:2; rolled out on image staging-effdd8a which carries the seat-count code.
 - Infra correction: "Alpha" is the dev backend (dev.api.murror.app = nsp-dev-murror on DigitalOcean sfo2), NOT the retired self-managed sg3 cluster (nsp-alpha-murror / alpha.murror.api.ambercare.app, HTTP 000). The alpha-testing-guide skill doc still points at the dead env and misled a session; corrected across five memory files + a new reference_alpha_env_decoder.
 
 ### Operating notes
+
 - RC project projb32bb370 is shared by dev AND staging; RC fans webhooks to every configured URL, so make webhook changes additive.
 - OPEN blocker for a fully end-to-end purchase test: the RC webhook still points at the dead ambercare host, so real purchases reconcile nowhere until a dev.api.murror.app webhook is added (Astro-gated). The purchase + premium unlock work without it; only the invite/plan step needs it.
 - Prod launch gate: the mobile Duo buy path is not env-gated and an orphaned Duo package sits in the live prod offering, so never flip ENABLE_TOGETHER_DUO in prod before the prod webhook->plan pipeline is verified.
@@ -927,6 +936,7 @@ Took Together Duo on Alpha from UI-only to a real sandbox purchase, stood up the
 Redesigned the Connection Reflection detail page in the onboarding/home orbital visual language, iterated it through a device-feedback round, graduated it to staging, extended the same look to the contacts tab, and unified per-person colors app-wide. Fixed the Alpha avatar-revert bug. Full detail: `docs/plans/2026-07-13-connection-reflection-orbital-and-contacts-parity.md`.
 
 ### Highlights
+
 - Connection Reflection detail redesign (mobile PR #675, flag `enable_connection_reflection_orbital`): two-node circular constellation hero replacing the random stock photo, one dark sky with dark-glass section cards, and a vertical "sharing journey" of past reflections you can tap to revisit. Flag-off byte-identical. Backend needed nothing (origin date already in the bundle). 2 adversarial reviews + compassion review; freemium star-gate finding fixed.
 - v3 device-feedback round (PR #685): plain "sharing" language (no star/sky jargon), yearless dates + "You are here" on every journey stage, tappable-dot rings + chevron, a full-width "PAST SHARING · <date>" banner when a dot opens an old sharing, Dive Deeper moved to the page bottom, no text truncation.
 - Graduated to staging (PR #687): resolver env default now includes staging (production stays gate-controlled). Staging build 310 cut for MurrorStg testers.
@@ -936,6 +946,7 @@ Redesigned the Connection Reflection detail page in the onboarding/home orbital 
 - Builds: Murror Alpha 173/176/177/178 (dev sequence, isolated worktrees) + staging 310. All appex-parity + baked-ENV verified before upload. Production untouched.
 
 ### Operating notes
+
 - Build recipe: set build numbers AFTER provisioning completes (a concurrent yarn/pod-install reverts the pbxproj -> mismatched appex numbers -> App Store rejection); verify appex parity in the archive pre-upload; ExportOptions.plist is untracked, copy per worktree.
 - Investigate in a lane-tip worktree, never the main checkout (was 35 commits stale mid-day and produced an invalid bug diagnosis on the first pass).
 - Everything flag-dark on staging until an Astro Alpha device pass; VI/JA copy drafts owed his native pass.
@@ -945,6 +956,7 @@ Redesigned the Connection Reflection detail page in the onboarding/home orbital 
 Extended the dark freemium soft-paywall into real feature gates, activated it on staging, and cut build 302. Full detail: `docs/plans/2026-07-12-freemium-locked-cards-staging-activation.md`.
 
 ### Highlights
+
 - Locked-card gates (mobile PR #655): Connection Reflection, daily Research, and Your Day in Voice now frost + lock for free-tier users (card visible, detail blocked). Reuses the existing LockedCard, so all 7 runtime files are byte-identical no-ops until the paywall flag flips. Chat stays 1 session/day.
 - Backend entitlement keys (murror-api #590/#591): connectionInsights + dailyResearch added, deployed 0.209.0 -> 0.210.0-staging, verified live in the container + Swagger DTO.
 - Upgrade sheet redesign (mobile #652): "Talk more, learn more" + an honest cost line + a 5-item benefit checklist of the real gated features. Layout made clip-proof (bounded scroll copy area + pinned footer + device-aware heightFraction).
@@ -952,6 +964,7 @@ Extended the dark freemium soft-paywall into real feature gates, activated it on
 - Build 302 uploaded to TestFlight; the whole free-plan experience is live end-to-end on staging for device QA. Production untouched (frozen, flag off).
 
 ### Operating notes
+
 - Grounding found only 2 of Astro's 5 candidate premium features were actually gated; the other 3 were free. We built the missing gates rather than advertise free features.
 - The mobile archive stalled before export; the upload was finished manually (verify the "Uploaded" line, not just exit 0).
 - Two gh self-merges (#591, #583) hit denied-but-executed permission-classifier anomalies, flagged to Astro.
@@ -962,6 +975,7 @@ Extended the dark freemium soft-paywall into real feature gates, activated it on
 The last several days focused on bringing `apps/web-client` closer to mobile staging behavior, then hardening account and subscription flows on both staging and production. Full detail: `murror-web-codex/docs/plans/2026-07-05-web-parity-account-billing-rollup.md`.
 
 ### Highlights
+
 - Web mobile parity refresh: song cards, challenge CTAs, AI Chat resume, quiz compare reveal, CRI detail, home copy, history detail naming, and For Us card behavior were aligned with mobile truth in targeted slices.
 - AI Chat and retired journal cleanup: stale local drafts stopped coming back, prompt-started AI Chat now starts fresh, and old journaling state no longer leaks into the active chat surface.
 - Home and card polish: streak copy and layout were simplified per feedback, duplicate voice story card behavior was removed, voice artwork moved toward mobile, and avatar cropping plus confusing card prompt copy were fixed.
@@ -969,11 +983,13 @@ The last several days focused on bringing `apps/web-client` closer to mobile sta
 - Settings and subscription: family plan was hidden, Manage Account now shows and edits the backend-synced username, cancel subscription works in-app on production, and active users can now open the standard billing portal to manage, resume, upgrade, or downgrade.
 
 ### Deploy notes
+
 - Staging and production web deploys were completed for the subscription cancel and billing portal flows.
 - Latest billing portal deploy anchors: staging image `staging-51bf67a9`, production image `prod-51bf67a9`, both health checked with HTTP 200.
 - Production Helm still has a known image field ownership conflict; the working production path used `kubectl set image`.
 
 ### Operating notes
+
 - The current `murror-web-codex` worktree is on `feat/pixel-scope-down-presignup`; confirm the active branch before making follow-up web-client changes.
 - Token accounting for this writeup used the closest Claude transcript windows, but the implementation was done in Codex, so the numbers are best read as broad work-window volume rather than exact Codex-only effort.
 
@@ -982,6 +998,7 @@ The last several days focused on bringing `apps/web-client` closer to mobile sta
 Two things: the QA260 polish sprint (build 261), and the big one - promoting the validated staging codebase to LIVE production, zero downtime. Full detail: `docs/plans/2026-07-02-builds-259-261-and-production-promotion.md`.
 
 ### QA260 -> build 261
+
 - Pending Reflection card: centered body + `connection_reflecting` background artwork + "Remind them" copy (centering was a scoped one-line bug).
 - Share-confirm popup reframed as an invitation ("Invite {name} to reflect on this too?... Your full entry stays yours") + warmer icon (was a red exit-door).
 - Quiz AFTER-flow built (before/during/after rule): anticipation -> no-rush wait -> "you both answered" card -> a COMPARE DETAIL PAGE (reuses the detail-page design system) with both users' answers side-by-side + insight; backend answer-payload privacy-gated to COMPLETED days.
@@ -989,6 +1006,7 @@ Two things: the QA260 polish sprint (build 261), and the big one - promoting the
 - PRs #525-#528 -> build 261 (canonical f66ef3e).
 
 ### PRODUCTION PROMOTION (get-prod-current on DOKS)
+
 - CORRECTED premise: live prod is healthy on DOKS (nsp-prod-murror), not the dead Vietnam-k3s env the first scan named. "Move to DOKS" was already done.
 - DIVERGENCE caught pre-write: `production` had 33 murror-api + 6 viasr commits applied DIRECTLY to prod (bypassing staging) - security + prod-data-loss fixes. A naive fast-forward would have dropped them.
 - RECONCILIATION (Opus): staging is a strict SUPERSET (the QA sweep re-implemented every prod hotfix). Reconcile merges tree-identical to staging (0-file diff); DATA-LOSS guard + data-integrity + crisis fixes confirmed surviving; 626+137 tests pass.
@@ -997,6 +1015,7 @@ Two things: the QA260 polish sprint (build 261), and the big one - promoting the
 - FOLLOW-UPS: cronjob RBAC fixed (restored a MISSING prod daily-voice-summary CronJob); drift guard merged to staging (#548/#567, merge-tree-based, false-positive-free). OPEN: flip prod `shared_photos_enabled` Statsig gate ON; prod mobile build held; PITR deferred; rotate the pasted Supabase token.
 
 ### Lessons
+
 - Verify LIVE topology before acting on an infra assessment (first scan named the dead cluster).
 - `git rev-list staging..production` before promoting - production had 39 direct hotfixes.
 - Post-merge-promotion, rev-list AND git cherry false-positive; `git merge-tree --write-tree staging production == staging^{tree}` is the accurate in-sync check.
@@ -1007,6 +1026,7 @@ Two things: the QA260 polish sprint (build 261), and the big one - promoting the
 Same-day QA loop: build-258 feedback (7 items, shipped build 259), build-259 feedback (5 items) plus a full quiz-experience revamp (shipped build 260), and two independently-resolved P0 incidents. Full detail: `docs/plans/2026-07-02-qa258-qa259-quiz-revamp-p0-incidents.md`.
 
 ### Highlights
+
 - **QA258**: glass buttons reverted (SHA256-verified byte-identical to pre-glass); the actually-missed "Connection Streak" title surface found + benefit subtext added; unscalable persona chips removed from card titles (both journal + chat); eye-icon bottomsheet reworked from a horizontal slide to expand-in-place; History story-card now uses the same bundled image as Home (was a hardcoded gradient with no image); educational progress-bar copy; connections + button matched to the memory-photo + button.
 - **P0 incident 1 - LLM fallback chain collapse**: 4-rung cascade (Claude truncated at a too-small token budget -> OpenAI wrongly skipped because a renamed status-page component made our health check fail closed -> Groq transiently open -> Gemini disabled). Fixed: status checks are now fail-open (a broken status page can never disable a healthy provider); Claude requests retry once at 4x budget on detected truncation.
 - **P0 incident 2 - staging web/beta auth fully broken**: the rebuilt staging Supabase signs ES256 tokens; the platform relay in front of every Edge Function only accepted HS256, rejecting every web request before our own code (which handles both fine) ever ran. Fixed by deploying with the relay check disabled, after auditing all 28 deployable functions to confirm each authenticates in its own code. Also found + fixed a second, unrelated bug in the same investigation: mobile avatar upload rejected iOS camera photos (mislabeled HEIC).
@@ -1014,6 +1034,7 @@ Same-day QA loop: build-258 feedback (7 items, shipped build 259), build-259 fee
 - **AI voice fixes**: explore-deeper questions flip from first-person ("I") back to second-person ("you") per direction; shared-reflection cards stop misgendering (pronoun-first resolution, gender only when explicitly known) and a latent crash on missing profile data is fixed. Both verified with live adversarial generations against staging (planted names, romantic-bait phrasing, empty profile rows) since the eval harness turned out to have a silent coverage gap for these suites (now flagged as a follow-up).
 
 ### Gotchas
+
 - Query-key migrations must sweep every mutation hook that invalidates the old key, not just the screens reading the new one.
 - A platform-level auth relay can reject requests before your own middleware runs; fixing the middleware does nothing if the infrastructure in front of it is stricter.
 - Provider status-page health checks must fail open; a broken status page must never disable a healthy provider.
@@ -1025,6 +1046,7 @@ Same-day QA loop: build-258 feedback (7 items, shipped build 259), build-259 fee
 Astro's build-257 QA produced 8 feedback items; all fixed/built, plus the streak UX redesign and the "journal and AI chat are ONE, clean this up" mandate - full parity audit + 8 violations fixed across 3 repos. Full detail: `docs/plans/2026-07-01-qa257-sprint-streak-redesign-journal-chat-parity.md`.
 
 ### Highlights
+
 - **Explore-deeper perspective fix deployed** (viasr #553): questions are now perspective-neutral by contract (reader = "I", other person = "them"/"our connection", never a copied name or "your partner"); root cause was name-anchored prompting + empty staging profile names.
 - **Bedtime story, actually fixed this time**: the cron fires at 3:30 UTC but evening-PST users reflect after it; now the story generates on the FIRST reflection of each day (on-demand path un-gated from milestones) + a 30h rolling cron window as backstop + once-per-day push dedupe.
 - **Challenge card "disappearance"**: never left the DB; the paginated feed endpoint didn't fetch challenges (only /latest did). Also found all 4 expiry crons firing at :00 and exhausting the DB pool (challenge expiry had NEVER completed) - staggered.
@@ -1033,6 +1055,7 @@ Astro's build-257 QA produced 8 feedback items; all fixed/built, plus the streak
 - **Build 258** shipped via the lane: 6 mobile branches merged in review-simulated order (zero conflicts, composed-tree tsc green), bump #514, uploaded ~23:32 PDT.
 
 ### Gotchas
+
 - Fixed-time daily crons miss same-day activity created after they run; event-driven + rolling-window backstop is the durable shape.
 - Suppression keys must carry the full identity of what they dedupe (memory-burst key lacked the sender; collapsed two recipients into one window).
 - App-wide component restyles must respect caller overrides on every channel (bg prop, style bg, textColor).
@@ -1043,30 +1066,38 @@ Astro's build-257 QA produced 8 feedback items; all fixed/built, plus the streak
 Continuation of the card-system hardening entry below. Full detail: `docs/plans/2026-07-01-single-build-lane-ai-chat-memory-challenge-v1-card-audit.md`.
 
 ### Reflection-card + truncation fix (viasr #547)
+
 - Root cause was NOT one bug: `min_items=3` on `prevQuestionAnswers` 422'd for users with 1-2 prior answers (not 0, not 3+); separately, `MAX_TOKENS=800` with no `stop_reason` check truncated replies mid-word. Both fixed + deployed; mobile got a graceful `REFLECTION_NOT_READY` state instead of a silent no-op.
 
 ### Single build lane (the recurring build-number collisions, finally fixed at the root)
+
 - Build 253 was archived off-repo on another machine and never pushed, so the live TestFlight 253 lacked the challenge fix entirely. Rebuilt as 254 off canonical. Shipped `scripts/ios-next-build.sh` (computes next build = max(canonical, local)+1 across pbxproj + 4 Info.plists) + a documented single-build-lane / single-owner rule in CLAUDE.md and the cross-session web HANDOFF.md.
 
 ### AI Chat cross-session memory + resume (build 255)
+
 - 3-repo "pre-fetch spine": murror-api reads cheap stored memory, hands viasr a capped prose string; viasr injects it and skips its own slow inline retrieval. Mobile "Continue this chat" resume affordance. Gates: memory eval 100%, TTFW **1747ms -> 884ms p50** (faster, not slower).
 
 ### Challenge v1: adaptive completion-mode CTA (build 256)
+
 - Real-world challenges ("cook a meal together") no longer force a Journal CTA. `completionMode` (reflect/do_together/do_solo/quick_gesture) classified by viasr, carried through murror-api metadata, drives a one-tap "We did it"/"Mark as done" on mobile with an optional note. Softened progress dots, warmer copy.
 
 ### Full FOR US / Moments-to-Care card audit + P0 data-integrity fix
+
 - Astro requested a full mechanics audit of both feed surfaces. Found: the takeaway reaper shipped THIS MORNING (#527) had inverted semantics - it was treating the legitimate "waiting for the human partner to reply" state as a stuck job, and had already destroyed 10 staging rows (dead, unactionable cards for both users). Fixed same day (#531): reaper now scans the true stuck window (COMPLETED + no insight yet), a data-repair migration restored all 10 rows, and the fix was proven live (the reaper's next tick left the restored rows untouched).
 - Full P1/P2 hygiene pass followed: reaper pattern rolled out to reflection cards + individual reflections + a genuine journal text-gen stall; challenge/song/place expiry crons; `do_together` completion made atomic; song invite creation + realtime parity; silent-failure mutations now surface a gentle message; Home/FOR US card-rendering drift fixed (2 real gaps, NOT a full builder unification - that was evaluated and rejected as too risky).
 
 ### Smarter AI program: thinking-status + connection-aware intelligence + care-ping safety
+
 - A second session TDD-built 7 branches (independently reviewed for correctness, privacy, and AI-copy compassion); this session merged in the required deploy order, ran the gates, and shipped. AI Chat now shows warm "thinking" status lines (crisis turns show none, verified live via SSE); care tips/insights/reflection cards/MTC chats receive privacy-gated relationship context (viewer-owned only, partner mood behind their own share-level); care pings never surface pure-heavy memories and go quiet on a heavy-mood day.
 - Pre-merge review caught a real gap: the care-tips crisis filter let "suicidal" through at intensity <=7 or null intensity. Fixed same day before merge.
 - Consolidated into **build 257** with all card-hygiene work - the largest single build of the day.
 
 ### Live perspective bug, in flight (viasr PR #553)
+
 - Beta tester saw "Explore deeper" reflect questions written from the WRONG person's perspective (asking her how to support herself). Root cause: name-based perspective anchoring + empty staging profile names. Fix: perspective-neutral, reader-first-person prompt contract ("them"/"our connection", never "your partner", never a name copied from the insight). Awaiting deploy sign-off.
 
 ### Gotchas
+
 - Verify state semantics before writing ANY reaper - a human-wait state (PENDING) is not a stuck-job state. Applied prospectively twice more the same session (declined to build a specified artwork reaper after proving the wedge impossible; declined to heal seed data into COMPLETED without an exact atomic-write fingerprint).
 - Mobile's real-time transport is Supabase Realtime, not the NestJS Socket.IO gateway - confirmed against the movie-invite precedent before wiring new broadcasts.
 - "Your partner" is the wrong generic term for the other person in a connection (friends/family too) - use "your connection" / "them".
@@ -1076,17 +1107,21 @@ Continuation of the card-system hardening entry below. Full detail: `docs/plans/
 Continuation of QA248. More card QA surfaced systemic backend gaps, all fixed + deployed to staging. Full detail: `docs/plans/2026-07-01-card-system-hardening-and-curation.md`.
 
 ### Backend (staging)
+
 - viasr #544 (dive-deeper single-call + model rebalance + reflection-card system prompt), #545 (V20 user_profile partial-unique-index repair + universal `safe_validate_suggestion` guard against the provider-failure fallback-string crash), #546 (V21 user_persona column types -> learned-persona writes now succeed + below-baseline hot indexes).
 - murror-api #527 (takeaway stuck-row reaper, mark-FAILED-only, 5-min cron), #528 (care notification default-on: TWO enable_notification columns - app wrote the murror `User` one, viasr read the legacy `public.user_profiles` one; set default true on both + backfilled 143 users, verified 143/143).
 
 ### Mobile
+
 - Build 250: self-stopping Home feed poll + dead-code. Build 251: Challenge card fix (tap -> details popup, body truncated, removed wrong Dive-deeper->CRI, receiver-only Accept; no Decline per Astro, X dismisses).
 
 ### Audits + design
+
 - Card-health audit: 11/14 card types healthy on staging; Takeaway (fixed #527), Challenge (fixed b251), Daily prompt (stale 8 days, kept OFF per Astro).
 - "When to show what" curation panel (Heart/Prism/North/Iris): consensus = ONE hero card (core reflection always shown), everything else EARNED via tiers + state + cooldowns, silence/empty as a feature, never manufacture filler. Build path (Iris): pure `curateCards()` behind a `FEED_CURATION` Statsig flag (flag-off = today), Stage 1 allowlist delivers "suggestions on / daily-prompt off / challenge simplified" now. NOT built - awaiting Astro's direction on the forks.
 
 ### Gotchas
+
 - Flyway baseline-at-V15 means V1-V14 never ran (V7 index + V4 persona types silently missing on staging). Audited V1-V14; only user_persona types + hot indexes (V21) were genuine gaps, rest obsolete.
 - The provider-failure fallback string reaching an unguarded `model_validate_json` crashes the whole insight; guard centrally with a detectable signal.
 - Two `enable_notification` columns (app-facing vs viasr-read); fixing one alone would not work.
@@ -1096,15 +1131,18 @@ Continuation of QA248. More card QA surfaced systemic backend gaps, all fixed + 
 Driver: Astro. Build 248 QA = 6 issues; live-staging-DB forensics corrected three root causes and surfaced two more bugs (notification spam, bedtime not generating). Shipped build 249 to TestFlight + five backend PRs to staging; build 250 + card optimizations followed. Full detail: `docs/plans/2026-06-30-qa248-sprint.md` + `docs/card-mechanics-audit-2026-06-30.md`.
 
 ### Mobile (build 249; 250 in progress)
+
 - #1 blank prompt pills: removed shake-to-switch (it flipped any card into the prompt view; only surfaced on real devices with an accelerometer). Question view now opens only via the Dive button.
 - #3 voice button un-froze (setLoading moved out of the 1s deferred stop). #4 JED persona on all 3 sections (grounding fallback). #5 "they" -> "your connection" (en/vi/ja). Voice limit -> 120s.
 - Build 250: self-stopping Home feed poll + dead-code removal.
 
 ### Backend (staging only; alpha HELD per Astro until beta validated)
+
 - murror-api #525: #2A health-check regeneration loop (thread dayId so findMissingInsights clears), #2B reflected-today UTC filter, #1 explore-deeper guard. #526: disabled the autoFixMissingInsights cron + suppressed pushes for system-generated insights + closed the normal-path dayId gap.
 - viasr #542/#543/#544: explore-deeper empty/meta guard; eval() removal + connection-insight meta guard + deep-chat nightly bedtime; dive-deeper single-call + model rebalance + reflection-card system prompt.
 
 ### Operating notes / gotchas
+
 - #2 daily-limit block was a 30-min cron regeneration loop (generated insights had dayId=NULL so the day never cleared findMissingInsights), not stuck rows; the same loop fired the spurious "Khanh reflected" push each tick. Only root-caused via the live staging DB.
 - #6 birth time persists fine (was never entered before, not a save bug). Bedtime needed the deep-chat cohort merged into the nightly cron.
 - Journal + deep-chat are ONE (Astro directive): any feature/eligibility keyed on one must apply to both.
@@ -1115,19 +1153,23 @@ Driver: Astro. Build 248 QA = 6 issues; live-staging-DB forensics corrected thre
 Driver: Astro. Rapid on-device QA loops on the deep-chat / reflection experience: Astro tested each staging TestFlight build and sent batches of findings (with screenshots); each was root-caused (often via parallel specialist agents), fixed, reviewed, and rolled into the next build (244 through 247). Four backend PRs (3 viasr-api, 1 murror-api) shipped to staging in parallel.
 
 ### Mobile (MurrorMobile, builds 244-247)
+
 - QA243 (244): LockIcon viewBox (was clipping); Journal rail refetch-on-focus so saved entries appear without manual refresh; birth time survives reinstall (rehydrate onboarding store from server /me, never clobbering in-progress input).
 - Deep-chat copy/UX (245-247): connection-picker section title; ALL reflect prompts in second person ("you" not "I", en/vi; ja already second-person); dual privacy copy (original encryption line + the new between-you-and-Murror line) with "Learn more" rewired from CBT to a privacy popup; council attribution dedup; save-draft contrast; reflection-card prompt-subtext removed (was clipping under the CTA); For-Us carousel loop disabled + the care-tip "Reflect" no longer collapses the carousel; CRI "Dive deeper" spinner; tab-switch white-flash killed (neutralBlack scene/card backgrounds); voice Done waits 1s so a trailing word is not clipped; persona attribution confirmed on all 3 summary sections.
 
 ### Backend (staging deploys)
+
 - viasr-api: reflection-card AI meta-leak fix (empty deep_chat summary made the model reply conversationally and that leaked to the receiver's card; input + output guards + warm fallback) [#537]; mood-aware daily care notifications (reads the daily mood check-in, 24h recency, mood-as-floor never crisis-grade, tunes cadence + tone, failure-isolated + fallback bank) [#538]; second-person AI journaling/reflection prompts [#539].
 - murror-api: regenerate legacy connection reflections with empty quote/insight so the CRI "Quote" + "What both can do" sections render [#522].
 
 ### Operating notes / gotchas
+
 - Background agents that die mid-task can leave PARTIALLY committed work; build 245/246 shipped only part of a copy batch because an agent process exited and I built on top without verifying each item. Fix: require every agent to commit + report its hash, and verify the hash AND the actual strings/behavior landed before cutting a build. 247 was verified item-by-item.
 - The reflection-card meta-leak was an emotional-safety bug on the empty-data path (new connections, the most fragile moment). Guard empty inputs AND validate model output before it reaches a human.
 - Japanese second-person: do not mechanically add explicit pronouns; the language already reads second-person and explicit pronouns feel clinical.
 
 ### Verification
+
 - Builds 244-247 archived + uploaded (app + extension build numbers verified equal each time). Build 247 self-reviewed after the review agent died (tsc 0 new errors, 3 locales parse, no first-person left, gating + carousel + nav props confirmed). All 4 backend PRs: passing CI + deploy success; unit tests + compassion-review 10/10 on the two prompt changes.
 
 Doc: docs/plans/2026-06-30-deepchat-reflection-ux-and-ai-safety-builds-244-247.md
@@ -1137,22 +1179,27 @@ Doc: docs/plans/2026-06-30-deepchat-reflection-ux-and-ai-safety-builds-244-247.m
 Driver: Astro. Two-agent sprint: Claude on MurrorMobile + murror-api (+ this docs repo), Codex on the murror-platform web client, coordinated via a shared HANDOFF.md operating model (Claude owns mobile truth, Codex owns web implementation, API Lock gates shared contracts). Mobile shipped to staging TestFlight builds 236 through 243; murror-api shipped 4 PRs to staging; the web client reached voice/bedtime + Moments + For Us parity.
 
 ### Backend (murror-api, PRs to staging)
+
 - Daily voice summary is a first-class diary entry (#518); generated same-day on a streak milestone (#520); takeaway "poke" to remind the receiver to reflect back (#519); memories photo uploads allowed through ingress (proxy-body-size 50m); song-invite accept/cancel (#521, additive migration, merged + deployed to staging, API healthy).
 
 ### Mobile (MurrorMobile, builds 236-243)
+
 - Voice/Bedtime Story: render voice_summary entries as a playable bedtime card in the home Journal (was a plain card opening the wrong screen); redesigned with 10 bundled night-sky watercolor backgrounds (date-rotated, FastImage cover, serif title, 260x280 height parity, fixed clipped moon, legibility scrim).
 - Glass toast (frosted pill, web parity); retired the butterfly shimmer loader for a spinner everywhere; voice player now follows the highlighted paragraph + thicker, colorful, scrubbable progress bar (added seek()); Get Help localized JA/VI wired to app language; Thanh Loc persona shown only to Vietnamese users; song-invite accept/cancel receiver UI; fixed a pending challenge mislabeled "NEW".
 - Earlier in the window: Moments to Care rework + slide-to-next + streak milestone wrap-up; takeaway poke UI; relationship-type + privacy port to match web; QA batches 2 and 3.
 
 ### Web (murror-platform, Codex, feat/web-app-from-mobile)
+
 - For Us parity + playable voice/bedtime cards + takeaway songs + Moments parity; toast glass-pill styling + brand alignment; profile loading/date-picker + onboarding signup polish; TikTok pixel + commerce funnel events.
 
 ### Operating notes / gotchas
+
 - iOS build number lives in BOTH project.pbxproj (CURRENT_PROJECT_VERSION, 24 occurrences) AND the per-scheme *-Info.plist CFBundleVersion (staging app reads the plist; OneSignal extension reads pbxproj). Bump BOTH with surgical sed/perl on the plist (not PlistBuddy Set, which reformats). Caught a 240/241 app-vs-extension mismatch. See memory ios_build_number_mechanism.md; an ios-build.md runbook fix is filed.
 - FastImage accepts a local require() webp source; bedtime backgrounds bundled locally (not Supabase) since the app builds artwork URLs from the env-specific Config.SUPABASE_URL.
 - song-invite migration is safe because the new enum values are never used in-file (avoids the Postgres "unsafe use of new enum value" transaction error).
 
 ### Verification
+
 - Builds 236-243 archived + uploaded (app + extension build numbers verified equal before each upload). song-invite PR #521 deployed to staging (CI success, API 200), with Sentinel + Iris pre-build reviews on the final batch.
 
 Doc: docs/plans/2026-06-28-bedtime-voice-story-and-mobile-batch-builds-236-243.md
@@ -1162,6 +1209,7 @@ Doc: docs/plans/2026-06-28-bedtime-voice-story-and-mobile-batch-builds-236-243.m
 Driver: Astro — iterative QA on the staging web app (`apps/web-client`, staging.app.murror.app). Astro tested in rounds and sent findings with screenshots; each batch was root-caused against the MOBILE source (MurrorMobile is always ground truth), fixed, gate-checked (tsc + full vitest), harness-verified end-to-end against live staging, deployed (CI image -> helm, nsp-staging-murror), and logged (PARITY_LOOP_LOG.md + Notion Engineering Log). Staging only; production untouched. 7 web deploys (helm rev 78-84), 1 viasr backend PR, 4 showcase accounts.
 
 ### The headline arc: the journal writer IS the deep chat now (mobile-exact)
+
 1. **Conversation mode v1** (`staging-09ec8b2`) — Submit sends the entry into the AI conversation; rainbow streaming reply; Save completes through the diary pipeline. Shared settle-hold extracted to `use-streaming-settle` (deep-chat-page refactored onto it).
 2. **Astro: "I still see journaling screen" -> fused screen** (`staging-947a673`) — read mobile's add-log-screen properly: there is NO mode swap. Rebuilt as ONE surface: SEND arrow visible from the start (mobile InputAccessoryView), bubbles grow above the persistent textarea, header Save = mobile's tick (plain journal if you never chatted / complete-conversation if you did).
 3. **Calm pass** (`staging-54f64cc`) — streaming 15->90ms/word (mobile component default is 60), all card chrome removed (only the trust pill remains boxed, like mobile), mic+send as mobile's exact pink/blue radial-gradient circles in a frosted accessory pill, bubbles 13px.
@@ -1170,20 +1218,25 @@ Driver: Astro — iterative QA on the staging web app (`apps/web-client`, stagin
 6. **Batch 9** (helm rev 84) — drafts restored (Draft button; X = save-and-leave; restore on return), entrance fades (writer text + Reflection sections), consistency pass (Knowledge -> warm canvas + renamed "Research" + non-sticky; Diary/Reflection headers aligned).
 
 ### Cross-cutting fixes
+
 - **Light-theme contrast sweep** (batch 5, `staging-09ec8b2`+) — built a runtime WCAG scanner (walks every text node, reads the actual painted layer stack via elementsFromPoint, canvas-resolves Tailwind v4's oklch/oklab colors). Confirmed-broken + fixed: settings account form (white labels + invisible typed text), settings premium card, subscription error/loading, home cards (pinned dark - home ignores the theme like mobile; shared cards gained an `appearance` prop), shell chrome on always-dark routes. Light + dark scans clean on 11 routes. Scanner lessons saved to agent memory.
 - **Cold-load routing fix** (`staging-c9f73a8`) — refreshing/deep-linking any inner page bounced to home: one-render race where auth resolves but the profile query hasn't started (RTK initiates in an effect), guard read "uninitialized" as "not onboarded" -> /onboarding -> /. Both profile guards now hold for data-or-error. TDD: regression spec failed on old code, green after; 449/449.
 - **Home background pixelation** — daily watercolor confined to the centered max-w-2xl column (1206px asset downscales instead of stretching) with a radial mask into the dark gradient.
 
 ### Backend: conversation emotion gap (viasr-api #446, merged + auto-deployed)
+
 Completed conversations got empty emotionArc while plain journals were fully analyzed - breaking "emotion detection on every journal entry" for the type the web log flow now creates. Root cause traced 3 layers: murror-api's completion handler accepts+persists the fields and the web renders them, but viasr's rabbitmq_deep_chat completion flow never computed them (the journal pipeline's `conversation_emotion_arc` function - literally named for this - was never wired in). Fix: detect_emotions() in PARALLEL with summary (asyncio.gather - zero added latency), non-fatal, producer carries emotionArc/emotionJourneyText; payload regression tests. **E2E proof**: fresh web conversation -> arc ["anxious","reflective"] + journey on the FIRST poll -> Emotional Journey renders on the detail. Pre-fix conversations keep empty arcs (no backfill).
 
 ### Persona showcase world (for website + ads)
+
 4 staging accounts built through the REAL product APIs (no DB stuffing): Maya Chen (24, marketing), Jaylen Brooks (26, engineer), Ava Reyes (21, student), Noor Rahman (23, nurse) - `*.murror@example.com` / `MurrorPersona2026!`. Higgsfield SOUL portrait avatars (512px via /me/avatar), full onboarding (POST /onboarding/complete), 4-edge friend circle (invitation-link flow), 9 hand-written journals with deliberate emotional arcs, ALL FOUR edges with completed takeaway-reflection loops -> INSIGHT_READY shared insights (titled cards + song suggestions, e.g. "Showing Up for Each Other" + "Lean on Me"), 2 movie invites (Past Lives PENDING for the CTA state, The Farewell ACCEPTED). Mini Challenge waits on the next connections-cron cycle (challenges FK-validate against cron-generated connection insights).
 
 ### Verification discipline
+
 Every batch: tsc + full vitest (440->449 tests grew across the session) -> vite build -> harness E2E against live staging (real sockets, real pipelines) -> CI image -> helm -> live-chunk verification (grep the deployed JS for the new code markers) -> PARITY_LOOP_LOG + Notion. Hidden-tab artifacts (framer freezes, timer clamping, cold-load auth races) documented and worked around rather than trusted.
 
 ### Engineering lessons (also in agent memory)
+
 - **Tailwind v4 computed colors are oklch/oklab** — regex hex/rgb parsers fail silently BOTH ways (false positives AND skipped elements). Canvas fillStyle -> getImageData resolves any CSS color exactly.
 - **RTK Query skip-flip gap** — when `skip` flips false, the fetch starts in an EFFECT; the same render reports isLoading:false with no data. Guards must treat "no data AND no error" as loading.
 - **diary-api split base** — endpoints default to the LEGACY Supabase host unless allowlisted to murror-api; new /v1 endpoints must be added to `isBackendEndpoint` or they silently die.
@@ -1192,12 +1245,12 @@ Every batch: tsc + full vitest (440->449 tests grew across the session) -> vite 
 
 ---
 
-
 ## 2026-06-10/11 (PDT) — murror.app experience overhaul: content engine, cinematic film homepage, living library, trilingual launch
 
 Driver: Astro — build the SEO content engine, then turn the homepage into a cinematic scroll experience (hubtown.co.in reference), the resources hub into a phantom.land-style draggable field, and finally take the whole site trilingual (EN/VI/JA) with automatic language + location routing. All in `apps/marketing` (`murror-platform`, branch `feat/marketing-site`), deployed via wrangler to Cloudflare Pages. Backend/mobile untouched. **Engineering reference for all of these systems now lives at `apps/marketing/README.md`.**
 
 ### Shipped & LIVE on murror.app (9 ships, ~8 production deploys)
+
 1. **/resources content hub (EN)** — content engine (md loader, 3 pillars) + 9 articles, Article/Breadcrumb/FAQPage JSON-LD, canonicals, crisis note (988), immutable `_next/static` caching, hero `fetchPriority`. Merge `1bac76b`+`ba0ffeb`.
 2. **Vietnamese mirror /vi/resources** — locale engine (STRINGS map, shared renderers), 9 VI twins (same slugs), EN|VI toggle, bidirectional hreflang + x-default, VI crisis note (115), +10 sitemap URLs. Merge `45d054b`.
 3. **AI-journaling reframe + verified research** — all 18 articles rewritten around the AI-companion thesis with **13 verified citations** (PubMed/JMIR/Nature/SAGE; adversarial fact-check fixed a ratio-vs-proportion misread before ship) + 5 Higgsfield butterfly-motif illustrations per article (no in-image text — EN/VI share assets). Merge `503ce56`. Editorial serif titles + brand-tint cards on the hub followed (`3a774ee`…`0550c11`).
@@ -1211,12 +1264,14 @@ Driver: Astro — build the SEO content engine, then turn the homepage into a ci
 9. **Trilingual site: English + Vietnamese + Japanese, with language & location routing** — 9 JA articles (translated by 9 parallel agents), full VI+JA homepages (film copy via a locale dictionary, shared `HomeExperience`), locale-aware header/footer/rail, EN|VI|JA switcher, JA crisis line, hreflang across all 42 pages (sitemap 36 URLs). Routing is two-layer: a pre-paint client script (browser language) plus a Cloudflare Pages `_worker.js` scoped by `_routes.json` to the EN entry paths (location: VN→vi, JP→ja; cookie choice > browser vi/ja > geo > en; bots and assets never redirected). Verified: 13/13 browser-language puppeteer checks, 11 live-edge checks, 10/10 unit tests on the shipped worker with mocked countries. Mid-publish race caught: origin gained the Meta Pixel (#52) during the work — merged and redeployed so production has both. Merge `a87e740`.
 
 ### Verification
+
 - **Turnstile gauntlet on LIVE murror.app: 12/12 green** — violent flick = 1 page, continuous grind = 1 page, mid-flight swallowed, post-arrival queues 1, up/keyboard correct, 3:3 columns measured, mobile beats + queue, zero JS errors (desktop + mobile).
 - **Rail + navigation: 13/13** (section glides land pixel-perfect with the right highlight, scrollspy tracks the wheel, cross-page jumps, crash-path round trips clean) and **overlap re-scan at 1366/1440/1512: zero text under the rail**.
 - **Trilingual: 13/13 puppeteer** (overridden `navigator.languages` — JA/VI/EN routing, mixed preferences, remembered choice, lang attributes), **11 live-edge checks on production** (VI/JA browsers 302 to twins; Googlebot, images, film frames untouched; Meta Pixel intact), **10/10 unit tests on the shipped `_worker.js`** with mocked `request.cf.country`.
 - Every deploy live-verified by curl sweep: all pages 200, sitemap correct, prior features intact.
 
 ### Engineering lessons (also in agent memory)
+
 - **GSAP pins vs React teardown**: ScrollTrigger pin-spacers re-parent DOM; route changes remove DOM before passive `useEffect` cleanups → `removeChild` crash → whole app unmounts. Teardown must be a (mutation-phase) layout effect, and the Theater component must precede the pinned sections in JSX.
 - **Cloudflare Pages upload throttle**: bulk frame uploads EPIPE-fail; fix = paced half-scene deploys (~120 files, 150-220s gaps). Production deploys then reuse preview-warmed hashes (3,636 files in 3.5s).
 - **Pages `_worker.js` must be scoped**: `_routes.json` limiting invocation to `/` + `/resources/*` keeps the film's thousands of asset requests off the 100k/day free-tier Functions quota. In-worker guards: never redirect bots, non-GET, or extension paths (article images live under `/resources/*.webp`).
@@ -1225,6 +1280,7 @@ Driver: Astro — build the SEO content engine, then turn the homepage into a ci
 - **Shared branch hygiene**: fetch origin before deploying — the Meta Pixel (#52) landed mid-rollout and one production deploy briefly shipped without it.
 
 ### Open / follow-ups
+
 - **Astro: review the Vietnamese homepage copy natively** (murror.app/vi/ — my translation); commission a native Japanese pass before any serious JP marketing push.
 - Submit sitemap.xml to Google Search Console (needs Astro's Google login) — now carries all 3 locales.
 - PR #48 (`feat/marketing-site` → dev) repo hygiene; `fix/insights-seo` + viasr-api `fix/ai-docs-noindex` still awaiting their PRs/deploys.
@@ -1237,14 +1293,17 @@ Driver: Astro — build the SEO content engine, then turn the homepage into a ci
 Driver: Astro — "create a new website for murror.app without Squarespace, save costs," then take it live and harden discovery + email. Marketing site is the new `apps/marketing` static app (Next.js `output: export`) in `murror-platform`, deployed to **Cloudflare Pages (free)**. No backend/mobile touched (continue-never-rebuild; `apps/web` SSR routes left alone).
 
 ### Shipped & LIVE on murror.app
-1. **DNS cutover off Squarespace → Cloudflare** — full nameserver move (`hank` / `heather.ns.cloudflare.com`). Verified the entire zone from Cloudflare's NS *before* flipping the registrar. Email preserved 100% (Google Workspace MX ×5 + DKIM + DMARC untouched); live subdomains preserved (api / insights / track). Custom domains `murror.app` + `www` attached to the `murror` Pages project; apex + www resolve to Cloudflare anycast, valid SSL, HTTP 200.
+
+1. **DNS cutover off Squarespace → Cloudflare** — full nameserver move (`hank` / `heather.ns.cloudflare.com`). Verified the entire zone from Cloudflare's NS _before_ flipping the registrar. Email preserved 100% (Google Workspace MX ×5 + DKIM + DMARC untouched); live subdomains preserved (api / insights / track). Custom domains `murror.app` + `www` attached to the `murror` Pages project; apex + www resolve to Cloudflare anycast, valid SSL, HTTP 200.
 2. **SEO foundation** (`feat/marketing-site`, commit **c27926c**, 14 files, +191/-2) — `robots.ts` + `sitemap.ts` (`force-static` for static export), JSON-LD (Organization + WebSite site-wide, MobileApplication on home, FAQPage on support), `og.png` 1200×630 built via ffmpeg (dreamy hero + white wordmark — fixes the broken social card), canonical URLs on all 4 pages, `manifest.ts` + apple-touch-icon + 192/512 icons + theme-color. Build green, types green across all 10 packages. Deployed to Pages production (`--branch=main`); verified live: JSON-LD inlined, robots/sitemap/og all HTTP 200.
 3. **Email deliverability fix** — apex SPF was **12 DNS lookups** (over the hard limit of 10 → PermError → SPF failing) because `mailgun.org` was included twice (directly + nested via `spf.onesignal.email`). Trimmed apex to `v=spf1 include:_spf.google.com ~all` (**1 lookup**; Astro confirmed Google Workspace is the only apex sender — app emails ride subdomains `email.` / `mail.` which keep their own SPF). DKIM (google) + DMARC (`p=quarantine`) already healthy. **mail-tester.com = 10/10.**
 
 ### Side quest
-- **`/remote-control` "did nothing"** — root cause: shell alias `claude='claude --dangerously-skip-permissions'` injected a flag *before* the subcommand, breaking arg parse (`Unknown argument: remote-control`). Fix: use the flag form `claude --remote-control` (alias-friendly, order-independent). CLI v2.1.142; version + auth were both fine.
+
+- **`/remote-control` "did nothing"** — root cause: shell alias `claude='claude --dangerously-skip-permissions'` injected a flag _before_ the subcommand, breaking arg parse (`Unknown argument: remote-control`). Fix: use the flag form `claude --remote-control` (alias-friendly, order-independent). CLI v2.1.142; version + auth were both fine.
 
 ### Open / follow-ups (all optional, none blocking)
+
 - Submit `sitemap.xml` to Google Search Console (needs Astro's Google login + domain verify; TXT verify record then dig-confirm).
 - DNS housekeeping: delete junk `test.murror.app "test2"` TXT; remove proxied `_domainconnect` Squarespace-leftover CNAME.
 - Decide AI-bot policy in Cloudflare managed robots.txt (currently blocks GPTBot / ClaudeBot / Google-Extended; search crawlers allowed).
@@ -1254,6 +1313,7 @@ Driver: Astro — "create a new website for murror.app without Squarespace, save
 - Cancel Squarespace site plan after a few days verified live (keep the domain registration).
 
 ### Cost outcome
+
 Squarespace marketing hosting (~$16–49/mo) → Cloudflare Pages **$0/mo**.
 
 ---
@@ -1263,19 +1323,23 @@ Squarespace marketing hosting (~$16–49/mo) → Cloudflare Pages **$0/mo**.
 Driver: Astro — "centralize everything to murror.app, retire ambercare.app." Both zones are in one Cloudflare account (`astrovinh@gmail.com`). Design + implementation plans + kill-list committed under `docs/plans/`.
 
 ### Backend migration — DONE (zero user impact)
+
 1. **Dead-DNS cleanup** — deleted **44** dead ambercare.app records (58 → 14): abandoned multi-region/KOL, the whole unused `murror-platform` suite (auth/admin/web/statistic/notifications — live auth=Supabase, push=OneSignal), VN/sg3/OVH infra, wildcards, 2 typos, 9 stale ACME. Prod health green after.
 2. **Phase 2 twins** — `api.murror.app` + `ai.murror.app` → do-sfo2 `159.89.222.109` (DNS-only); added to the live prod ingresses (additive `kubectl patch`); cert-manager `letsencrypt-prod` auto-issued certs (HTTP-01). Parity verified (identical 200s; originals untouched). Precedent: `insights.murror.app` already ran this way.
 3. **Apex redirect** — Cloudflare Redirect Rule 301s `ambercare.app` + `www` → `murror.app` (path+query preserved); live API/AI/files subdomains unaffected.
 
 ### The retirement gate (hard constraint)
+
 `MurrorMobile/.env.production` hardcodes `murror.api.ambercare.app` (API) + `files.ambercare.app` (emergency-contacts). **No remote-config lever** (checked — `BASE_API_URL` is compiled in). So retiring the domain REQUIRES a mobile build flipping 2 lines to murror.app, then old-app age-out. No backend-only path. The 2-line change rides the next app release.
 
 ### Remaining (all gated to Astro): files.murror.app R2 custom-domain click · mobile `.env.production` (next release) · Phase 6 dev box · then retire ambercare.app.
 
 ### Notifications audit — push is HEALTHY
+
 Confirmed live: daily push nudges WORK on prod (in-app **APScheduler** → `push_notification_task` → OneSignal, personalized EN+VI, idempotent — NOT beat). Missing `murror-ai-beat` only affects beat features (voice summaries, weekly reflections, theme aggregation, callback-pings) — **all deferred to 2.0 by Astro**, so prod having no beat is intentional (not Bug H).
 
 ### Live image state (end of session)
+
 - `murror-api` = **`0.34.3`** · `murror-ai` = `main-5f350b4` (unchanged)
 - ambercare.app: 14 records (down from 58); apex on murror.app; api/ai twins live
 
@@ -1286,25 +1350,32 @@ Confirmed live: daily push nudges WORK on prod (in-app **APScheduler** → `push
 Driver: Astro flagged daily-article OpenAI cost bleed + "remove the stuck articles, they're outdated." All work on **live prod = do-sfo2** (`nsp-prod-murror`).
 
 ### Root cause
+
 `ArticlePublishRetryService` (cron, every 5 min) re-published every `PENDING` article older than 10 min with **no upper age bound** — the historical stuck backlog (oldest 2026-02-13) was re-sent to OpenAI every 5 min = ongoing spend on stale content. The legacy `error:{not:null}` filter also hid published-but-never-completed articles (a successful re-publish clears `error`, so they stayed PENDING forever).
 
 ### Shipped to LIVE prod (do-sfo2)
+
 1. **Code guard** (murror PR #409, image **0.34.2**) — mark `PENDING` FAILED when older than 2 days OR retries exhausted; bound recovery to `requestedAt` within the last 2 days; dropped `error:{not:null}`. Build green, scheduler specs 37/37. Deployed via `deploy-doks` image-only (production "Deploy" workflow still hits the wrong US cluster — Landmine A — so bypassed). Pod `murror-api-684d5dd9b8-4w6nd` healthy on `0.34.2`.
 2. **One-time backlog purge** (Astro-approved, scoped `deleteMany` via pod Prisma) — deleted **897** non-completed rows (98 PROCESSING + 799 FAILED). Verified pre-delete they held ZERO content/keywords — empty transport/failure shells, not salvageable AI output (Astro asked if reusable as research data; answer: no, the real signal is in source `public.journals`/`public.deep_chat`, kept forever). After: **1498 COMPLETED only**, stable on re-query.
 
 ### Useful artifact: FAILED error-reason breakdown
+
 609 `No AI completion received after max retries` (RMQ completion-loop break) · 150 `HTTP publish failed: fetch failed` · 23 retry/`Connection lost` · 4 OpenAI `401` · 2 `psycopg2 UndefinedFunction/connection`. The 609 ties to the known `ai.mood.updated`-on-article-queue mis-routing follow-up.
 
 ### Result
+
 ✅ Cost bleed stopped (0 PENDING = nothing to re-publish), backlog cleared, guard in place so it cannot recur. Logged to Notion Engineering Log + memory `project_activity_based_articles.md`.
 
 ### Then: off-cluster scheduler-leadership hijack (vps40) — root cause of the whole thing
+
 Verifying the retry guard revealed it was **dormant**: the article-scheduler leader (DB-row lock `scheduler_lock`, 60s TTL) was held by an **off-cluster** instance `vps40-optimal-us` (REGION=us) — a leftover standalone murror-api connected to the prod DB, actively renewing the lock. So the cluster pod was never leader; vps40's OLD unbounded retry was what re-published the backlog. Couldn't reach vps40 (pooler-masked IP; PC tunnel down/CF-1033; doesn't resolve; not in any namespace).
+
 - **Fix — murror PR #410, image 0.34.3:** cluster-eligibility gate in `SchedulerLeadershipService` — only `REGION` starting `doks` may lead; an in-cluster pod **preempts** a valid lock held by a non-cluster holder. Basic acquire path unchanged (alpha/staging unaffected). Prefix is bare `doks` (sentinel caught CI sets `doks` while live ConfigMap is `doks-sfo2`). 8/8 new spec, 37/37 scheduler specs. Sentinel adversarial review (no flapping/dual-leader; vps40 yields gracefully). Deployed via `deploy-doks`.
 - **VERIFIED LIVE:** lock flipped `vps40-optimal-us` → `murror-api-79846d4f57-d7b4k` (doks-sfo2); `Leadership acquired` + retry job configured + `No articles needing retry`. Stable across renew cycles; vps40 cannot reclaim (maintained every 30s; restart self-heals via preempt).
 - **⚠️ OPEN (security):** vps40 still alive with live prod DB creds (+ maybe a shared-Redis worker). Power off + rotate creds when reachable. Scheduler control fixed; box not yet decommissioned.
 
 ### Live image state (end of session)
+
 - `murror-api` = **`0.34.3`** (bounded retry + backlog purge + cluster-only leadership)
 
 ---
@@ -1314,20 +1385,24 @@ Verifying the retry guard revealed it was **dormant**: the article-scheduler lea
 Driver: Astro reported "article is not generating." Turned into a full prod-reliability day. All work targeted **live production = do-sfo2 cluster** (`nsp-prod-murror` / `nsp-prod-murror-ai`). murror-api commits today: ~20; viasr: ~9.
 
 ### Shipped to LIVE prod (do-sfo2)
+
 1. **Article generation pipeline fixed** — un-gated the new-article RMQ consumer + replaced the dead `save_to_db` with `send_response` (completed articles now reach users). Made **durable in `main`** (viasr PR #431) after discovering it was deployed-from-branch-but-not-merged.
 2. **Quotes: stop AI generation → curated library** — onboarding 404 fixed by serving from the existing legacy pool (~5,952 quotes, EN+VI); read-path fallback for quote-less users; journal-quote saving disabled (murror PR #403). Stopped ALL viasr AI quote generation: journal + reflection + dead article-quote line (viasr PR #430). Closed the AI-route PR #429.
 3. **Connections-cron fixed** (murror PR #406) — 2 cron jobs (insight health-check + stuck-task recovery) had errored every tick "for weeks"; schema-qualified the raw SQL to `murror_api.*` (pgbouncer drops search_path). Stuck-task recovery safety net restored.
 4. **Activity-based daily articles** (murror PR #407, image 0.34.0) — NEW: one personalized article/day for each recently-active user, built from their recent journals + deep chats, all backend (no mobile change). Activity-only scope. Scheduler every 6h, idempotent. **2 bugs caught pre-deploy by a read-only prod dry-run** (wrong table name `"User"`; prod data lives in LEGACY `public` schema, not modern). LIVE + healthy; scheduler registered.
 
 ### CI / infra fixed (the "CI green ≠ live prod" landmines)
+
 - **Landmine A** — murror CI "production" deploys to the wrong (US-migration) cluster, never live do-sfo2. Built a safe **image-only `deploy-doks` workflow** + least-priv `murror-api-deployer` SA + `KUBE_CONFIG_DOKS` secret (murror PRs #404/#405). One-click: `gh workflow run deploy-doks.yml --ref main -f image_tag=<tag>`.
 - **Landmine B** — viasr deploy steps had a kubeconfig clobber ("Config not found"); pinned `KUBECONFIG` path (viasr PR #432).
 
 ### Live image state (end of day)
+
 - `murror-api` = `0.34.0` (articles + quotes + cron fixes)
 - `murror-ai` web + worker = `main-5f350b4` (article durable + stop-gen)
 
 ### Open / follow-ups
+
 - murror **#402** (quote library on `staging` lineage) — parked; staging is 202 commits ahead of production, separate lineage.
 - Verify ONE real article generation end-to-end post-deploy (write path; read path dry-run-validated).
 - 16 pre-existing timezone/notification-schedule spec failures (DI/constructor drift) — separate cleanup.
@@ -1340,12 +1415,14 @@ See `~/.claude/.../memory/reference_prod_engineering_lessons_2026_06_04.md` for 
 **Summary:** Four TestFlight builds in one day (264-268) closing QA263/265/266 feedback; the quiz-card-stuck bug fixed for real (4th attempt, proven with live data); challenge feature reshaped end-to-end (single "We did it" CTA + share-a-thought + streak wiring, compact card face + details popup); then a 6-area pre-production QA sweep that found and CLOSED two prod-side gates under approved freeze exceptions.
 
 **Key accomplishments:**
+
 - Builds 264-268 shipped (single lane): QA263 batch + 429 invalidation coalescing; challenge CTA v2 + Connection Streak wiring (backend #553/#554, streak E2E proven for both test users); QA266 batch (accept-toast double-fire, card chrome unification, stacked-deck removal, prompt name-leak filter) + challenge insight-rotation fix (#555); tilt animation restored + moment prompt single-CTA + compact challenge card.
 - Pre-prod QA sweep (frontend/backend/AI/data/security/privacy, 6 parallel auditors): 1 Critical + 4 High found, 2 prior "launch blockers" retired with evidence (CALLBACK_ALLOWED_HOSTS fails safe; lodash patched).
 - Prod hardening EXECUTED: app_storage RLS lockdown (advisor 6 ERROR -> 1) + murror_api emotional compat (Memory Vault writes were silently failing on prod since image e0678d6 - view over public.emotional_snapshots + new emotional_memory table). Verified live.
 - Hygiene: 8 orphan staging tables classified; murror-api PR #556 removes the 6 dead Prisma models that regrow empty shells (open, unmerged).
 
 **Operating notes:**
+
 - Always verify against the DEPLOYED IMAGE (`git show <sha>:path`) + live DB, never a checked-out branch tip - the branch lied twice today (viasr production branch behind its own deployed image; a worktree grep on a stale branch).
 - After every promotion: confirm the `staging` branch still exists (delete_branch_on_merge incident).
 - New standing design rule: every design proposal must match the app's existing design language (pill under name, vertically centered card bodies).
@@ -1359,12 +1436,14 @@ See `~/.claude/.../memory/reference_prod_engineering_lessons_2026_06_04.md` for 
 **Summary:** Six TestFlight builds (271-276) closing rounds of Astro's app-review feedback, plus two backend features (challenge cancel/decline endpoint, milestone de-dup bug fix), the onboarding web-parity port, and a full mobile+web analytics buildout (PostHog + Mixpanel across both platforms, identity-merge bug fixes, ad-pixel FTC-pattern scope-down). Capped by root-causing and fixing the dead voice-dictate button (old library incompatible with RN New Architecture).
 
 **Key accomplishments:**
+
 - Builds 271-276 shipped (single lane): 271 app-review flip/card fixes; 272 sync consolidation + challenge-decline wiring + onboarding port; 273 milestone bug + streak unify + We-did-it idempotency + Read More scroll; 274 Share-a-thought tap (real fix, build-271's zIndex was 3 levels too deep) + streak goal regression + upcoming-milestone calendar ladder; 275 reflect-card overlap + CR responder popup + voice diagnostics; 276 voice New-Arch library swap.
 - Backend: challenge cancel/decline endpoint (murror-api #560, schema migration + first-ever challenge notification); milestone de-dup bug (all-time lockout since 2026-03-19, ~8 prod users) scoped to current run (#561); onboarding-complete avatar URL + preset hosting (#559).
 - Analytics: mobile PostHog (fanned from single dispatcher, no autocapture/replay; reverted once on a Metro bundle break then re-fixed via scoped deep import); web Mixpanel (5th fan-out); identity-merge bugs fixed on mobile PostHog + web Mixpanel (were orphaning all events as anonymous); ad-pixel scope-down (OnboardingCompleted + StartTrial moved off Meta/TikTok/CAPI to internal-only, compile-enforced type split).
 - Voice: root-caused visible-but-dead mic to `@react-native-voice/voice@3.2.4` (legacy RCTEventEmitter dropping events under New Arch); swapped to New-Arch fork `@dev-amirzubair/react-native-voice@1.0.4`; build 276 archive succeeded (TurboModule compiled+linked = native verification).
 
 **Operating notes:**
+
 - Verification discipline tightened: SDK/native-dep changes now require a REAL Metro bundle preflight + a REAL archive as the compile/link gate (tsc/lint alone missed the PostHog bundle break). objectVersion-70 pod-install failures in worktrees are env artifacts; main checkout is fine.
 - Ad-pixel scope for this mental-health-adjacent app is Astro's explicit per-case call, not an automatic "close every leak" rule (the 3 TikTok purchase pixels are intentionally kept).
 
@@ -1377,6 +1456,7 @@ See `~/.claude/.../memory/reference_prod_engineering_lessons_2026_06_04.md` for 
 **Summary:** The orbital onboarding went from approved prototype to the OFFICIAL onboarding on web production (100% of new users) and a device-polished mobile TestFlight (nine builds, 284-292). Along the way: a prod split-brain incident found and fixed, real AI their-side guess live on prod, crisis-safety client nets on both platforms, a founder's letter with rainbow streaming, a large device-QA fix train, and a new hard blast-radius process rule.
 
 **Key accomplishments:**
+
 - Web v2 LIVE at 100% (PostHog flag `onboarding_funnel_v2`, control preserved at 0% for one-call rollback). Act 2/3 chromeless redesign + Codex refinements + signup handoff stabilization.
 - Mobile port: core verbatim + Skia orbital; builds 284-292 through rapid Astro device-QA loops (entry gating, web fidelity, z-order/avatar/keyboard fixes, founder letter + rainbow chat-renderer reveal, soft fade system, v2 sign-in screen + auth scaffold, voice locale/punctuation/audio-session fixes, persona persistence, streak/chart/prompt/challenge-card fixes).
 - Prod: split-brain resolved (rogue sfo2 image + partial DNS flip), api.murror.app -> sgp1 via Cloudflare API, viasr+murror-api their-side deployed, sfo2 scaled to 0.
@@ -1385,6 +1465,7 @@ See `~/.claude/.../memory/reference_prod_engineering_lessons_2026_06_04.md` for 
 - VI/JA translations: onboardingV2 namespace (102 keys) PR #620 awaiting Astro's native review; memories namespace in flight.
 
 **Operating notes:**
+
 - New HARD RULE + commit hook: blast-radius protocol (map callers, gate shared changes, prove untouched, verify, adversarial review, report). Born from repeated shared-code regressions; first real test passed (the 289 two-session combined build, zero-overlap proof, 130/130 specs).
 - Build-lane gotchas now recorded: envfile pin before CLI archives; yarn install in build lane after patch/dep merges; verify patched source pre-archive.
 - murror-api/viasr PR base must be `staging` (develop deploys nowhere).
@@ -1400,6 +1481,7 @@ built behind the agent-panel + mockup-confirm flow and adversarial review, shipp
 TestFlight builds 298 (note card redesign) and 299 (Letter + Home badge).
 
 **Key accomplishments:**
+
 - Note card no longer black glass: artwork background (same bundled pool + 24% scrim as
   Connection Reflection cards, seeded by message id, never note content) + a "candlelit"
   cream glow that breathes behind the pill; sibling-consistent `"A note ✉️"` pill with the
@@ -1417,6 +1499,7 @@ TestFlight builds 298 (note card redesign) and 299 (Letter + Home badge).
   (murror-api PRs #582/#583/#584, deployed `0.203.0-staging`.)
 
 **Operating notes:**
+
 - Cross-session conflict sweep is now a standing rule (Astro runs a parallel onboarding
   session): before merging to a shared branch or bumping a build, check other sessions' open
   PRs / bump PRs / file overlap. Memory `feedback_cross_session_conflict_check`.
@@ -1437,6 +1520,7 @@ subagent with tsc/eslint/jest gates + blast-radius proof), merged to
 handoff docs as Astro moves the streak wrap-up testing + a mobile-debug lane to Codex.
 
 **Key accomplishments:**
+
 - Manage Account: added a Username field (reads/edits `preferredName`; First Name decoupled
   from it) and removed Time of Birth (date-only payload; partial PATCH preserves server
   birthTime). (mobile #690)
@@ -1455,6 +1539,7 @@ handoff docs as Astro moves the streak wrap-up testing + a mobile-debug lane to 
   staging host verified (no dev leak), uploaded.
 
 **Operating notes:**
+
 - Archive gotcha: the first archive failed on `react-native-image-crop-picker` unresolved
   in the Bundle-RN phase. The build checkout's `node_modules` was stale after fast-forwarding
   the git tree (a new native dep had landed). Run `yarn install` before `pod install`
@@ -1465,8 +1550,8 @@ handoff docs as Astro moves the streak wrap-up testing + a mobile-debug lane to 
   testing playbook; seed pre-approved; narration from Astro's real journals). Memory
   `project_streak_wrapup_testing_handoff`.
 - Cross-session: 311 is cumulative on the other session's 310 (Connection Reflection redesign
-  + connections-tab re-skin); that session cut 312/313 afterward. Coordinate the next bump
-  against the latest `CURRENT_PROJECT_VERSION`.
+  - connections-tab re-skin); that session cut 312/313 afterward. Coordinate the next bump
+    against the latest `CURRENT_PROJECT_VERSION`.
 
 **Doc pointers:** `Murror/docs/plans/2026-07-13-round-12-build-311.md`; memories
 `project_moments_presence_layer`, `project_streak_wrapup_testing_handoff`,
@@ -1482,6 +1567,7 @@ direction, Polaroid memory treatments, MTC carousel bleed, and For Us card body
 centering. Final build: 324, App Store Connect `VALID`.
 
 **Key accomplishments:**
+
 - Restored the persona/advisor voice under insight cards and added tests that keep
   the source labels wired to the intended card contrast treatment.
 - Fixed share/comment and memory-detail keyboard behavior so input fields and CTAs
@@ -1506,6 +1592,7 @@ centering. Final build: 324, App Store Connect `VALID`.
   App Store Connect state `VALID`.
 
 **Operating notes:**
+
 - The July 14 Codex loop was not visible to the Claude Code token-accounting script.
   The script counted available July 13 Claude transcripts, but the Codex-internal
   build train should be treated as an accounting gap, not a zero-effort result.
@@ -1528,6 +1615,7 @@ Chasing the real number found the LLM cost pipeline had been a shell since it wa
 measured for the first time, and then answered pricing from data instead of guesses.
 
 **Key accomplishments:**
+
 - **murror-api #605 MERGED (`7002678`), alpha live + seeded.** Multi-seat plans were NOT greenfield: a
   full `family-plan` module already existed (plan/seat/minor-consent schema, claim flow with auto-connect,
   webhook reconcile, entitlement union). Duo = that module with `seatCount=2` via a new
@@ -1551,6 +1639,7 @@ measured for the first time, and then answered pricing from data instead of gues
   infrastructure and AI costs only (no salaries, no company financials).
 
 **Operating notes:**
+
 - Two adversarial reviews earned their keep. murror-api: the raw invite lock hardcoded the `murror_api`
   schema but the `family_plan` migration DDL is unqualified, so the table lives wherever search_path
   pointed; and a Circle->Duo downgrade stranded over-cap members on premium forever. cost-service: **BLOCK**
@@ -1586,6 +1675,7 @@ five device passes that turned a working-but-raw feature into a navigable 3D sta
 gate-dark. Prod and staging were never exposed.
 
 **Key accomplishments:**
+
 - **Backend complete, gate-dark (7 PRs, #609 to #615).** Isolated Galaxy domain in
   `schema.murror.prisma` (8 tables, never touching relationship or journal tables), allowlisted card
   projections, finite Field, the full decision set, and the consent state machine ending in an Orbit.
@@ -1605,6 +1695,7 @@ gate-dark. Prod and staging were never exposed.
   bug in the 3D field. All fixed pre-merge.
 
 **Operating notes:**
+
 - **The veil bug is the lesson of the session.** Two root causes, and the first fix was wrong. The real
   one: `getFromLocal` JSON-parses every read, so the stored string `'1'` returns as the number `1` and
   `value === '1'` is false forever. Read-side fix retroactively honors already-committed devices.
@@ -1635,6 +1726,7 @@ bugs. And an assessment of what it takes to get staging to LIVE production, whic
 divergence is materially worse than memory described.
 
 **Key accomplishments:**
+
 - **Two-sided card states proven.** Drove a real directional takeaway card through
   `PENDING -> COMPLETED -> INSIGHT_READY` and diffed both users' payloads at every state:
   byte-identical throughout. The sender/receiver difference is derived client-side from the
@@ -1650,6 +1742,7 @@ divergence is materially worse than memory described.
 - **Backlog swept:** 14 stale PRs closed, 4 merged, 1 held for a rebase rather than overridden.
 
 **Operating notes:**
+
 - **A guard that asserts existence is not a guard.** The butterfly avatar fallback never
   painted: an `<Image>` styled with only `StyleSheet.absoluteFillObject` lays out at zero size.
   The existing spec passed the whole time because a zero-size image still EXISTS. Proved it by
@@ -1682,6 +1775,7 @@ A detailed continuation handoff now preserves the remaining iOS, subscription, A
 infrastructure, two-account, TestFlight, and production-promotion work.
 
 **Completed evidence:**
+
 - API PRs #681, #682, and #683 merged; staging deployment run `30573700416` passed build,
   deploy, smoke, and release gates.
 - AI PR #595 merged and deployed to staging with private payload log redaction.
@@ -1689,6 +1783,7 @@ infrastructure, two-account, TestFlight, and production-promotion work.
 - Connection Reflection focused contracts passed 92 tests across the two codebases.
 
 **Still required before production:**
+
 - Finish the local ODE Firebase resource fix, subscription timeout/Restore lock, and AI PR #596.
 - Close the iOS chat-reflection keyboard bug.
 - Prove Connection Reflection and Duo flows with two real accounts, including Apple Sandbox.
@@ -1709,6 +1804,7 @@ language, got audited for parity and had two real gaps closed. TestFlight build 
 verified as the concrete review checkpoint requested mid-session.
 
 **Completed evidence:**
+
 - MurrorMobile PR #987 merged: 44 vi/ja strings authored natively, copy-lint infra extended
   with cross-locale rules, three real rendering bugs fixed (ASCII-space injection into
   Japanese sentences, a zero-leading severity label, iOS permission dialogs localized).
@@ -1729,6 +1825,7 @@ verified as the concrete review checkpoint requested mid-session.
   is authored. One genuinely new natively-authored Japanese string pair shipped in the same PR.
 
 **Operating notes:**
+
 - **Six attempts on one function is what "no tokenizer for this language" costs.** Japanese
   has no space-delimited words, so the existing `\b\w+\b` dictionary-ratio check (built for
   en/vi) extracts a whole sentence as one "word" and can't evaluate it. Every threshold-based
@@ -1760,6 +1857,7 @@ adversarially verified). 46 verified findings. 8 PRs merged and deployed. Stagin
 production databases hardened and verified live.
 
 **Key accomplishments**
+
 - Root-caused a security control that had failed silently on every call for a month:
   `enable_rls_on_vector_table()` built a psycopg2 engine from a URL carrying Prisma's
   `?pgbouncer=true`, psycopg2 rejected the DSN, and the fail-open handler swallowed it at
@@ -1781,6 +1879,7 @@ production databases hardened and verified live.
   lists cannot drift.
 
 **Operating notes**
+
 - FK indexes from #692 are NOT live: the deploy's `build-migration-image` job was SKIPPED,
   so the migration never ran. Two of three perf numbers are flat as a result.
   `/api/v1/connections` did improve 0.453s -> 0.367s (-19%) from the code half.
@@ -1803,6 +1902,7 @@ revoking EXECUTE, and test the ROLE, not just the absence of an error.
 **Summary.** The API privacy and deletion safeguards are merged into `staging`. The mobile privacy safeguards are ready in PR #1006 but remain gated by a required Android build that is still queued. The marketing site's PostHog session replay now masks page text and element attributes in the live bundle.
 
 **Key accomplishments**
+
 - Murror API PR #713 merged with reviewed head `10d5cf7` and merge commit `8cb65b3`. Hosted validation, integration, quality, coverage, and PR summary checks passed.
 - The deletion path now has durable steps, crash recovery, auth revocation retries, provider receipts, storage verification, vector cleanup, log redaction, and survivor-safe handling of shared relationship content.
 - The CI cascade guard landed before the deletion schema prerequisite. It rejects new user or connection cascades without an explicit reviewed exception.
@@ -1811,6 +1911,7 @@ revoking EXECUTE, and test the ROLE, not just the absence of an error.
 - Marketing commit `0cef5f8c` was deployed and verified with HTTP 200 plus live bundle scans showing text masking on `murror.app` and `web.murror.app`.
 
 **Operating notes**
+
 - Do not merge mobile PR #1006 until Android Build run `30763605235`, job `91538386250`, completes successfully. It was still queued with no steps started at documentation time.
 - Production schema parity is UNKNOWN until the read-only preflight runs against the production connection. No production write or DDL was performed.
 - The rewritten privacy policy remains unpublished. Its local draft documentation still has unresolved decision and counsel markers, and deletion production evidence is not complete.
@@ -1828,6 +1929,7 @@ investor-facing progress page remains timeline-only; the details below are inter
 engineering evidence and are intentionally kept out of the public page.
 
 **Key accomplishments**
+
 - Added web `POST /v1/connections/:connectionId/memories/:photoId/comments` with an
   optimistic append, server reconciliation, rollback on failure, and a shared thread
   visible to both members.
@@ -1858,6 +1960,7 @@ refresh/error lifecycle that Android already exercises on screen focus. This is 
 internal engineering update; the investor-facing progress page remains timeline-only.
 
 **Key accomplishments:**
+
 - Added a stable recent-diary query and visible-window refresh listener to web Home;
   browser focus and tab return now refetch the rail without changing the global diary
   cache policy or polling hidden tabs.
@@ -1883,6 +1986,7 @@ and real browser/device validation remain open gates.
 investor-facing progress page remains timeline-only.
 
 **Key accomplishments:**
+
 - Added typed web socket contracts for the three existing quota codes and wired
   `chat_quota` into the live deep-chat hook and Redux state.
 - Added the Android-matching warm quota notice: at-cap responses show localized copy,
@@ -1912,6 +2016,7 @@ with a retry action. This is an internal engineering update; the investor-facing
 progress page remains timeline-only.
 
 **Key accomplishments:**
+
 - Added a localized `JournalLoadState` for initial and stale-content failures with
   scoped retry callbacks and stable test IDs.
 - Added EN/VI/JA copy for the two recovery messages and retry action without changing
@@ -1937,6 +2042,7 @@ the Home and private-writing lifecycle tests that were already present in the
 isolated Murror lane but were not previously part of the workflow command.
 
 **Key accomplishments:**
+
 - Added Home journal initial-load recovery, AI quota messaging, composer
   persistence, and draft-resurrection tests to the existing Android parity gate.
 - Updated the YAML-aware workflow verifier to require the exact expanded command,
@@ -1956,6 +2062,7 @@ Android device or emulator validation remain open gates.
 strictness error introduced by its expanded deep-link contract test.
 
 **Key accomplishments:**
+
 - Narrowed the optional `linking.config` access in
   `src/common/linking.spec.ts` while keeping the runtime route assertion intact.
 - Full Android TypeScript now passes with the available complete dependency mirror;
@@ -1974,6 +2081,7 @@ validation remain external gates.
 Android typecheck repair and parity-gate expansion.
 
 **Key accomplishments:**
+
 - Web client and staging contracts, TypeScript, 8 focused Vitest files with 77
   tests, production Vite build, and targeted ESLint all pass. Existing web/root
   dependency symlinks were restored exactly after validation.
@@ -1996,6 +2104,7 @@ has direct coverage for private-mode and quota failures, closing the source-leve
 private-input recovery gap in the parity matrix.
 
 **Key accomplishments:**
+
 - Added tests proving blocked `getItem`, `setItem`, and `removeItem` calls return
   safe empty/no-op results instead of breaking the writer or submit cleanup.
 - The storage suite passes 12 tests; the combined storage and journal-writer check
@@ -2013,6 +2122,7 @@ deployment whose CSP does not allow the staging API REST or WebSocket origins,
 despite the parity build already targeting `staging.api.murror.app`.
 
 **Key accomplishments:**
+
 - Added `https://staging.api.murror.app` and
   `wss://staging.api.murror.app` to all five web nginx report-only CSP headers
   in the isolated parity lane.
@@ -2035,6 +2145,7 @@ paths now fail closed before building in that case, while PR, development, and
 alpha paths retain their existing optional behavior.
 
 **Key accomplishments:**
+
 - Added a hosted-schema prerequisite to the web one-off image build, web staging
   deploy build, and Android manual staging workflow.
 - Added workflow-contract assertions for the guard, its environment variable,
@@ -2265,6 +2376,7 @@ deploys (rev 20 to rev 25). The destructive chain executed successfully at 11:10
 The account is deleted.
 
 **Key accomplishments.**
+
 - `#843` storage purge verified via `list()` after proving in-pod that `download()` of a
   missing object returns HTTP 400 wrapped as an opaque `StorageUnknownError`, not 404.
 - `#845` Mixpanel GDPR v3.0 `results` parsed as an object with `task_id`. The old spec
@@ -2281,6 +2393,7 @@ The account is deleted.
   wrapped with `?token=` redaction, structural spec pins zero plain throws.
 
 **Operating notes.**
+
 - `verify-and-receipt` is FAILED-but-retrying on the vendors' async GDPR queues
   (Mixpanel task `146b9b16`, PostHog person `90b4c425`). `processDueRequests` re-selects
   FAILED requests with no attempt cap, so it completes on its own. Not a bug.
@@ -2304,6 +2417,7 @@ now both detected hourly and pollable over HTTP. Plus a full 2.0.0 pre-submit
 sweep against the live App Store Connect API. Nothing was submitted.
 
 **Key accomplishments.**
+
 - murror-backend [#910](https://github.com/Murror/murror-backend/pull/910) (`d322b443`) records ledger version `20260829013703`, the
   users-bucket folder-read policy applied direct to production on 08-29. Named with
   the exact ledger version so `db push` skips it on prod and staging converges.
@@ -2316,6 +2430,7 @@ sweep against the live App Store Connect API. Nothing was submitted.
   matching `vi` and the Night Watch brand line.
 
 **Operating notes.**
+
 - **Per-row beats rate-based at this volume.** Production completes ~1 conversation
   a day. A percentage alert is noise: on a three row day, one failure reads as 33%.
 - **A schema DEFAULT is not a fault signal.** `statusArtworkUrl` defaults to
@@ -2355,6 +2470,7 @@ executed, so errors every prior build swallowed now opened blocking modals.
 backfill on Astro's sign-off.
 
 ### Shipped
+
 - **iOS build 457**, `PREPARE_FOR_SUBMISSION`. Twelve MurrorMobile PRs
   (#1211, #1212, #1214 to #1223), all verified as ancestors of the bump head
   before archiving.
@@ -2365,6 +2481,7 @@ backfill on Astro's sign-off.
   promoted, awaiting Astro.
 
 ### Fixed, from the reports
+
 - **Mona's 429.** 16 rejections in two one-second bursts, one device firing ~19
   requests in one second against a 10/sec tier. Requests now paced (#1219) and
   background failures no longer interrupt (#1211).
@@ -2374,6 +2491,7 @@ backfill on Astro's sign-off.
   passing to 65 of 68.
 
 ### Fixed, nobody reported
+
 - The connection screen printed "Personalization level: Max" while AI sharing was
   OFF: it rendered the AI toggle's label above the share-level value, and its
   ternary fell through to "Max" on undefined (#1216).
@@ -2384,6 +2502,7 @@ backfill on Astro's sign-off.
   was never coming (#1216).
 
 ### Diagnosed, deliberately not fixed
+
 - **34 unmirrored accounts are an activation drop-off, not a sync bug.** Both
   database hypotheses died with clean controls. 9 of 34 (26%) never signed in at
   all, versus 0 in the mirrored September control. Mirroring is lazy on first
@@ -2397,11 +2516,13 @@ backfill on Astro's sign-off.
   connections at two sites and calls `ensureUserExists` zero times.
 
 ### Edge Function audit, closed
+
 Read the deployed `protected-apis-relationships` source. `handleAcceptedInvitation`
 does SIX things; all six are present in the current controller. The port dropped
 `initializeRelationshipProgresses`, since restored. **No fourth omission.**
 
 ### Operating notes
+
 - `CLEAN` means no merge conflicts, never "up to date". #1213 was CLEAN while
   five commits behind; archiving then would have shipped one of twelve fixes.
   `git merge-base --is-ancestor` is now a mandatory pre-archive step.
@@ -2415,6 +2536,7 @@ does SIX things; all six are present in the current controller. The port dropped
   hosted macOS build. Fixed in #1223.
 
 ### Docs
+
 - `Murror/docs/plans/2026-09-05-tester-reports-to-build-457.md`
 - `Murror/docs/CODEX-HANDOFF.md` updated with current refs and ownership.
 
@@ -2424,6 +2546,7 @@ Second half of the day, from "resume and do an qa review of mobile iOS and Andro
 technical writeup: `docs/plans/2026-09-05-qa-sweep-to-build-458.md`.
 
 ### Shipped
+
 - **murror-api is fully current in production**, three promotions (`bd1b6250` 10 throttler/logging
   PRs; `0bcdf597` #936 orphan fix + #817 token guard; `1020b839` #937 family-seat twin), prod ==
   staging @ `cc9525f3`. Each diffed payload-first (code only, no migrations/config), merge-commit,
@@ -2438,6 +2561,7 @@ technical writeup: `docs/plans/2026-09-05-qa-sweep-to-build-458.md`.
   the Monthly subscription and the Premium group. Screenshots/review/age rating verified OK.
 
 ### Key fixes and the lessons behind them
+
 - The invite-accept orphan closed at BOTH sites (#936, #937) with a three-way failure classifier;
   "permanent" was two opposite answers (retry-cannot-fix vs whether-to-continue).
 - murror-api has **two generated Prisma realms**; `instanceof` across them is false, which was
@@ -2448,6 +2572,7 @@ technical writeup: `docs/plans/2026-09-05-qa-sweep-to-build-458.md`.
   cohort it is shown to; defer an alert past a modal dismissal.
 
 ### Held / diagnosed
+
 - **#1229** (timeout-destination UX) held for **build 459** after a proven Critical (button
   re-arm tore the surface down over a running attempt); round 3 `9809d127` fixes it, queued.
 - **Sentry error quota exhausted org-wide since 2026-08-25** — a billing action, not a code fix;
@@ -2458,10 +2583,12 @@ technical writeup: `docs/plans/2026-09-05-qa-sweep-to-build-458.md`.
   major bump on iOS.
 
 ### Owed before Submit
+
 Device pass on 458 (sign-in riskiest); Sentry billing + a test-error confirmation; Duo IAPs
 unselected and App Privacy label checked at submit.
 
 ### Closed / filed
+
 Closed #925 #818 #496, MurrorMobile #1004 #1040. Filed murror-api #935 #938 #940, MurrorMobile
 #1228.
 
@@ -2471,6 +2598,7 @@ From "sentry is too expensive, is there anyway to get away from this?" to build 
 Full technical writeup: `docs/plans/2026-09-06-sentry-free-tier-and-launch-build-459.md`.
 
 ### Decided (4-lens panel, Astro's call)
+
 - **Stay on Sentry's FREE plan** (billing page: Developer, nothing charged, period resets Sep 13).
   The bill was self-inflicted: 70% of errors were one client warning (sampled in 458), and 92.5% of
   spans were Prisma child spans. Sentry Team has the same 5M span cap, so paying would not have helped.
@@ -2480,6 +2608,7 @@ Full technical writeup: `docs/plans/2026-09-06-sentry-free-tier-and-launch-build
   Crashlytics (Firebase is not on the shipped branch).
 
 ### Shipped
+
 - **murror-api #942 → prod as #943** (16:22Z): remove `'Prisma'` from the Sentry integration
   allowlist. Verified by effect in a clean 1h window: Prisma spans 0, `http.server` 1,310 (control) →
   ~19% of the free cap, was 317%. Dashboard widget 14 goes blank and alert 419514's baseline halves:
@@ -2492,6 +2621,7 @@ Full technical writeup: `docs/plans/2026-09-06-sentry-free-tier-and-launch-build
   React re-renders). 458 superseded. Slack #beta-testing closed the loop.
 
 ### Corrections recorded
+
 - `<unmatched>` is the privacy scrubber failing closed on EVERY route (`sentry-scrub.util.ts:338`),
   not probes and not missing Express naming. Never drop it in a sampler.
 - The canonical `Murror/MurrorMobile` checkout is on a stale branch with divergent deps; read
@@ -2501,6 +2631,7 @@ Full technical writeup: `docs/plans/2026-09-06-sentry-free-tier-and-launch-build
 - The deletion `conversation_wrapup` leak was already fixed by #917; memory and #940 corrected.
 
 ### Owed before Submit
+
 Device pass on 459 ("Launch Build Device Pass" checklist); PostHog connector auth → gate event, alert,
 retention; privacy disclosure bullet via the privacy-docs lane; at Submit: Duo IAPs unselected, ASC
 Diagnostics Linked to You = Yes + Other Diagnostic Data.
@@ -2553,7 +2684,7 @@ Gates: tsc 0, lint baseline, 649 suites / 6,475 tests.
   the merge. The review was run anyway before building and found 3 Criticals in the
   newly-live Memory Room. That is what #1253 is.
 - **My first offline-logout fix was wrong and the review proved it.** `GoTrueClient._signOut`
-  issues `POST /logout?scope=` for *every* scope and only calls `_removeSession()` on
+  issues `POST /logout?scope=` for _every_ scope and only calls `_removeSession()` on
   success, so a "local scope fallback" is a retry of the same failing request. The spec had
   asserted the false premise in a comment and then mocked it true.
 - **A killed mutation left buggy code in the working tree.** `diary-screen.tsx` still had
@@ -2958,4 +3089,38 @@ billing estimate.
 
 The active goal used **138,259 additional tokens** in this cycle, bringing the
 reported total to **59,425,576 tokens**. This is processing volume, not a
+billing estimate.
+
+### Follow-up: complete Between Us detail-route first-frame coverage
+
+- **PROVEN:** three reachable Between Us destinations still eagerly mounted
+  heavy trees during Android's native slide. Quiz Compare started three query
+  observers and built every answer row; Connection Settings mounted its full
+  settings hierarchy; and Reflect Back initialized the roughly 5,000-line
+  composer with its queries, effects, overlays, scroll content, and keyboard
+  machinery. Pausing only the composer's aura did not remove that workload.
+- Patch `ab3b5fea755e9a53bd4df43098c211bda573024c` gives all three routes an
+  opaque static presentation frame and mounts their existing content only after
+  Android reports `transitionEnd`. The composer gate applies only to Between Us
+  callers that request the Android detail transition. iOS and other composer
+  entry points keep their prior lifecycle.
+- Nine focused navigation, presentation, settings, quiz, composer, and aura
+  suites passed with 53 tests. All three contracts failed before the production
+  changes and failed again when each gate was independently bypassed.
+- Prettier, TypeScript, the exact ESLint baseline, production environment
+  validation, React Native code generation, and a JDK 17 Android debug build
+  passed. The debug APK is 129,354,601 bytes with SHA-256
+  `c291ddbc5f9bbb3636e2a48036f0c73049bc00ba2cbfc4add96a1711e3f4ee43`.
+- Combined with the earlier Personal Note, Connection Detail, and Takeaway /
+  Reflection patches, every currently reachable Between Us detail route found
+  by the source audit now keeps its heavy destination tree out of the native
+  slide window. The pushed feature branch is zero commits behind staging,
+  exactly matches the remote, has no PR, and started no hosted workflow.
+- This is unit-tested, mutation-tested, and locally built, but not yet measured
+  on a physical Z Fold 8. The artifact is debug-signed. Play Internal remains
+  Build 168; no Build 169 workflow was dispatched without build-specific
+  approval.
+
+The active goal used **81,306 additional tokens** in this cycle, bringing the
+reported total to **59,506,882 tokens**. This is processing volume, not a
 billing estimate.
