@@ -2776,3 +2776,53 @@ release that is not ready for Production submission.
 Exact Codex processing volume since the previous Android run record is
 **1,811,678,296 tokens**. This includes cache reads and delegated work and is not a
 billing estimate.
+
+## 2026-09-19: Android Between Us detail motion repair
+
+Full delivery record:
+`MurrorMobile/docs/plans/2026-09-19-android-between-us-detail-motion-delivery.md`.
+
+### Fixed in source
+
+- Android Personal Note, Connection Settings, Connection Reflection, Takeaway,
+  Quiz Compare, Connection Detail, and Reflect Back now share one opaque,
+  transform-only slide-up route transition.
+- The first wrong frame was React Navigation's stock Android bottom-sheet
+  interpolator. It began with a transparent card at 80% height while fading an
+  overlay, so a short Fold viewport exposed the source page and competed with
+  destination animations.
+- Personal Note body layout, word streaming, and ambient animation now wait for
+  the route transition to finish. Connection Detail and Connection Reflection
+  also defer their heavier entrance work.
+- The Connection Detail memory heart now resolves the Android viewer identity,
+  updates optimistically from black to red, rolls back on failure, and retains
+  the existing backend `MEMORY_REACTION` notification path.
+
+### Evidence
+
+- Patch: `ee2fda2205014a1b8707718014c311433f1560cd`.
+- 13 focused Jest suites and 156 tests passed with an isolated cache.
+- TypeScript, the exact ESLint baseline, production environment validation,
+  code generation, and the local JDK 17 Android debug build passed.
+- The debug APK SHA-256 is
+  `6a80e7052335343441b47a4217c1f945e0411ccbbc20899f88e7ce5d8cd84c97`.
+- Mutation checks proved the route interpolator, presentation gates, and viewer
+  identity fallback are load-bearing.
+
+### Evidence boundary
+
+- The artifact is debug-signed, not Play-uploadable.
+- Z Fold 8 smoothness is not device-verified for this patch.
+- No hosted Android workflow was dispatched. A Play Internal build remains a
+  separate build-specific approval gate.
+
+### Public progress page
+
+No entry. This is internal Android regression hardening for an unpublished
+candidate.
+
+### Work accounting
+
+The active Android performance goal reports **57,350,086 tokens** through this
+delivery record. This includes tool and agent context and is not a billing
+estimate.
