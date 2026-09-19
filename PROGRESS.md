@@ -2906,3 +2906,32 @@ billing estimate.
 The active goal used **107,390 additional tokens** in this cycle, bringing the
 reported total to **59,120,493 tokens**. This is processing volume, not a
 billing estimate.
+
+### Follow-up: stabilize the cached Connection Detail first frame
+
+- **PROVEN:** Connection Detail used only network loading state to choose its
+  lightweight skeleton. A cold open therefore presented the skeleton, while a
+  warm cached open immediately mounted the full attached `ScrollView`, retained
+  Between Us carousel cards, images, and queries during the Android route
+  slide. Cached visits were doing more first-frame work than cold visits.
+- Patch `31f98498f08a1fdb000a4cd615d84a929cb6b2cb` keeps the cached data but
+  renders the existing lightweight skeleton until Android reports the native
+  transition complete. iOS behavior remains unchanged because its shared
+  readiness signal resolves immediately.
+- Five focused Connection Detail and navigation suites passed with 53 tests.
+  The new assertion failed before the production change, passed afterward, and
+  turned red again when `presentationReady` was deliberately removed from the
+  source predicate.
+- Prettier, TypeScript, the exact ESLint baseline, production environment
+  validation, React Native code generation, and a JDK 17 Android debug build
+  passed. The debug APK is 126,503,520 bytes with SHA-256
+  `1ef725b2bdde3c5cb0450cade9c58b276a5f75983579eeebccdb765fd42aa29f`.
+- The pushed branch tip is `31f98498f`, is zero commits behind staging, and
+  started no hosted workflow. No PR was created.
+- The artifact is debug-signed and the change remains unverified on a physical
+  Z Fold 8. Play Internal remains Build 168; no Build 169 workflow was
+  dispatched without build-specific approval.
+
+The active goal used **166,824 additional tokens** in this cycle, bringing the
+reported total to **59,287,317 tokens**. This is processing volume, not a
+billing estimate.
