@@ -3157,3 +3157,31 @@ billing estimate.
 The active goal used **500,739 additional tokens** in this cycle, bringing the
 reported total to **60,007,621 tokens**. This is processing volume, not a
 billing estimate.
+
+### Next-cycle audit: ordinary Entry Detail entrance workload
+
+- **PROVEN:** Between Us detail routes are gated, but the separate ordinary
+  Entry Detail routes still mount their heavy trees during Android's native
+  bottom-up transition. `JournalDetailScreen` is the highest-cost remaining
+  route: a warm cached open creates nine reveal drivers, query and mutation
+  observers, storage and analytics effects, artwork, and nine rich content
+  sections before `transitionEnd`.
+- `ConversationDetailScreen` has the same lifecycle gap with a smaller tree.
+  Neither route's navigator nor `CustomModalBounce` is the cause. Android
+  already uses an opaque detached modal, and the JavaScript bounce is correctly
+  disabled so navigation owns the only entrance motion.
+- The panel recommended gating Journal Detail first with the existing
+  presentation-ready wrapper, then handling Conversation Detail in the next
+  cycle. A two-route batch and a query-hot component split remain documented
+  alternatives for Astro to choose.
+- The strongest regression proof is rendered: while readiness is false, the
+  warm cached screen must show only an opaque frame and must not start the real
+  council request; after readiness becomes true it mounts once. Mutating the
+  guard must make that request happen early and turn the test red.
+- This audit changed no product code, iOS path, workflow, or build number. It
+  dispatched no hosted job and makes no claim about physical Z Fold 8 frame
+  timing. Play Internal remains Build 168.
+
+The active goal used **598,351 additional tokens** in this audit, bringing
+the reported total to **60,605,972 tokens**. This is processing volume, not a
+billing estimate.
