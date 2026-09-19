@@ -2935,3 +2935,27 @@ billing estimate.
 The active goal used **166,824 additional tokens** in this cycle, bringing the
 reported total to **59,287,317 tokens**. This is processing volume, not a
 billing estimate.
+
+### Follow-up: defer Takeaway and Reflection detail trees
+
+- **PROVEN:** the production Orbital and fallback control variants paused
+  continuous animation, but still mounted their full query, image, background,
+  and section trees while Android translated the route. The animation gate did
+  not protect the first render workload.
+- Patch `8296d7d00df9e5af5eab0465ae7549d3fa3846bc` gives the route an opaque,
+  static presentation frame and mounts the selected heavy variant only after
+  Android reports `transitionEnd`. iOS remains immediate.
+- Seven focused route, Orbital, navigation, and presentation suites passed with
+  42 tests. Both new rendered assertions failed before the source change and
+  failed again when the gate alone was deliberately bypassed.
+- Prettier, TypeScript, the exact ESLint baseline, production environment
+  validation, React Native code generation, and a JDK 17 Android debug build
+  passed. The debug APK is 126,503,520 bytes with SHA-256
+  `b9290bb0826a0b93597ad5c6c78b5448609071f9609d868602dbe60644d5cf50`.
+- The feature-branch push starts no hosted workflow. The artifact is
+  debug-signed and the improvement remains unverified on a physical Z Fold 8.
+  Play Internal remains Build 168; no Build 169 workflow was dispatched.
+
+The active goal used **138,259 additional tokens** in this cycle, bringing the
+reported total to **59,425,576 tokens**. This is processing volume, not a
+billing estimate.
