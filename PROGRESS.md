@@ -2875,3 +2875,34 @@ billing estimate.
 The active goal used **278,765 additional tokens** in this cycle, bringing the
 reported total to **59,013,103 tokens**. This is processing volume, not a
 billing estimate.
+
+### Follow-up: stabilize the Personal Note first frame
+
+- **PROVEN:** Android Personal Note previously waited for an AsyncStorage
+  first-open lookup and `transitionEnd`, then inserted its centered body and
+  revealed one word every 230 ms with a 550 ms fade. A typical 40-word note
+  therefore kept timer, state, text-layout, and centering work active for about
+  nine seconds while the detail route was settling.
+- Patch `5c4537dd4` renders the complete Android note text in the initial route
+  layout, skips first-open storage work on Android, and retains the existing
+  presentation gate for its ambient glow. iOS keeps its persisted word-reveal
+  behavior.
+- Seven focused Note and transition suites passed with 86 tests. Verified
+  mutations that restored the Android stream, late body insertion, and storage
+  work turned the relevant assertions red, then returned green after restoring
+  production source.
+- Prettier, TypeScript, the exact ESLint baseline, production environment
+  validation, React Native code generation, and a JDK 17 Android debug build
+  passed. The debug APK is 129,353,638 bytes with SHA-256
+  `c64055034521a3c5b201c902515c7267d096ab95ec64219009cab0b8e1cd2900`.
+- The feature branch also merged the one new staging notification-contract test
+  and reverified it alongside the Note contract, with 37 tests passing. The
+  pushed branch tip is `519c6862a`, is zero commits behind staging, and started
+  no hosted workflow.
+- The artifact is debug-signed and the Note motion remains unverified on a
+  physical Z Fold 8. Play Internal remains Build 168; no Build 169 workflow was
+  dispatched without build-specific approval.
+
+The active goal used **107,390 additional tokens** in this cycle, bringing the
+reported total to **59,120,493 tokens**. This is processing volume, not a
+billing estimate.
