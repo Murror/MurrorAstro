@@ -3185,3 +3185,43 @@ billing estimate.
 The active goal used **598,351 additional tokens** in this audit, bringing
 the reported total to **60,605,972 tokens**. This is processing volume, not a
 billing estimate.
+
+## 2026-09-19: Android Build 169 entry-detail candidate
+
+- **PROVEN:** ordinary Entry Detail and Conversation Detail were the next two
+  Android routes mounting their full cached workloads during the native
+  bottom-up transition. The first wrong frame was each unconditional route-body
+  mount, not the navigator or the already-disabled JavaScript bounce.
+- Patch `8f6780e05c4639a5d9fe7ae8a0db7caa4ae31425` keeps both complete detail
+  trees unmounted behind an opaque presentation frame until Android reports
+  `transitionEnd`. Their existing queries, effects, media, and controls remain
+  intact. iOS is unchanged.
+- Seven focused suites passed with 41 tests. Both guards failed their rendered
+  contracts when independently bypassed, then returned green after exact source
+  restoration. TypeScript, the ESLint baseline, 102 Android release and
+  workflow contract tests, production environment validation, code generation,
+  and a JDK 17 local debug build also passed.
+- The local debug APK is 124,243,874 bytes with SHA-256
+  `b560647ac4194abe465d42ccf554ba2ef8638ce5b62ab24895300c7ece3ae702`.
+- Astro approved one hosted Build 169. GitHub Actions run `35440349701` passed
+  on exact commit `8f6780e05`; no duplicate run was dispatched. The signed
+  production AAB SHA-256 is
+  `0ed6ff6dd73e099ed47f8a66a48ca4920838f1d9ec76eb95ed797748ecb9aad2`.
+  Independent inspection confirmed package `com.murrormobile`, Build 169,
+  target SDK 36, four ABIs, the expected upload certificate, and no forbidden
+  advertising permission.
+- Google Play accepted and parsed the verified AAB in Internal Testing draft
+  release 75 as `169 (2.0.0)`. It is not active yet. Build 168 remains the live
+  Internal Testing release while the final tester-visible rollout waits for
+  action-time confirmation.
+- This is unit-tested, mutation-tested, locally built, signed-artifact verified,
+  and Play-upload verified. It is not yet Play-published or measured on a
+  physical Z Fold 8.
+- Technical record:
+  `docs/plans/2026-09-19-android-build-169-entry-detail-release.md`.
+- No public progress update this session because this is an internal Android
+  performance bug fix.
+
+The active goal used **392,980 additional tokens** in this cycle, bringing the
+reported total to **60,998,952 tokens**. This is processing volume, not a
+billing estimate.
