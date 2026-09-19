@@ -2849,3 +2849,29 @@ estimate.
 The active goal used **1,384,252 additional tokens** in this cycle, bringing
 the reported total to **58,734,338 tokens**. This is processing volume, not a
 billing estimate.
+
+### Follow-up: pause the Reflect Back writer aura during presentation
+
+- **PROVEN:** both AddLog render branches mounted `EmotionAura` on the first
+  route frame, and that component immediately started an infinite full-screen
+  breathing loop while Android was still translating the destination upward.
+- Patch `d2f7451dd16bbdbbebe3a98ba7d10c6e3ad73182` adds a
+  backwards-compatible motion gate to the shared aura and wires both the quiz
+  and ordinary writer branches to the existing presentation-ready signal. The
+  static gradient remains visible during the slide; continuous motion resumes
+  afterward. iOS behavior is unchanged because its readiness signal is true on
+  the first frame.
+- Nine focused transition suites and 64 tests passed. Verified mutations that
+  bypassed the lifecycle gate and removed one branch's wiring turned the new
+  tests red, then returned green after restoring the production source.
+- Prettier, TypeScript, the exact ESLint baseline, production environment
+  validation, React Native code generation, and a JDK 17 Android debug build
+  passed.
+- The debug APK is 129,353,794 bytes with SHA-256
+  `bd459d7508a603a5ade0be557e30a3c95db9f80a14866d6b83d177028edef22b`.
+- The feature-branch push started no hosted workflow. The artifact is
+  debug-signed and the improvement is not yet verified on a physical Z Fold 8.
+
+The active goal used **278,765 additional tokens** in this cycle, bringing the
+reported total to **59,013,103 tokens**. This is processing volume, not a
+billing estimate.
