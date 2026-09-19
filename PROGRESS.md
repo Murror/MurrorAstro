@@ -3210,18 +3210,22 @@ billing estimate.
   Independent inspection confirmed package `com.murrormobile`, Build 169,
   target SDK 36, four ABIs, the expected upload certificate, and no forbidden
   advertising permission.
-- Google Play accepted and parsed the verified AAB in Internal Testing draft
-  release 75 as `169 (2.0.0)`. It is not active yet. Build 168 remains the live
-  Internal Testing release while the final tester-visible rollout waits for
-  action-time confirmation.
+- Google Play accepted and parsed the verified AAB in Internal Testing release
+  75 as `169 (2.0.0)`. Astro explicitly confirmed the rollout. Play now reports
+  Build 169 as the latest release and available to internal testers.
+- Play displayed two non-blocking warnings: the store declaration still says
+  the app uses Advertising ID even though the artifact intentionally omits the
+  permission, and no R8 or ProGuard deobfuscation mapping is attached. Neither
+  warning blocked publication. The store declaration remains a separate
+  follow-up.
 - This is unit-tested, mutation-tested, locally built, signed-artifact verified,
-  and Play-upload verified. It is not yet Play-published or measured on a
-  physical Z Fold 8.
+  Play-upload verified, and published to Internal Testing. Installation from
+  the track and smoothness on a physical Z Fold 8 remain unverified.
 - Technical record:
   `docs/plans/2026-09-19-android-build-169-entry-detail-release.md`.
 - No public progress update this session because this is an internal Android
   performance bug fix.
 
-The active goal used **392,980 additional tokens** in this cycle, bringing the
-reported total to **60,998,952 tokens**. This is processing volume, not a
+The active goal used **459,519 additional tokens** in this cycle, bringing the
+reported total to **61,065,491 tokens**. This is processing volume, not a
 billing estimate.

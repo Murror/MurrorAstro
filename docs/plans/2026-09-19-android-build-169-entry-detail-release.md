@@ -2,15 +2,14 @@
 
 ## Context
 
-Build 169 is the next Android Internal Testing candidate after Build 168. It
+Build 169 is the active Android Internal Testing release after Build 168. It
 targets a first-frame performance defect in the ordinary Entry Detail and
 Conversation Detail routes. These routes already used Android's opaque native
 bottom-up transition, but warm cached content mounted the complete destination
 tree while that transition was running.
 
 This document separates source, local artifact, hosted artifact, Play upload,
-and physical-device evidence. It does not claim that an uploaded Play draft is
-published.
+published-track, and physical-device evidence.
 
 ## Source change
 
@@ -73,17 +72,31 @@ the workflow provenance hashes.
 
 ## Google Play state
 
-The verified AAB was uploaded to Murror AI's Internal Testing release draft 75.
+The verified AAB was uploaded to Murror AI's Internal Testing release 75.
 Google Play parsed it as `169 (2.0.0)`, API 24+, target SDK 36, four screen
-layouts, and four ABIs. The release is not published yet. The active Internal
-Testing release remains Build 168 until Astro confirms the tester-visible
-release notes and final rollout action.
+layouts, and four ABIs. Astro explicitly confirmed the final rollout action.
+Google Play now reports `Latest release: 169 (2.0.0)` and `Available to internal
+testers`, with one version code released on September 19, 2026.
+
+The English release note is `Entry and conversation detail pages now open more
+smoothly on Android.` A Vietnamese translation was published in the same
+release.
+
+Play reported two non-blocking warnings during confirmation:
+
+- the Play Console declaration says the app uses Advertising ID, while the
+  active artifact intentionally omits the `AD_ID` permission;
+- no R8 or ProGuard deobfuscation mapping is associated with the bundle.
+
+Neither warning blocked Internal Testing publication. The Advertising ID store
+declaration remains a separate follow-up and was not changed during this
+rollout.
 
 ## Evidence still missing
 
-- Play Internal Testing active-release confirmation for Build 169
 - installation or update proof from the tester channel
 - physical Z Fold 8 frame pacing and smoothness verification
 
-Source behavior, local integration, hosted signing, and Play draft parsing are
-proven. Device smoothness remains unverified.
+Source behavior, local integration, hosted signing, Play parsing, and Internal
+Testing publication are proven. Installation and device smoothness remain
+unverified.
