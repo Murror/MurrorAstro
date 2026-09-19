@@ -2826,3 +2826,26 @@ candidate.
 The active Android performance goal reports **57,350,086 tokens** through this
 delivery record. This includes tool and agent context and is not a billing
 estimate.
+
+### Follow-up: stop the Connection Detail pulse during presentation
+
+- **PROVEN:** the main lifecycle gate waited for presentation, but the separate
+  static-gesture heartbeat predicate did not. An infinite UI-thread scale loop
+  could start while Android was still sliding the Connection Detail route.
+- Patch `81e83342102553cc3df6c12d19069b61a41ad67d` adds the existing
+  `presentationReady` input to that predicate. iOS remains unchanged because
+  presentation readiness is immediate there.
+- Five focused suites and 51 tests passed. The new AST assertion failed before
+  the change, passed afterward, and turned red again when the source condition
+  was deliberately removed.
+- Prettier, TypeScript, the exact ESLint baseline, production environment
+  validation, React Native code generation, and a JDK 17 Android debug build
+  passed.
+- The debug APK SHA-256 is
+  `19d725015378e34ec3220fa9ed4da350f6e5f86b4e8633a86827abdd4344811f`.
+- No hosted workflow was started by the push. This patch remains debug-signed
+  and unverified on a physical Z Fold 8.
+
+The active goal used **1,384,252 additional tokens** in this cycle, bringing
+the reported total to **58,734,338 tokens**. This is processing volume, not a
+billing estimate.
