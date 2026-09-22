@@ -1,5 +1,33 @@
 # Murror Progress
 
+## 2026-09-22 (PDT) - Android memory-sheet clarity and AI chat keyboard spacing
+
+Driver: Astro - physical Android feedback on the memory detail sheet, add-memory sheet, and AI chat composer. Work stayed in the isolated `MurrorMobile-worktrees/android-sheet-chat-spacing-20260922` worktree so the shared checkout and Claude-owned edits remained untouched.
+
+### Source candidate ready
+
+- Application patch: `e8e536d44c2cc584c00358f5eb4d6cf900a041a4`.
+- Release metadata commit: `cb79225793db489f8c90057aacd2973025bfb758`, version code `176`, version name `2.0.0`.
+- Memory Detail and Add Memory use transparent, hardware-accelerated Android modal windows with a 35% black scrim. This keeps the page visible behind each sheet instead of blackening it.
+- Android 15+ AI chat keeps its existing UI-thread keyboard translation and now leaves an 8dp visible gap above the keyboard. Older Android `adjustResize` behavior is unchanged.
+- Independent review caught an accidental cross-platform scrim change before release. The final patch preserves iOS at its prior 70% Memory Detail and 60% Add Memory scrims.
+
+### Verification completed
+
+- Focused Jest: 6 suites and 122 tests passed.
+- TypeScript, Prettier, diff checks, release/environment/keyboard/E2E contracts, and a local `productionRelease` AAB build passed.
+- Build 176 metadata and workflow contracts passed after the mechanical four-file bump.
+- The local AAB is self-signed and proves compilation and packaging only. It is not the protected Play upload artifact.
+- Technical records: `MurrorMobile/docs/plans/2026-09-22-android-memory-sheet-scrim-chat-keyboard-spacing-design.md` and `MurrorMobile/docs/plans/2026-09-22-android-memory-sheet-scrim-chat-keyboard-spacing-implementation.md`.
+
+### Remaining release gates
+
+- The protected hosted production workflow has not run. The release gate requires an explicit approval naming paid Android Build 176 before dispatch.
+- Play Internal publication has not occurred.
+- Folded, unfolded, landscape, Gboard, Samsung Keyboard, gesture navigation, three-button navigation, repeated sheet open/dismiss, and AI chat touch-target behavior remain physical-device checks for Astro.
+
+---
+
 ## 2026-06-11 (PDT) — Staging web app: the log view becomes deep chat, 5 QA batches, a backend emotion fix, the voice diary ported, and a persona showcase world
 
 Driver: Astro — iterative QA on the staging web app (`apps/web-client`, staging.app.murror.app). Astro tested in rounds and sent findings with screenshots; each batch was root-caused against the MOBILE source (MurrorMobile is always ground truth), fixed, gate-checked (tsc + full vitest), harness-verified end-to-end against live staging, deployed (CI image -> helm, nsp-staging-murror), and logged (PARITY_LOOP_LOG.md + Notion Engineering Log). Staging only; production untouched. 7 web deploys (helm rev 78-84), 1 viasr backend PR, 4 showcase accounts.
