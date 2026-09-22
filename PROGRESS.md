@@ -1,5 +1,33 @@
 # Murror Progress
 
+## 2026-09-22 (PDT): Android Builds 173 to 175 and durable MTC memories
+
+Builds 173 and 174 restored Android connection interactions, small-screen card
+layout, multi-question quiz selection, native invitation handoffs, and settings
+dismissal pacing. Both builds reached Play Internal Testing; Production was not
+changed.
+
+Build 175 fixes the MTC memory-feed source rather than hiding or deleting cards.
+The API now returns durable sent and received memories for active connections,
+and the Android feed keeps every loaded memory available for horizontal
+scrolling after it is viewed. API PR #1033 and production promotion PR #1035 are
+deployed. Mobile PR #1423 is merged.
+
+The exact Build 175 candidate is
+`d52d0d644f3ff2de1ea7777e69cad8781707cba8`. Local checks passed 13 suites and
+239 tests plus TypeScript, formatting, lint, release contracts, and production
+environment validation. The one approved protected workflow, run
+`35751013226`, completed successfully, and downloaded APK/AAB/symbol hashes
+matched its provenance receipt.
+
+Google Play accepted version code 175 and its native symbols with zero blocking
+errors and no supported-device loss. Publication is waiting on Astro's final
+action-time confirmation. After Internal publication, durable feed contents,
+pagination, and Fold pacing still require a physical Galaxy Z Fold 8 test.
+
+Technical record:
+`docs/plans/2026-09-22-android-builds-173-to-175-and-durable-memory-feed.md`.
+
 ## 2026-09-03 (PDT): The August investor letter, a password gate that did not hold, and nine emails
 
 The letter did not exist at the start of this. It is now written, reviewed, gated,
