@@ -20,10 +20,12 @@ environment validation. The one approved protected workflow, run
 `35751013226`, completed successfully, and downloaded APK/AAB/symbol hashes
 matched its provenance receipt.
 
-Google Play accepted version code 175 and its native symbols with zero blocking
-errors and no supported-device loss. Publication is waiting on Astro's final
-action-time confirmation. After Internal publication, durable feed contents,
-pagination, and Fold pacing still require a physical Galaxy Z Fold 8 test.
+Google Play Internal release ID 81 is active as `175 (2.0.0) - Durable memory
+feed` and is available to internal testers, released on September 22 at 3:18 PM
+PDT. Play accepted the native symbols with zero blocking errors and no
+supported-device loss. Production remains unchanged at `63 (1.0.18)`. Durable
+feed contents, pagination, and Fold pacing still require a physical Galaxy Z
+Fold 8 test.
 
 Technical record:
 `docs/plans/2026-09-22-android-builds-173-to-175-and-durable-memory-feed.md`.

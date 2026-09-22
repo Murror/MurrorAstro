@@ -4,7 +4,46 @@
 Read this at the start of any Murror session; update it when you ship something the other tool
 would trip over.**
 
-Last updated: **2026-09-17 19:16 ICT**, by Codex (Build 159 is available on Play Internal; Fold 8 retest is pending)
+Last updated: **2026-09-22 15:18 PDT**, by Codex (Build 175 is available on Play Internal; durable MTC feed device test is pending)
+
+---
+
+## ANDROID BUILD 175 PUBLISHED TO PLAY INTERNAL (2026-09-22, CODEX)
+
+Build 175 (`d52d0d644f3ff2de1ea7777e69cad8781707cba8`) is available to Internal testers
+as `175 (2.0.0) - Durable memory feed`, Play release ID 81. Play shows it released
+September 22 at 3:18 PM PDT. Production was rechecked after publication and remains
+unchanged at `63 (1.0.18)`.
+
+The repair replaces MTC's transient unseen/device-local memory feed with durable,
+cursor-paginated sent and received memory activity. Viewing a memory clears unread
+state without deleting the card; every loaded card remains available to scroll, with
+additional pages loaded near the carousel tail. Explicit deletion and connection
+removal still revoke cards for privacy.
+
+API PR #1033 merged at `936741e771f0d29c30a8d822d74c1581076ff584`; staging deploy
+`35747226284` passed. Production promotion PR #1035 merged at
+`77ce5d772feeea6a145638671f7a397f8cce3a8a`; production deploy `35749465561`
+passed. Production health returned 200, the new authenticated route returned 401,
+and a fabricated sibling returned 404. Mobile PR #1423 merged at
+`e0fbe81b81429ee385cbd367cff2d5122d30e9b2`.
+
+Protected Android workflow `35751013226` passed. Downloaded artifacts matched the
+hosted provenance receipt:
+
+- AAB SHA-256: `ed3087dffbc79ddd1bf9b158d25d59103dc6cda51c29f74d6cd6f0aa8aa86a00`
+- APK SHA-256: `a2be7a57e6b3a342269a979a3f435b5fd03b5be091de4f9df001a4f408f78228`
+- native symbols SHA-256: `48c9ec16ab2bb6d116b1e807646207d3d293071a5c0d80cb56fc043c6c437d90`
+
+Play reported zero blocking errors and zero newly unsupported devices; native debug
+symbols are attached. The existing Advertising ID declaration mismatch and missing
+optional R8 mapping warnings remain nonblocking. This is source-, CI-, artifact-, and
+Play-published evidence, not yet physical-device proof. Test only the new Build 175
+MTC memory population, pagination, card retention after viewing, and perceived Fold
+pacing on the Galaxy Z Fold 8; do not repeat already-passed Build 173/174 checks.
+
+Detailed record:
+`docs/plans/2026-09-22-android-builds-173-to-175-and-durable-memory-feed.md`.
 
 ---
 

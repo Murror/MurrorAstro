@@ -85,13 +85,15 @@ behavior are different gates.
 - Google Play accepted Build 175 and its native debug symbols on the Internal
   track. The final preview reports zero blocking errors and zero newly
   unsupported devices.
-- Publication is pending Astro's final action-time confirmation for `Save and
-  publish`. Production remains out of scope and unchanged.
+- Google Play Internal release ID 81 is active as `175 (2.0.0) - Durable memory
+  feed` and reports **Available to internal testers**, released on September 22
+  at 3:18 PM PDT. Production remains unchanged at `63 (1.0.18)`.
 - Play repeats two nonblocking warnings: its advertising-ID declaration says
   the app uses advertising ID while the manifest intentionally omits `AD_ID`,
   and no optional R8 mapping file is attached.
-- After publication, MTC memory population, pagination, and perceived Fold
-  pacing still require a physical Galaxy Z Fold 8 test.
+- MTC memory population, pagination, and perceived Fold pacing still require a
+  physical Galaxy Z Fold 8 test. Play publication is complete; that device pass
+  remains a separate evidence gate.
 
 ## Documentation scope
 
