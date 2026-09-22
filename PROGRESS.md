@@ -15,9 +15,9 @@ Driver: Astro - physical Android feedback on the memory detail sheet, add-memory
 ### Verification completed
 
 - Focused Jest: 6 suites and 122 tests passed.
-- TypeScript, Prettier, diff checks, release/environment/keyboard/E2E contracts, and a local `productionRelease` AAB build passed.
-- Build 176 metadata and workflow contracts passed after the mechanical four-file bump.
-- The local AAB is self-signed and proves compilation and packaging only. It is not the protected Play upload artifact.
+- TypeScript, Prettier, diff checks, release/environment/keyboard/E2E contracts, and the local `productionRelease` build passed.
+- The exact Build 176 candidate produced package `com.murrormobile`, version code `176`, version name `2.0.0`, minimum API 24, target API 36, and all four supported ABIs. APK SHA-256: `aa00f49402e7e8c54373716061060e77031dc17fd61904cc8eba7e3614f0ea07`. AAB SHA-256: `0d8c9cfd2c7d994db929eb1e87efe4460c425e87404b1fb3bb3a3faed2548738`.
+- The local artifacts use the self-signed certificate `fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c`. They prove compilation and packaging only and are not the protected Play upload artifacts.
 - Technical records: `MurrorMobile/docs/plans/2026-09-22-android-memory-sheet-scrim-chat-keyboard-spacing-design.md` and `MurrorMobile/docs/plans/2026-09-22-android-memory-sheet-scrim-chat-keyboard-spacing-implementation.md`.
 
 ### Remaining release gates
