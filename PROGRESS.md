@@ -20,11 +20,17 @@ Driver: Astro - physical Android feedback on the memory detail sheet, add-memory
 - The local artifacts use the self-signed certificate `fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c`. They prove compilation and packaging only and are not the protected Play upload artifacts.
 - Technical records: `MurrorMobile/docs/plans/2026-09-22-android-memory-sheet-scrim-chat-keyboard-spacing-design.md` and `MurrorMobile/docs/plans/2026-09-22-android-memory-sheet-scrim-chat-keyboard-spacing-implementation.md`.
 
-### Remaining release gates
+### Hosted release and Play publication completed
 
-- The protected hosted production workflow has not run. The release gate requires an explicit approval naming paid Android Build 176 before dispatch.
-- Play Internal publication has not occurred.
-- Folded, unfolded, landscape, Gboard, Samsung Keyboard, gesture navigation, three-button navigation, repeated sheet open/dismiss, and AI chat touch-target behavior remain physical-device checks for Astro.
+- Astro approved the paid hosted production build and Internal Testing publication. GitHub Actions run [`35801721404`](https://github.com/Murror/MurrorMobile/actions/runs/35801721404) completed successfully from exact candidate `cb79225793db489f8c90057aacd2973025bfb758`; protected signing, production runtime/privacy checks, provenance capture, and artifact upload all passed.
+- Independently downloaded protected artifacts matched the hosted provenance receipt: APK SHA-256 `1ceddbcebe0e322020aa414606a78bfd6ff861d3becb87f331c52870c52ed1af`, AAB SHA-256 `587b622b716b3f1cd501cdcfb2c276070d23b9d3dc564a6bb18191e102d41ede`, and native symbols SHA-256 `48c9ec16ab2bb6d116b1e807646207d3d293071a5c0d80cb56fc043c6c437d90`.
+- The protected APK and AAB use the expected Murror Android upload certificate SHA-256 `f44e00d4d85a86c9d00c4fa02ba9761c828f491aedc4004eaa683fbaa157d000`. Package/version, API levels, four ABIs, compiled production API/linking values, and forbidden advertising-permission exclusions were independently re-verified.
+- Google Play Internal Testing release `82`, **176 (2.0.0) - Memory sheet and chat polish**, is **Available to internal testers**. Play reported zero loss of supported devices across phones, tablets, TV, cars, Chromebook, and Android XR; the AAB includes native debug symbols.
+- Two non-blocking Play warnings remain documented: the console advertising-ID declaration is stale while Build 176 intentionally removes `AD_ID`, and no deobfuscation mapping is attached because R8/ProGuard is disabled. Neither warning blocks Internal Testing.
+
+### Remaining device gate
+
+- Folded, unfolded, landscape, Gboard, Samsung Keyboard, gesture navigation, three-button navigation, repeated sheet open/dismiss, and AI chat touch-target behavior remain physical-device checks for Astro. Play availability proves distribution, not physical Z Fold behavior.
 
 ---
 
