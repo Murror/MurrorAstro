@@ -1,5 +1,21 @@
 # Murror Progress
 
+## 2026-10-02 (PDT): Build 511 to TestFlight, OTA proven, exact place in Maps, 510 board sweep
+
+Driver: Debug session (Claude) working the Build 510 test board against production. Full write-up: `docs/plans/2026-10-02-build-511-ota-maps-and-fixes.md`.
+
+### Key accomplishments
+- **Build 511 in Early Access** (trunk `ed482e9b`): RevenueCat 10.3.0 (Xcode 27 builds again), chat sounds, and 14 fixes from the 510 board. First archive with Xcode 27 + cloud signing from the vinhtran Mac; VALID, attached, beta review auto-approved.
+- **Exact place in Google Maps**: viasr returns the matched Google place id, murror-api stores it (migration on prod sgp1), app opens `query_place_id`. Live on both backends; app part in the next build.
+- **OTA proven end to end on Staging** (prompt, apply, new text rendered). OTA asset sizes fixed for future hotfixes (#1907). Rule: no Production OTA on 2.0.0 until most phones run 511+.
+- **viasr #829** fixed in production: Next Steps / Perspective cards sometimes stored the model asking for context; the user turn now carries the conversation, and a guard never stores such replies.
+- **Settings CPU** (#1908): Home's galaxy no longer animates under Settings sub-screens (3-4% -> 0.1%, 28% -> 0.2% after a tap).
+
+### Operating notes
+- Every prod migration must go to the DB Migration session (prod replicates to the new US Supabase, rows only).
+- Promote checklist: snapshot prod setting NAMES before and after (110 today, identical every time).
+- Never use git stash for before/after comparisons; use a detached scratch worktree.
+
 ## 2026-06-11 (PDT) — Staging web app: the log view becomes deep chat, 5 QA batches, a backend emotion fix, the voice diary ported, and a persona showcase world
 
 Driver: Astro — iterative QA on the staging web app (`apps/web-client`, staging.app.murror.app). Astro tested in rounds and sent findings with screenshots; each batch was root-caused against the MOBILE source (MurrorMobile is always ground truth), fixed, gate-checked (tsc + full vitest), harness-verified end-to-end against live staging, deployed (CI image -> helm, nsp-staging-murror), and logged (PARITY_LOOP_LOG.md + Notion Engineering Log). Staging only; production untouched. 7 web deploys (helm rev 78-84), 1 viasr backend PR, 4 showcase accounts.
