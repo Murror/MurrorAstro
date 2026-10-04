@@ -1,5 +1,19 @@
 # Murror Progress
 
+## 2026-10-03 (PDT): Build 512 out, aurora pause, chat place ideas never repeat a planned venue
+
+Driver: Debug session (Claude) working the Build 512 test board against production. Full write-up: `docs/plans/2026-10-03-build-512-chat-venue-and-send-guard.md`.
+
+### Key accomplishments
+- **Build 512 in Early Access** (trunk `633fae5c`): FAB ring matches the nav, Dive Deeper open lag and Home/Galaxy/onboarding frame CPU, draft backup and save-loop fixes, Photos-access message. viasr 832 (Council guard) live.
+- **Dive Deeper aurora rests while dragging** (MurrorMobile 1916): sim scroll CPU median 100% -> 56%. Next build.
+- **Chat place ideas never repeat a planned venue**: murror-api 1224 (generation, chats about a person) and 1226 (SEND, any chat) live in prod (rev 117, 118); app card "You and {name} already have this place." + OPEN PLAN on trunk (MurrorMobile 1918). Root cause: 1 of 4 place-idea makers missed the 24 Sep avoid rule.
+- **Streak ring** row passed on both sims (ring follows the plan day, moves on reschedule).
+
+### Operating notes
+- murror-api promotions: squash with `[skip ci]`, dispatch staging (boot check), merge staging -> production, dispatch production; verify revision, change-cause, setting names (48/48) and the shipped code in the pod. Tell the DB Migration session before and after.
+- 1226/1918 end-to-end sim check is due 4 Oct before 12:02 PM PDT (the Marugame plan is live until then).
+
 ## 2026-10-02 (PDT): Build 511 to TestFlight, OTA proven, exact place in Maps, 510 board sweep
 
 Driver: Debug session (Claude) working the Build 510 test board against production. Full write-up: `docs/plans/2026-10-02-build-511-ota-maps-and-fixes.md`.
