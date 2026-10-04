@@ -1,71 +1,65 @@
-# WHO-5 + UCLA-3, Plan 1 of 4: murror-api foundation (ships dark)
+# Wellbeing check-in, Plan 1 of 4: murror-api foundation (ships dark)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give murror-api everything the new check-in needs:
-- instrument scoring;
-- storage;
-- a global switch;
-- consent;
-- endpoints;
-- the study export.
+**Goal:** Give murror-api everything the new check-in needs. With the switch at `phq9_gad7`, every existing behaviour is unchanged. The check-in has four parts:
+- Murror's own 6-question wellbeing questionnaire;
+- the ONS life-satisfaction question (a reference point);
+- UCLA-3;
+- the ONS direct loneliness question.
 
-With the switch at `phq9_gad7`, every existing behaviour is unchanged.
+The work covers scoring, trend and support-card rules, storage, a global switch, consent, endpoints and the study export.
 
-**Architecture:** A new bounded context, `src/assessment/`, with the repo's usual layout: domain, application, infrastructure and presentation.
-- **Scoring and due-date rules** are pure functions in `domain/`, so they are tested without a database.
+**Architecture:** A new bounded context, `src/assessment/`, with the usual domain / application / infrastructure / presentation layout.
+- **Pure functions in `domain/`:** scoring, trend words, the support card, and due dates. They are tested without a database.
 - **Three new `murror_api` tables:**
   - `assessment_responses`;
   - `research_consents`;
   - `assessment_settings`, a single row holding the switch.
-- **Profile and bootstrap integration:** the three existing check-in-due sites read the switch. When it is `who5_ucla3`, they tell older app builds "no check-in due".
+- **Existing check-in-due sites:** all three read the switch. When it is `wellbeing_v1`, they tell older app builds that nothing is due.
 
 **Tech Stack:** NestJS 11, Prisma 6 (`schema.murror.prisma`), class-validator, Jest, pnpm.
 
-**Spec:** `Murror-docs/docs/plans/2026-10-04-who5-ucla3-primary-measure-design.md`. Read sections 5, 6.1, 6.2, 8, 10 and 11 before starting.
+**Spec:** `Murror-docs/docs/plans/2026-10-04-wellbeing-check-in-design.md`. Read sections 5, 6.1, 6.2, 8, 10 and 11 first.
 
-**The other plans (written after this one merges, because they consume its interfaces):**
-- Plan 2: viasr-api (notification tone, prompt claim, persona).
-- Plan 3: MurrorMobile + murror-platform (one build).
-- Plan 4: safety evidence, then the flip.
+**Next plans** (written after this one merges, because they consume its interfaces):
+- Plan 2: viasr-api.
+- Plan 3: MurrorMobile + murror-platform.
+- Plan 4: safety evidence and the flip.
 
 ## Global Constraints
 
-- **Repo and branch:**
-  - Work in `prod/murror-api`.
-  - Branch `feat/assessment-who5-ucla3`, cut from `origin/staging`.
-  - The PR targets `staging`.
-  - Never push to `main`, `staging` or `production`.
-- **Dark ship:** with `assessment_settings.active_instrument_set = 'PHQ9_GAD7'`:
-  - every existing response body is byte-identical to today;
-  - every existing test still passes unchanged.
-- **Migrations take three files** (memory: `reference_murror_api_production_migration_set_two_keys.md`):
+- **Branch and PR:** work in `prod/wt-assessment-api` on branch `feat/assessment-who5-ucla3`, cut from `origin/staging` at 230fff44. The PR targets `staging`. Never push to `main`, `staging` or `production`. (The branch name predates the switch away from WHO-5, so keep it to avoid churn.)
+- **Dark ship:** with `assessment_settings.active_instrument_set = 'PHQ9_GAD7'`, every existing response body is byte-identical to today, and every existing test passes unchanged. The staging baseline before this work: **690 suites, 8879 tests passed** (15 suites and 151 tests skipped).
+- **Migrations take three files:**
   - `prisma/migrations/<name>/migration.sql` plus the schema change;
   - `scripts/release/production-migration-set.json` (`includePending`);
   - `test/production-non-galaxy-migrations.contract.sh` (`expectedIncluded`).
   - Run every `test/*.contract.sh` locally.
-- **Enums:** Prisma enum values are UPPERCASE with no `@map`, matching `DailyNoteKind` and `AiProcessingChoice`. Wire values are lowercase strings, mapped in the repository.
+- **Enums:** Prisma enum values are UPPERCASE with no `@map`, like `DailyNoteKind`. Wire values are lowercase strings, mapped in the repository.
 - **Copy:**
-  - No em dashes in any string.
-  - English only.
-  - Item wording is copied exactly from section 5 of the spec. Task 1, step 0 verifies it against the primary sources.
+  - No em dashes in any string. English only.
+  - Item wording is copied exactly from spec section 5.
+  - No `MURROR_WB` item may contain WHO-5 wording; a test guards this.
+- **What the user sees:** the submit response carries **no scores**, only `trend` and `showSupportCard`.
 - **Commits:**
   - Conventional Commits, header 72 characters or fewer.
-  - **No `#123` anywhere in a commit body** (commitlint reads it as a footer).
+  - **No `#123` in any commit body.**
   - End every commit with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- **Errors:** never swallow an error. A missing settings row means legacy (`phq9_gad7`); a database error propagates.
+- **Errors:** never swallowed. A missing settings row means legacy; a database error propagates.
 - **Privacy:** no score, band or answer in any log line, Sentry payload, PostHog event or push payload.
 - **CI costs $0:**
-  - Run `pnpm test`, `pnpm type-check`, `pnpm lint`, `pnpm format-check` and every `test/*.contract.sh` locally before the single push.
-  - CI is label-gated (`run-ci`). Do not add the label without Astro.
+  - Run `pnpm test`, `pnpm type-check`, `pnpm lint`, `pnpm format-check` and all contracts locally before the single push.
+  - The `run-ci` label needs Astro.
+- **Codex sandbox:** it cannot write the worktree's shared `.git` (index.lock EPERM). Codex leaves its changes uncommitted, and Claude reviews and commits each task. Use `--watchman=false` for jest inside the sandbox.
 
 ## Review Focus
 
-1. **Double-submit:** a person taps Submit twice, or the request is retried after a timeout. Expected: one check-in is stored, and both calls return the same result. Pinned by the `checkInId` idempotency test in Task 4 and the uuid DTO test in Task 6.
-2. **Malformed answers:** strings (`"3"`), decimals (`2.5`), out-of-range values (`6`, `0` on UCLA-3), missing or extra items. Expected: 400 `ASSESSMENT_ANSWERS_INVALID`, and nothing stored. Pinned in Tasks 1 and 6.
-3. **The exact 14-day boundary:** a check-in exactly 14 days ago. Expected: due (14 days or more). One millisecond less is not due. Pinned in Task 3.
-4. **The switch flipped twice** (who5, back to phq9, back to who5). Expected: the second flip to who5 opens a new baseline for everyone, and flipping to the value already set changes nothing. Pinned in Tasks 2 and 3.
-5. **A missing settings row** (fresh database, or a test fixture). Expected: legacy behaviour, never `who5_ucla3`. Pinned in Task 2.
+1. **Double-submit:** a person taps Submit twice, or the request is retried after a timeout. One check-in (4 rows) must be stored, and both calls must return the same result. Pinned in Task 4 (service) and Task 6 (uuid DTO).
+2. **Malformed answers:** strings, decimals, out of range (`5` on a 0-4 item, `11` on life satisfaction, `0` on UCLA-3 or the direct loneliness question), a missing instrument, a missing or extra item. Expected: 400 `ASSESSMENT_ANSWERS_INVALID` and nothing stored. Pinned in Tasks 1, 4 and 6.
+3. **Trend and support boundaries:** a change of exactly ±10 is `about_same`; ±11 changes the word. A score of exactly 25 shows the card, and so does a drop of exactly 30. Pinned in Task 3.
+4. **The exact 14-day boundary, and a switch flipped twice:** due at 14 days, not due 1 ms short of it. A re-flip opens a new baseline; setting the value already set changes nothing. Pinned in Tasks 2 and 3.
+5. **A missing settings row:** the result is legacy behaviour, never `wellbeing_v1`. Pinned in Task 2.
 
 ---
 
@@ -73,26 +67,18 @@ With the switch at `phq9_gad7`, every existing behaviour is unchanged.
 
 | File | Responsibility |
 |---|---|
-| `src/assessment/domain/instruments.ts` | WHO-5 / UCLA-3 definitions, answer validation, scoring |
-| `src/assessment/domain/instruments.spec.ts` | Scoring, direction and validation tests |
-| `src/assessment/domain/check-in-state.ts` | Pure due / baseline / consent rules |
-| `src/assessment/domain/check-in-state.spec.ts` | Time-boundary tests |
-| `src/assessment/domain/assessment.repository.interface.ts` | Repository port and its types |
-| `src/assessment/infrastructure/assessment.repository.ts` | Prisma implementation |
-| `src/assessment/infrastructure/assessment.repository.spec.ts` | Settings-default and enum-mapping tests |
-| `src/assessment/application/assessment.service.ts` | Use cases: settings, state, questions, submit, history, consent, export |
-| `src/assessment/application/assessment.service.spec.ts` | Use-case tests with an in-memory repository |
-| `src/assessment/presentation/assessment.controller.ts` | `/v1/assessments/*` (user) |
-| `src/assessment/presentation/assessment-admin.controller.ts` | `/v1/admin/assessments/*` (admin key) |
-| `src/assessment/presentation/dto/*.ts` | Request DTOs |
-| `src/assessment/assessment.module.ts` | Wiring; exports `AssessmentService` |
-| `src/app.module.ts` | Imports `AssessmentModule` |
-| `prisma/schema.murror.prisma` | Three models, two enums, User back-relations |
-| `prisma/migrations/20261004120000_add_assessments/migration.sql` | DDL plus the seed settings row |
-| `scripts/release/production-migration-set.json`, `test/production-non-galaxy-migrations.contract.sh` | Migration declarations |
+| `src/assessment/domain/instruments.ts` (+ spec) | Definitions for the 4 instruments, validation, scoring |
+| `src/assessment/domain/result-rules.ts` (+ spec) | Trend words and the support-card rule |
+| `src/assessment/domain/check-in-state.ts` (+ spec) | Due, baseline and consent rules |
+| `src/assessment/domain/assessment.repository.interface.ts` | The repository port and its types |
+| `src/assessment/infrastructure/assessment.repository.ts` (+ spec) | The Prisma implementation |
+| `src/assessment/application/assessment.service.ts` (+ spec) | Use cases |
+| `src/assessment/presentation/*.controller.ts`, `dto/*.ts` (+ http spec) | User and admin endpoints |
+| `src/assessment/assessment.module.ts`, `src/app.module.ts` | Wiring |
+| `prisma/schema.murror.prisma`, `prisma/migrations/20261004120000_add_assessments/migration.sql`, the manifest and the contract | Schema |
 | `src/user-profile/application/services/account-deletion.registry.ts` (+ snapshot spec) | Deletion coverage |
-| `src/user-profile/user-profile.service.ts` (2 sites), `src/user-profile/application/use-cases/bootstrap-app.use-case.ts` (1 site), `src/user-profile/dto/user-profile-response.dto.ts` | Switch-aware check-in flags |
-| `src/common/utils/sentry-scrub.util.spec.ts` | Proves score keys are dropped |
+| `src/user-profile/user-profile.service.ts` (2 sites), `.../use-cases/bootstrap-app.use-case.ts` (1 site), `dto/user-profile-response.dto.ts`, `user-profile.module.ts` | Switch-aware flags |
+| `src/common/utils/sentry-scrub.util.spec.ts` | Proves scores are dropped |
 
 ---
 
@@ -104,102 +90,104 @@ With the switch at `phq9_gad7`, every existing behaviour is unchanged.
 
 **Interfaces:**
 - Produces:
-  - `type Instrument = 'WHO5' | 'UCLA3'`
-  - `type InstrumentSet = 'phq9_gad7' | 'who5_ucla3'`
+  - `type Instrument = 'MURROR_WB' | 'ONS_LIFESAT' | 'UCLA3' | 'ONS_LONELY'`
+  - `type InstrumentSet = 'phq9_gad7' | 'wellbeing_v1'`
+  - `type InstrumentBand`
+  - `PRIMARY_INSTRUMENT = 'MURROR_WB'`
+  - `INSTRUMENT_ORDER: readonly Instrument[]`
   - `INSTRUMENTS: Record<Instrument, InstrumentDefinition>`
-  - `validateAnswers(instrument, answers: unknown): Record<string, number>`, which throws `InvalidAnswersError`
-  - `scoreInstrument(instrument, answers: Record<string, number>): InstrumentScore`
-  - `INSTRUMENT_ORDER: readonly Instrument[] = ['WHO5', 'UCLA3']`
-
-- [ ] **Step 0: Verify the item wording and licensing (gate)**
-
-Check the WHO-5 text and anchors against the Psychiatric Centre North Zealand WHO-5 page. Check UCLA-3 against Hughes et al. 2004 (*Research on Aging* 26(6)). Record both sources and the licence terms in the PR description. If either licence forbids in-app commercial use, stop and tell Astro. Do not continue to Step 1.
+  - `validateAnswers(instrument, answers: unknown): Record<string, number>` (throws `InvalidAnswersError`)
+  - `scoreInstrument(instrument, answers): InstrumentScore`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
 // src/assessment/domain/instruments.spec.ts
 import {
+  INSTRUMENT_ORDER,
   INSTRUMENTS,
   InvalidAnswersError,
   scoreInstrument,
   validateAnswers,
 } from './instruments';
 
-const who5 = (v: number[]) =>
-  Object.fromEntries(v.map((n, i) => [`who5_${i + 1}`, n]));
-const ucla3 = (v: number[]) =>
-  Object.fromEntries(v.map((n, i) => [`ucla3_${i + 1}`, n]));
+const mw = (v: number[]) => Object.fromEntries(v.map((n, i) => [`mw_${i + 1}`, n]));
+const ucla3 = (v: number[]) => Object.fromEntries(v.map((n, i) => [`ucla3_${i + 1}`, n]));
 
-describe('WHO-5 scoring', () => {
-  it('scores all-fives as 100 percent, wellbeing fine, higher is better', () => {
-    expect(scoreInstrument('WHO5', who5([5, 5, 5, 5, 5]))).toEqual({
-      instrument: 'WHO5',
-      instrumentVersion: 'who5-1998',
-      rawScore: 25,
+describe('Murror wellbeing (MURROR_WB)', () => {
+  it('scores all "completely true" as 100, ok, higher is better', () => {
+    expect(scoreInstrument('MURROR_WB', mw([4, 4, 4, 4, 4, 4]))).toEqual({
+      instrument: 'MURROR_WB',
+      instrumentVersion: 'murror-wellbeing-v1',
+      rawScore: 24,
       normalizedScore: 100,
       higherIsBetter: true,
-      band: 'fine',
+      band: 'ok',
     });
   });
 
-  it('a person reporting more good days scores HIGHER, never lower', () => {
-    const worse = scoreInstrument('WHO5', who5([1, 1, 1, 1, 1]));
-    const better = scoreInstrument('WHO5', who5([4, 4, 4, 4, 4]));
+  it('a person answering "more true" scores HIGHER, never lower', () => {
+    const worse = scoreInstrument('MURROR_WB', mw([1, 1, 1, 1, 1, 1]));
+    const better = scoreInstrument('MURROR_WB', mw([3, 3, 3, 3, 3, 3]));
     expect(better.normalizedScore!).toBeGreaterThan(worse.normalizedScore!);
   });
 
-  it('bands 28 percent as low (support card) and 32 as below_average', () => {
-    expect(scoreInstrument('WHO5', who5([2, 2, 1, 1, 1])).band).toBe('low'); // raw 7 = 28
-    expect(scoreInstrument('WHO5', who5([2, 2, 2, 1, 1])).band).toBe(
-      'below_average',
-    ); // raw 8 = 32
+  it('bands 25 as low and 29 as ok', () => {
+    expect(scoreInstrument('MURROR_WB', mw([1, 1, 1, 1, 1, 1]))).toMatchObject({normalizedScore: 25, band: 'low'});
+    expect(scoreInstrument('MURROR_WB', mw([2, 1, 1, 1, 1, 1]))).toMatchObject({normalizedScore: 29, band: 'ok'});
   });
 
-  it('bands 48 as below_average and 52 as fine', () => {
-    expect(scoreInstrument('WHO5', who5([3, 3, 2, 2, 2])).band).toBe(
-      'below_average',
-    ); // raw 12 = 48
-    expect(scoreInstrument('WHO5', who5([3, 3, 3, 2, 2])).band).toBe('fine'); // raw 13 = 52
+  it('contains no WHO-5 wording in any item', () => {
+    const text = INSTRUMENTS.MURROR_WB.items.map(i => i.text.toLowerCase()).join(' ');
+    for (const word of ['cheerful', 'spirits', 'calm', 'relaxed', 'active', 'vigorous', 'fresh', 'rested', 'interest']) {
+      expect(text).not.toContain(word);
+    }
   });
 });
 
-describe('UCLA-3 scoring', () => {
-  it('scores all "often" as 9, lonely, higher is NOT better, no percentage', () => {
-    expect(scoreInstrument('UCLA3', ucla3([3, 3, 3]))).toEqual({
-      instrument: 'UCLA3',
-      instrumentVersion: 'ucla3-hughes2004-3pt',
-      rawScore: 9,
-      normalizedScore: null,
-      higherIsBetter: false,
-      band: 'lonely',
+describe('ONS life satisfaction (ONS_LIFESAT)', () => {
+  it.each([
+    [0, 'low'], [4, 'low'], [5, 'medium'], [6, 'medium'], [7, 'high'], [8, 'high'], [9, 'very_high'], [10, 'very_high'],
+  ])('bands %i as %s, with no percentage', (v, band) => {
+    expect(scoreInstrument('ONS_LIFESAT', {ons_lifesat_1: v})).toMatchObject({
+      rawScore: v, normalizedScore: null, higherIsBetter: true, band,
     });
   });
+});
 
-  it('puts the lonely line at 6: 5 is not_lonely, 6 is lonely', () => {
-    expect(scoreInstrument('UCLA3', ucla3([2, 2, 1])).band).toBe('not_lonely');
+describe('loneliness', () => {
+  it('UCLA-3: higher is lonelier, 5 not_lonely, 6 lonely', () => {
+    expect(scoreInstrument('UCLA3', ucla3([2, 2, 1]))).toMatchObject({rawScore: 5, band: 'not_lonely', higherIsBetter: false});
     expect(scoreInstrument('UCLA3', ucla3([2, 2, 2])).band).toBe('lonely');
+  });
+
+  it('ONS direct: only "often or always" (5) is often_lonely', () => {
+    expect(scoreInstrument('ONS_LONELY', {ons_lonely_1: 4}).band).toBe('not_often_lonely');
+    expect(scoreInstrument('ONS_LONELY', {ons_lonely_1: 5})).toMatchObject({band: 'often_lonely', higherIsBetter: false});
   });
 });
 
 describe('validateAnswers', () => {
   it.each([
-    ['a string', {...who5([1, 1, 1, 1, 1]), who5_1: '3'}],
-    ['a decimal', {...who5([1, 1, 1, 1, 1]), who5_2: 2.5}],
-    ['above range', {...who5([1, 1, 1, 1, 1]), who5_3: 6}],
-    ['below range', {...who5([1, 1, 1, 1, 1]), who5_3: -1}],
-    ['a missing item', {who5_1: 1, who5_2: 1, who5_3: 1, who5_4: 1}],
-    ['an extra item', {...who5([1, 1, 1, 1, 1]), who5_6: 1}],
-    ['not an object', [1, 1, 1, 1, 1]],
+    ['a string', {...mw([1, 1, 1, 1, 1, 1]), mw_1: '3'}],
+    ['a decimal', {...mw([1, 1, 1, 1, 1, 1]), mw_2: 2.5}],
+    ['above range', {...mw([1, 1, 1, 1, 1, 1]), mw_3: 5}],
+    ['below range', {...mw([1, 1, 1, 1, 1, 1]), mw_3: -1}],
+    ['a missing item', {mw_1: 1, mw_2: 1, mw_3: 1, mw_4: 1, mw_5: 1}],
+    ['an extra item', {...mw([1, 1, 1, 1, 1, 1]), mw_7: 1}],
+    ['an array', [1, 1, 1, 1, 1, 1]],
     ['null', null],
-  ])('rejects WHO-5 answers with %s', (_label, answers) => {
-    expect(() => validateAnswers('WHO5', answers)).toThrow(InvalidAnswersError);
+    ['undefined', undefined],
+  ])('rejects MURROR_WB answers with %s', (_label, answers) => {
+    expect(() => validateAnswers('MURROR_WB', answers)).toThrow(InvalidAnswersError);
   });
 
-  it('rejects 0 on UCLA-3, whose scale starts at 1', () => {
-    expect(() => validateAnswers('UCLA3', ucla3([0, 1, 1]))).toThrow(
-      InvalidAnswersError,
-    );
+  it.each([
+    ['UCLA3', ucla3([0, 1, 1])],
+    ['ONS_LIFESAT', {ons_lifesat_1: 11}],
+    ['ONS_LONELY', {ons_lonely_1: 0}],
+  ] as const)('rejects out-of-range %s', (instrument, answers) => {
+    expect(() => validateAnswers(instrument, answers)).toThrow(InvalidAnswersError);
   });
 
   it('accepts a complete, in-range set and returns it unchanged', () => {
@@ -208,11 +196,16 @@ describe('validateAnswers', () => {
 });
 
 describe('definitions', () => {
-  it('has 5 WHO-5 items scored 0-5 and 3 UCLA-3 items scored 1-3', () => {
-    expect(INSTRUMENTS.WHO5.items).toHaveLength(5);
-    expect(INSTRUMENTS.WHO5.options.map(o => o.value)).toEqual([0, 1, 2, 3, 4, 5]);
-    expect(INSTRUMENTS.UCLA3.items).toHaveLength(3);
+  it('asks wellbeing, then life satisfaction, then UCLA-3, then the direct loneliness question', () => {
+    expect(INSTRUMENT_ORDER).toEqual(['MURROR_WB', 'ONS_LIFESAT', 'UCLA3', 'ONS_LONELY']);
+  });
+
+  it('has the right item counts and option ranges', () => {
+    expect(INSTRUMENTS.MURROR_WB.items).toHaveLength(6);
+    expect(INSTRUMENTS.MURROR_WB.options.map(o => o.value)).toEqual([0, 1, 2, 3, 4]);
+    expect(INSTRUMENTS.ONS_LIFESAT.options.map(o => o.value)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(INSTRUMENTS.UCLA3.options.map(o => o.value)).toEqual([1, 2, 3]);
+    expect(INSTRUMENTS.ONS_LONELY.options.map(o => o.value)).toEqual([1, 2, 3, 4, 5]);
   });
 
   it('contains no em dash in any user-facing string', () => {
@@ -230,18 +223,23 @@ Expected: FAIL, "Cannot find module './instruments'".
 
 ```ts
 // src/assessment/domain/instruments.ts
-export type Instrument = 'WHO5' | 'UCLA3';
-export type InstrumentSet = 'phq9_gad7' | 'who5_ucla3';
+export type Instrument = 'MURROR_WB' | 'ONS_LIFESAT' | 'UCLA3' | 'ONS_LONELY';
+export type InstrumentSet = 'phq9_gad7' | 'wellbeing_v1';
 export type InstrumentBand =
   | 'low'
-  | 'below_average'
-  | 'fine'
+  | 'ok'
+  | 'medium'
+  | 'high'
+  | 'very_high'
   | 'lonely'
-  | 'not_lonely';
+  | 'not_lonely'
+  | 'often_lonely'
+  | 'not_often_lonely';
 
 export interface InstrumentDefinition {
   instrument: Instrument;
   version: string;
+  /** Shown above the items. Empty when each item is a full question. */
   stem: string;
   items: readonly {key: string; text: string}[];
   options: readonly {value: number; label: string}[];
@@ -252,7 +250,7 @@ export interface InstrumentScore {
   instrument: Instrument;
   instrumentVersion: string;
   rawScore: number;
-  /** WHO-5 percentage 0-100. Null for UCLA-3, which has no percentage form. */
+  /** 0-100 for MURROR_WB only. Null for every other instrument. */
   normalizedScore: number | null;
   higherIsBetter: boolean;
   band: InstrumentBand;
@@ -265,33 +263,47 @@ export class InvalidAnswersError extends Error {
   }
 }
 
-export const INSTRUMENT_ORDER: readonly Instrument[] = ['WHO5', 'UCLA3'];
+export const PRIMARY_INSTRUMENT: Instrument = 'MURROR_WB';
 
-// Wording is the published instrument text, used verbatim (spec section 5).
-// House tone rules apply to the copy AROUND the items, never to the items.
+// Wellbeing first, loneliness last so it does not colour the wellbeing answers;
+// UCLA-3 before the direct question so the word "lonely" is not primed.
+export const INSTRUMENT_ORDER: readonly Instrument[] = ['MURROR_WB', 'ONS_LIFESAT', 'UCLA3', 'ONS_LONELY'];
+
+const zeroToTen = Array.from({length: 11}, (_, v) => ({
+  value: v,
+  label: v === 0 ? 'Not at all' : v === 10 ? 'Completely' : String(v),
+}));
+
+// Wording is fixed for the study (spec section 5). MURROR_WB is Murror's own
+// original questionnaire; it must never be reworded towards WHO-5 or WEMWBS.
 export const INSTRUMENTS: Record<Instrument, InstrumentDefinition> = {
-  WHO5: {
-    instrument: 'WHO5',
-    version: 'who5-1998',
-    stem: 'Over the last two weeks',
+  MURROR_WB: {
+    instrument: 'MURROR_WB',
+    version: 'murror-wellbeing-v1',
+    stem: 'Thinking about the past 14 days, how true has each of these been for you?',
     items: [
-      {key: 'who5_1', text: 'I have felt cheerful and in good spirits'},
-      {key: 'who5_2', text: 'I have felt calm and relaxed'},
-      {key: 'who5_3', text: 'I have felt active and vigorous'},
-      {key: 'who5_4', text: 'I woke up feeling fresh and rested'},
-      {
-        key: 'who5_5',
-        text: 'My daily life has been filled with things that interest me',
-      },
+      {key: 'mw_1', text: 'When I felt something strongly, I could put it into words.'},
+      {key: 'mw_2', text: 'When something upset me, I found my way back to feeling okay.'},
+      {key: 'mw_3', text: 'The good moments outweighed the hard ones.'},
+      {key: 'mw_4', text: 'When things went wrong, I spoke to myself the way I would to a friend.'},
+      {key: 'mw_5', text: 'I told someone in my life how I was really doing.'},
+      {key: 'mw_6', text: 'When something weighed on me, I could work through it myself or with people I know.'},
     ],
     options: [
-      {value: 0, label: 'At no time'},
-      {value: 1, label: 'Some of the time'},
-      {value: 2, label: 'Less than half of the time'},
-      {value: 3, label: 'More than half of the time'},
-      {value: 4, label: 'Most of the time'},
-      {value: 5, label: 'All of the time'},
+      {value: 0, label: 'Not at all true'},
+      {value: 1, label: 'Slightly true'},
+      {value: 2, label: 'Somewhat true'},
+      {value: 3, label: 'Mostly true'},
+      {value: 4, label: 'Completely true'},
     ],
+    higherIsBetter: true,
+  },
+  ONS_LIFESAT: {
+    instrument: 'ONS_LIFESAT',
+    version: 'ons4-life-satisfaction',
+    stem: '',
+    items: [{key: 'ons_lifesat_1', text: 'Overall, how satisfied are you with your life nowadays?'}],
+    options: zeroToTen,
     higherIsBetter: true,
   },
   UCLA3: {
@@ -304,18 +316,29 @@ export const INSTRUMENTS: Record<Instrument, InstrumentDefinition> = {
       {key: 'ucla3_3', text: 'isolated from others?'},
     ],
     options: [
-      {value: 1, label: 'Hardly ever'},
+      {value: 1, label: 'Hardly ever or never'},
       {value: 2, label: 'Some of the time'},
       {value: 3, label: 'Often'},
     ],
     higherIsBetter: false,
   },
+  ONS_LONELY: {
+    instrument: 'ONS_LONELY',
+    version: 'ons-loneliness-direct-2018',
+    stem: '',
+    items: [{key: 'ons_lonely_1', text: 'How often do you feel lonely?'}],
+    options: [
+      {value: 1, label: 'Never'},
+      {value: 2, label: 'Hardly ever'},
+      {value: 3, label: 'Occasionally'},
+      {value: 4, label: 'Some of the time'},
+      {value: 5, label: 'Often or always'},
+    ],
+    higherIsBetter: false,
+  },
 };
 
-export function validateAnswers(
-  instrument: Instrument,
-  answers: unknown,
-): Record<string, number> {
+export function validateAnswers(instrument: Instrument, answers: unknown): Record<string, number> {
   const def = INSTRUMENTS[instrument];
   if (answers === null || typeof answers !== 'object' || Array.isArray(answers)) {
     throw new InvalidAnswersError(instrument, 'answers must be an object');
@@ -326,8 +349,9 @@ export function validateAnswers(
   if (keys.length !== expected.length || !expected.every(k => k in record)) {
     throw new InvalidAnswersError(instrument, 'every item, and only those items');
   }
-  const min = Math.min(...def.options.map(o => o.value));
-  const max = Math.max(...def.options.map(o => o.value));
+  const values = def.options.map(o => o.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
   for (const key of expected) {
     const v = record[key];
     if (typeof v !== 'number' || !Number.isInteger(v) || v < min || v > max) {
@@ -337,51 +361,43 @@ export function validateAnswers(
   return record as Record<string, number>;
 }
 
-export function scoreInstrument(
-  instrument: Instrument,
-  answers: Record<string, number>,
-): InstrumentScore {
+export function scoreInstrument(instrument: Instrument, answers: Record<string, number>): InstrumentScore {
   const def = INSTRUMENTS[instrument];
   const rawScore = def.items.reduce((sum, item) => sum + answers[item.key], 0);
-  if (instrument === 'WHO5') {
-    const normalizedScore = rawScore * 4;
-    return {
-      instrument,
-      instrumentVersion: def.version,
-      rawScore,
-      normalizedScore,
-      higherIsBetter: true,
-      band:
-        normalizedScore <= 28 ? 'low' : normalizedScore < 50 ? 'below_average' : 'fine',
-    };
+  const base = {instrument, instrumentVersion: def.version, rawScore, higherIsBetter: def.higherIsBetter};
+  switch (instrument) {
+    case 'MURROR_WB': {
+      const normalizedScore = Math.round((rawScore / 24) * 100);
+      return {...base, normalizedScore, band: normalizedScore <= 25 ? 'low' : 'ok'};
+    }
+    case 'ONS_LIFESAT':
+      return {
+        ...base,
+        normalizedScore: null,
+        band: rawScore <= 4 ? 'low' : rawScore <= 6 ? 'medium' : rawScore <= 8 ? 'high' : 'very_high',
+      };
+    case 'UCLA3':
+      return {...base, normalizedScore: null, band: rawScore >= 6 ? 'lonely' : 'not_lonely'};
+    case 'ONS_LONELY':
+      return {...base, normalizedScore: null, band: rawScore === 5 ? 'often_lonely' : 'not_often_lonely'};
   }
-  return {
-    instrument,
-    instrumentVersion: def.version,
-    rawScore,
-    normalizedScore: null,
-    higherIsBetter: false,
-    band: rawScore >= 6 ? 'lonely' : 'not_lonely',
-  };
 }
 ```
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm test src/assessment/domain/instruments.spec.ts`
-Expected: PASS, all tests.
+Expected: PASS.
 
 - [ ] **Step 5: Mutate the behaviour and prove a named test dies**
 
-Change the WHO-5 percentage line to `const normalizedScore = 100 - rawScore * 4;`. That is the direction bug, written in different words from the guard. Run the spec. Expected: "a person reporting more good days scores HIGHER, never lower" FAILS.
+Change the `MURROR_WB` line to `const normalizedScore = 100 - Math.round((rawScore / 24) * 100);`. Expected: "a person answering \"more true\" scores HIGHER, never lower" FAILS. Restore and re-run (PASS).
 
-Then restore with `git checkout -- src/assessment/domain/instruments.ts` and re-run. Expected: PASS.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit** (Claude, after review)
 
 ```bash
 git add src/assessment/domain/instruments.ts src/assessment/domain/instruments.spec.ts
-git commit -m "feat(assessment): WHO-5 and UCLA-3 definitions and scoring"
+git commit -m "feat(assessment): wellbeing, life satisfaction and loneliness scoring"
 ```
 
 ---
@@ -389,29 +405,29 @@ git commit -m "feat(assessment): WHO-5 and UCLA-3 definitions and scoring"
 ### Task 2: Schema, migration, settings repository, deletion registry
 
 **Files:**
-- Modify: `prisma/schema.murror.prisma` (append the models; add back-relations inside `model User`)
+- Modify: `prisma/schema.murror.prisma`, `scripts/release/production-migration-set.json`, `test/production-non-galaxy-migrations.contract.sh`
+- Modify: `src/user-profile/application/services/account-deletion.registry.ts`, `account-deletion.registry-snapshot.spec.ts`
 - Create: `prisma/migrations/20261004120000_add_assessments/migration.sql`
-- Modify: `scripts/release/production-migration-set.json`, `test/production-non-galaxy-migrations.contract.sh`
 - Create: `src/assessment/domain/assessment.repository.interface.ts`, `src/assessment/infrastructure/assessment.repository.ts`
 - Test: `src/assessment/infrastructure/assessment.repository.spec.ts`
-- Modify: `src/user-profile/application/services/account-deletion.registry.ts`, `account-deletion.registry-snapshot.spec.ts`
 
 **Interfaces:**
-- Consumes: `Instrument`, `InstrumentSet`, `InstrumentScore` (Task 1).
+- Consumes: `Instrument`, `InstrumentSet`, `InstrumentBand` (Task 1).
 - Produces:
-  - `ASSESSMENT_REPOSITORY` token, plus `AssessmentRepository` with:
-    - `getSettings(): Promise<AssessmentSettings>`
-    - `setActiveInstrumentSet(set: InstrumentSet, now: Date): Promise<AssessmentSettings>`
-    - `lastResponseAt(userId: string, instrument: Instrument): Promise<Date | null>`
-    - `findCheckIn(userId: string, checkInId: string): Promise<StoredResponse[]>`
-    - `createCheckIn(userId: string, checkInId: string, rows: NewResponse[]): Promise<'created' | 'duplicate'>`
-    - `latestBefore(userId: string, instrument: Instrument, checkInId: string): Promise<StoredResponse | null>`
-    - `listResponses(userId: string): Promise<StoredResponse[]>`
-    - `getConsent(userId: string, studyKey: string): Promise<ConsentRecord | null>`
-    - `saveConsent(record: ConsentRecord): Promise<void>`
-    - `listConsentedResponses(studyKey: string): Promise<Array<StoredResponse & {consent: ConsentRecord}>>`
-  - `AssessmentSettings = {activeInstrumentSet: InstrumentSet; switchedAt: Date | null}`
-  - `LEGACY_SETTINGS: AssessmentSettings = {activeInstrumentSet: 'phq9_gad7', switchedAt: null}`
+  - the `ASSESSMENT_REPOSITORY` token and the `AssessmentRepository` port, with the methods below;
+  - `AssessmentSettings`, `LEGACY_SETTINGS`, `NewResponse`, `StoredResponse`, `ConsentRecord`, `ConsentStatus`;
+  - `PrismaAssessmentRepository`.
+- `AssessmentRepository` methods:
+  - `getSettings()`
+  - `setActiveInstrumentSet(set, now)`
+  - `lastResponseAt(userId, instrument)`
+  - `findCheckIn(userId, checkInId)`
+  - `createCheckIn(userId, checkInId, rows)`, returning `'created' | 'duplicate'`
+  - `latestBefore(userId, instrument, checkInId)`
+  - `listResponses(userId)`
+  - `getConsent(userId, studyKey)`
+  - `saveConsent(record)`
+  - `listConsentedResponses(studyKey)`
 
 - [ ] **Step 1: Write the failing repository tests**
 
@@ -429,47 +445,35 @@ const prismaWith = (row: unknown) =>
   }) as any;
 
 describe('PrismaAssessmentRepository settings', () => {
-  it('a missing settings row means legacy, never who5_ucla3', async () => {
-    const repo = new PrismaAssessmentRepository(prismaWith(null));
-    await expect(repo.getSettings()).resolves.toEqual(LEGACY_SETTINGS);
+  it('a missing settings row means legacy, never wellbeing_v1', async () => {
+    await expect(new PrismaAssessmentRepository(prismaWith(null)).getSettings()).resolves.toEqual(LEGACY_SETTINGS);
   });
 
   it('maps the DB enum to the wire value', async () => {
     const at = new Date('2026-11-01T00:00:00Z');
-    const repo = new PrismaAssessmentRepository(
-      prismaWith({id: 1, activeInstrumentSet: 'WHO5_UCLA3', switchedAt: at}),
-    );
-    await expect(repo.getSettings()).resolves.toEqual({
-      activeInstrumentSet: 'who5_ucla3',
-      switchedAt: at,
-    });
+    const repo = new PrismaAssessmentRepository(prismaWith({id: 1, activeInstrumentSet: 'WELLBEING_V1', switchedAt: at}));
+    await expect(repo.getSettings()).resolves.toEqual({activeInstrumentSet: 'wellbeing_v1', switchedAt: at});
   });
 
   it('a database error propagates instead of falling back', async () => {
     const prisma = prismaWith(null);
     prisma.assessmentSettings.findUnique.mockRejectedValue(new Error('db down'));
-    await expect(new PrismaAssessmentRepository(prisma).getSettings()).rejects.toThrow(
-      'db down',
-    );
+    await expect(new PrismaAssessmentRepository(prisma).getSettings()).rejects.toThrow('db down');
   });
 
-  it('flipping to who5_ucla3 from phq9_gad7 stamps switchedAt with now', async () => {
+  it('flipping to wellbeing_v1 from phq9_gad7 stamps switchedAt with now', async () => {
     const now = new Date('2026-11-01T09:00:00Z');
     const prisma = prismaWith({id: 1, activeInstrumentSet: 'PHQ9_GAD7', switchedAt: null});
-    const result = await new PrismaAssessmentRepository(prisma).setActiveInstrumentSet(
-      'who5_ucla3',
-      now,
-    );
-    expect(result).toEqual({activeInstrumentSet: 'who5_ucla3', switchedAt: now});
+    await expect(new PrismaAssessmentRepository(prisma).setActiveInstrumentSet('wellbeing_v1', now)).resolves.toEqual({
+      activeInstrumentSet: 'wellbeing_v1',
+      switchedAt: now,
+    });
   });
 
   it('setting the value already set changes nothing, keeping the old switchedAt', async () => {
     const first = new Date('2026-11-01T09:00:00Z');
-    const prisma = prismaWith({id: 1, activeInstrumentSet: 'WHO5_UCLA3', switchedAt: first});
-    const result = await new PrismaAssessmentRepository(prisma).setActiveInstrumentSet(
-      'who5_ucla3',
-      new Date('2026-12-01T09:00:00Z'),
-    );
+    const prisma = prismaWith({id: 1, activeInstrumentSet: 'WELLBEING_V1', switchedAt: first});
+    const result = await new PrismaAssessmentRepository(prisma).setActiveInstrumentSet('wellbeing_v1', new Date('2026-12-01T09:00:00Z'));
     expect(result.switchedAt).toEqual(first);
     expect(prisma.assessmentSettings.upsert).not.toHaveBeenCalled();
   });
@@ -487,13 +491,15 @@ Append to `prisma/schema.murror.prisma`:
 
 ```prisma
 enum AssessmentInstrument {
-  WHO5
+  MURROR_WB
+  ONS_LIFESAT
   UCLA3
+  ONS_LONELY
 }
 
 enum AssessmentInstrumentSet {
   PHQ9_GAD7
-  WHO5_UCLA3
+  WELLBEING_V1
 }
 
 enum ResearchConsentStatus {
@@ -506,7 +512,7 @@ enum ResearchConsentStatus {
 model AssessmentSettings {
   id                  Int                     @id @default(1)
   activeInstrumentSet AssessmentInstrumentSet @default(PHQ9_GAD7) @map("active_instrument_set")
-  /// When the set last changed TO WHO5_UCLA3. Opens a new baseline for everyone.
+  /// When the set last changed TO WELLBEING_V1. Opens a new baseline for everyone.
   switchedAt          DateTime?               @map("switched_at") @db.Timestamptz(6)
   updatedAt           DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -517,7 +523,7 @@ model AssessmentSettings {
 model AssessmentResponse {
   id                String               @id @default(uuid())
   userId            String               @map("user_id")
-  /// Client-generated uuid shared by the WHO-5 and UCLA-3 rows of one sitting.
+  /// Client-generated uuid shared by every row of one sitting.
   checkInId         String               @map("check_in_id") @db.Uuid
   instrument        AssessmentInstrument
   instrumentVersion String               @map("instrument_version")
@@ -560,19 +566,22 @@ Inside `model User { ... }`, next to the other relation lists, add:
 
 ```sql
 -- prisma/migrations/20261004120000_add_assessments/migration.sql
--- WHO-5 + UCLA-3 check-in (spec: Murror-docs docs/plans/2026-10-04-who5-ucla3-primary-measure-design.md).
+-- Wellbeing check-in (spec: Murror-docs docs/plans/2026-10-04-wellbeing-check-in-design.md).
 --
 -- Additive only: three enum types, three new tables, one seed row. No change to
 -- any existing table. The seed row is PHQ9_GAD7, so deploying this changes no
 -- behaviour until an admin flips the switch.
+--
+-- PROD: the Singapore-to-US sync uses a fixed table list (publication
+-- murror_move). Tell the DB Migration session the moment this reaches prod.
 --
 -- Enum values are UPPERCASE with no @map, like AiProcessingChoice.
 -- Apply BEFORE deploying the API that reads these tables.
 
 SET lock_timeout = '5s';
 
-CREATE TYPE "murror_api"."AssessmentInstrument" AS ENUM ('WHO5', 'UCLA3');
-CREATE TYPE "murror_api"."AssessmentInstrumentSet" AS ENUM ('PHQ9_GAD7', 'WHO5_UCLA3');
+CREATE TYPE "murror_api"."AssessmentInstrument" AS ENUM ('MURROR_WB', 'ONS_LIFESAT', 'UCLA3', 'ONS_LONELY');
+CREATE TYPE "murror_api"."AssessmentInstrumentSet" AS ENUM ('PHQ9_GAD7', 'WELLBEING_V1');
 CREATE TYPE "murror_api"."ResearchConsentStatus" AS ENUM ('CONSENTED', 'DECLINED', 'WITHDRAWN');
 
 CREATE TABLE IF NOT EXISTS "murror_api"."assessment_settings" (
@@ -623,12 +632,14 @@ CREATE TABLE IF NOT EXISTS "murror_api"."research_consents" (
 );
 ```
 
-- [ ] **Step 5: Declare the migration in the other two files**
+- [ ] **Step 5: Declare the migration in the other two files, then run every contract**
 
-In `scripts/release/production-migration-set.json`, add `"20261004120000_add_assessments"` to `includePending`, keeping the existing order convention. In `test/production-non-galaxy-migrations.contract.sh`, add the same name to `expectedIncluded`.
+Add `"20261004120000_add_assessments"`:
+- to `includePending` in `scripts/release/production-migration-set.json`;
+- to `expectedIncluded` in `test/production-non-galaxy-migrations.contract.sh`.
 
 Run: `for c in test/*.contract.sh; do echo "== $c"; bash "$c" || break; done`
-Expected: every contract prints and exits 0. If `privacy-deletion-migrations` or `privacy-schema-preflight` fails, read its message: it names what a user-bearing table must declare. Satisfy that in Step 7, then re-run.
+Expected: every contract exits 0. If a privacy contract names something a user-bearing table must declare, satisfy it in Step 7 and re-run.
 
 - [ ] **Step 6: Write the repository port and its implementation**
 
@@ -643,10 +654,7 @@ export interface AssessmentSettings {
   switchedAt: Date | null;
 }
 
-export const LEGACY_SETTINGS: AssessmentSettings = {
-  activeInstrumentSet: 'phq9_gad7',
-  switchedAt: null,
-};
+export const LEGACY_SETTINGS: AssessmentSettings = {activeInstrumentSet: 'phq9_gad7', switchedAt: null};
 
 export interface NewResponse {
   instrument: Instrument;
@@ -680,22 +688,12 @@ export interface AssessmentRepository {
   setActiveInstrumentSet(set: InstrumentSet, now: Date): Promise<AssessmentSettings>;
   lastResponseAt(userId: string, instrument: Instrument): Promise<Date | null>;
   findCheckIn(userId: string, checkInId: string): Promise<StoredResponse[]>;
-  createCheckIn(
-    userId: string,
-    checkInId: string,
-    rows: NewResponse[],
-  ): Promise<'created' | 'duplicate'>;
-  latestBefore(
-    userId: string,
-    instrument: Instrument,
-    checkInId: string,
-  ): Promise<StoredResponse | null>;
+  createCheckIn(userId: string, checkInId: string, rows: NewResponse[]): Promise<'created' | 'duplicate'>;
+  latestBefore(userId: string, instrument: Instrument, checkInId: string): Promise<StoredResponse | null>;
   listResponses(userId: string): Promise<StoredResponse[]>;
   getConsent(userId: string, studyKey: string): Promise<ConsentRecord | null>;
   saveConsent(record: ConsentRecord): Promise<void>;
-  listConsentedResponses(
-    studyKey: string,
-  ): Promise<Array<StoredResponse & {consent: ConsentRecord}>>;
+  listConsentedResponses(studyKey: string): Promise<Array<StoredResponse & {consent: ConsentRecord}>>;
 }
 ```
 
@@ -715,21 +713,10 @@ import {
 } from '../domain/assessment.repository.interface';
 import type {Instrument, InstrumentBand, InstrumentSet} from '../domain/instruments';
 
-const SET_TO_DB = {phq9_gad7: 'PHQ9_GAD7', who5_ucla3: 'WHO5_UCLA3'} as const;
-const SET_FROM_DB: Record<string, InstrumentSet> = {
-  PHQ9_GAD7: 'phq9_gad7',
-  WHO5_UCLA3: 'who5_ucla3',
-};
-const STATUS_TO_DB = {
-  consented: 'CONSENTED',
-  declined: 'DECLINED',
-  withdrawn: 'WITHDRAWN',
-} as const;
-const STATUS_FROM_DB = {
-  CONSENTED: 'consented',
-  DECLINED: 'declined',
-  WITHDRAWN: 'withdrawn',
-} as const;
+const SET_TO_DB = {phq9_gad7: 'PHQ9_GAD7', wellbeing_v1: 'WELLBEING_V1'} as const;
+const SET_FROM_DB: Record<string, InstrumentSet> = {PHQ9_GAD7: 'phq9_gad7', WELLBEING_V1: 'wellbeing_v1'};
+const STATUS_TO_DB = {consented: 'CONSENTED', declined: 'DECLINED', withdrawn: 'WITHDRAWN'} as const;
+const STATUS_FROM_DB = {CONSENTED: 'consented', DECLINED: 'declined', WITHDRAWN: 'withdrawn'} as const;
 
 type ResponseRow = {
   userId: string;
@@ -780,28 +767,19 @@ export class PrismaAssessmentRepository implements AssessmentRepository {
   async getSettings(): Promise<AssessmentSettings> {
     const row = await this.prisma.assessmentSettings.findUnique({where: {id: 1}});
     if (!row) return LEGACY_SETTINGS;
-    return {
-      activeInstrumentSet: SET_FROM_DB[row.activeInstrumentSet],
-      switchedAt: row.switchedAt,
-    };
+    return {activeInstrumentSet: SET_FROM_DB[row.activeInstrumentSet], switchedAt: row.switchedAt};
   }
 
-  async setActiveInstrumentSet(
-    set: InstrumentSet,
-    now: Date,
-  ): Promise<AssessmentSettings> {
+  async setActiveInstrumentSet(set: InstrumentSet, now: Date): Promise<AssessmentSettings> {
     const current = await this.getSettings();
     if (current.activeInstrumentSet === set) return current;
-    const switchedAt = set === 'who5_ucla3' ? now : current.switchedAt;
+    const switchedAt = set === 'wellbeing_v1' ? now : current.switchedAt;
     const row = await this.prisma.assessmentSettings.upsert({
       where: {id: 1},
       create: {id: 1, activeInstrumentSet: SET_TO_DB[set], switchedAt},
       update: {activeInstrumentSet: SET_TO_DB[set], switchedAt},
     });
-    return {
-      activeInstrumentSet: SET_FROM_DB[row.activeInstrumentSet],
-      switchedAt: row.switchedAt,
-    };
+    return {activeInstrumentSet: SET_FROM_DB[row.activeInstrumentSet], switchedAt: row.switchedAt};
   }
 
   async lastResponseAt(userId: string, instrument: Instrument) {
@@ -814,14 +792,12 @@ export class PrismaAssessmentRepository implements AssessmentRepository {
   }
 
   async findCheckIn(userId: string, checkInId: string) {
-    const rows = await this.prisma.assessmentResponse.findMany({
-      where: {userId, checkInId},
-    });
-    return rows.map(toStored);
+    return (await this.prisma.assessmentResponse.findMany({where: {userId, checkInId}})).map(toStored);
   }
 
   async createCheckIn(userId: string, checkInId: string, rows: NewResponse[]) {
     try {
+      // One statement, so a check-in is never half stored.
       await this.prisma.assessmentResponse.createMany({
         data: rows.map(r => ({
           userId,
@@ -837,9 +813,7 @@ export class PrismaAssessmentRepository implements AssessmentRepository {
       });
       return 'created' as const;
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        return 'duplicate' as const;
-      }
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return 'duplicate' as const;
       throw e;
     }
   }
@@ -853,17 +827,13 @@ export class PrismaAssessmentRepository implements AssessmentRepository {
   }
 
   async listResponses(userId: string) {
-    const rows = await this.prisma.assessmentResponse.findMany({
-      where: {userId},
-      orderBy: {createdAt: 'asc'},
-    });
-    return rows.map(toStored);
+    return (
+      await this.prisma.assessmentResponse.findMany({where: {userId}, orderBy: {createdAt: 'asc'}})
+    ).map(toStored);
   }
 
   async getConsent(userId: string, studyKey: string) {
-    const row = await this.prisma.researchConsent.findUnique({
-      where: {userId_studyKey: {userId, studyKey}},
-    });
+    const row = await this.prisma.researchConsent.findUnique({where: {userId_studyKey: {userId, studyKey}}});
     return row ? toConsent(row) : null;
   }
 
@@ -896,8 +866,6 @@ export class PrismaAssessmentRepository implements AssessmentRepository {
 }
 ```
 
-The `createMany` in `createCheckIn` writes both rows in one statement, so a check-in is never half stored. The unique index turns a double-submit into a `P2002` error, which is reported as `'duplicate'`.
-
 - [ ] **Step 7: Register the tables for account deletion**
 
 In `ACCOUNT_DELETION_REGISTRY`, next to the other `murror_api` cascade entries, add:
@@ -917,7 +885,7 @@ In `ACCOUNT_DELETION_REGISTRY`, next to the other `murror_api` cascade entries, 
   },
 ```
 
-Make the matching change in `account-deletion.registry-snapshot.spec.ts`:
+In `account-deletion.registry-snapshot.spec.ts`:
 - add `'murror_api.assessment_responses'` and `'murror_api.research_consents'` to `EXPECTED_REGISTRY_TABLES`, in sorted position;
 - change `EXPECTED_REGISTRY_TABLE_COUNT` from `142` to `144`.
 
@@ -926,9 +894,9 @@ Make the matching change in `account-deletion.registry-snapshot.spec.ts`:
 - [ ] **Step 8: Generate the client and run the tests**
 
 Run: `pnpm db:generate && pnpm test src/assessment src/user-profile/application/services/account-deletion`
-Expected: PASS. That includes `account-deletion.schema-drift.spec.ts`, which fails if a user-bearing table is missing from the registry.
+Expected: PASS. That includes `account-deletion.schema-drift.spec.ts`.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Commit** (Claude, after review)
 
 ```bash
 git add prisma/schema.murror.prisma prisma/migrations/20261004120000_add_assessments \
@@ -941,112 +909,154 @@ git commit -m "feat(assessment): tables, switch row and repository"
 
 ---
 
-### Task 3: Check-in state rules (pure)
+### Task 3: Pure rules: trend words, support card, check-in state
 
 **Files:**
-- Create: `src/assessment/domain/check-in-state.ts`
-- Test: `src/assessment/domain/check-in-state.spec.ts`
+- Create: `src/assessment/domain/result-rules.ts`, `src/assessment/domain/check-in-state.ts`
+- Test: `src/assessment/domain/result-rules.spec.ts`, `src/assessment/domain/check-in-state.spec.ts`
 
 **Interfaces:**
 - Consumes: `AssessmentSettings` (Task 2), `InstrumentSet` (Task 1).
 - Produces:
-  - `computeCheckInState(input: CheckInStateInput): CheckInState`
+  - `type Trend = 'first' | 'lighter' | 'about_same' | 'heavier'`
+  - `trendFor(current: number, previous: number | null): Trend`
+  - `showSupportCardFor(current: number, previous: number | null): boolean`
+  - the constants `TREND_THRESHOLD = 10`, `SUPPORT_SCORE_MAX = 25` and `SUPPORT_DROP = 30`
   - `CHECK_IN_INTERVAL_MS`
-  - `type CheckInState = {instrumentSet: InstrumentSet; due: boolean; isBaseline: boolean; consentNeeded: boolean}`
-  - `type CheckInStateInput = {settings: AssessmentSettings; legacyDue: boolean; lastWho5At: Date | null; hasConsentDecision: boolean; now: Date}`
+  - `computeCheckInState(input: CheckInStateInput): CheckInState`, with:
+    - `CheckInStateInput = {settings, legacyDue, lastPrimaryAt: Date | null, hasConsentDecision, now}`
+    - `CheckInState = {instrumentSet, due, isBaseline, consentNeeded}`
 
 - [ ] **Step 1: Write the failing tests**
+
+```ts
+// src/assessment/domain/result-rules.spec.ts
+import {showSupportCardFor, trendFor} from './result-rules';
+
+describe('trendFor', () => {
+  it('is first when there is no previous check-in', () => expect(trendFor(60, null)).toBe('first'));
+  it('treats a change of exactly 10 either way as about_same', () => {
+    expect(trendFor(70, 60)).toBe('about_same');
+    expect(trendFor(50, 60)).toBe('about_same');
+  });
+  it('11 up is lighter, 11 down is heavier', () => {
+    expect(trendFor(71, 60)).toBe('lighter');
+    expect(trendFor(49, 60)).toBe('heavier');
+  });
+});
+
+describe('showSupportCardFor', () => {
+  it('shows at a score of exactly 25, not at 26 (first check-in)', () => {
+    expect(showSupportCardFor(25, null)).toBe(true);
+    expect(showSupportCardFor(26, null)).toBe(false);
+  });
+  it('shows on a drop of exactly 30 even when the score is not low', () => {
+    expect(showSupportCardFor(50, 80)).toBe(true);
+    expect(showSupportCardFor(51, 80)).toBe(false);
+  });
+  it('does not show on a rise', () => expect(showSupportCardFor(90, 40)).toBe(false));
+});
+```
 
 ```ts
 // src/assessment/domain/check-in-state.spec.ts
 import {CHECK_IN_INTERVAL_MS, computeCheckInState} from './check-in-state';
 
 const SWITCH = new Date('2026-11-01T09:00:00Z');
-const on = {activeInstrumentSet: 'who5_ucla3' as const, switchedAt: SWITCH};
+const on = {activeInstrumentSet: 'wellbeing_v1' as const, switchedAt: SWITCH};
 const off = {activeInstrumentSet: 'phq9_gad7' as const, switchedAt: null};
 const base = {legacyDue: false, hasConsentDecision: true};
 
 describe('computeCheckInState', () => {
   it('switch off: mirrors the legacy rule and never asks for consent', () => {
     expect(
-      computeCheckInState({...base, settings: off, legacyDue: true, lastWho5At: null, hasConsentDecision: false, now: SWITCH}),
+      computeCheckInState({...base, settings: off, legacyDue: true, lastPrimaryAt: null, hasConsentDecision: false, now: SWITCH}),
     ).toEqual({instrumentSet: 'phq9_gad7', due: true, isBaseline: false, consentNeeded: false});
   });
 
-  it('switch day: a person who checked in yesterday on PHQ/GAD is due a baseline now', () => {
-    expect(
-      computeCheckInState({...base, settings: on, lastWho5At: null, now: SWITCH}),
-    ).toMatchObject({due: true, isBaseline: true});
+  it('switch day: someone who did PHQ/GAD yesterday is due a baseline now', () => {
+    expect(computeCheckInState({...base, settings: on, lastPrimaryAt: null, now: SWITCH})).toMatchObject({due: true, isBaseline: true});
   });
 
-  it('a WHO-5 from BEFORE the latest switch does not count as this baseline', () => {
+  it('a check-in from BEFORE the latest switch does not count as this baseline', () => {
     const before = new Date(SWITCH.getTime() - 1000);
-    expect(
-      computeCheckInState({...base, settings: on, lastWho5At: before, now: SWITCH}),
-    ).toMatchObject({due: true, isBaseline: true});
+    expect(computeCheckInState({...base, settings: on, lastPrimaryAt: before, now: SWITCH})).toMatchObject({due: true, isBaseline: true});
   });
 
   it('after the baseline: not due one millisecond short of 14 days', () => {
     const last = new Date('2026-11-02T10:00:00Z');
     const now = new Date(last.getTime() + CHECK_IN_INTERVAL_MS - 1);
-    expect(
-      computeCheckInState({...base, settings: on, lastWho5At: last, now}),
-    ).toMatchObject({due: false, isBaseline: false});
+    expect(computeCheckInState({...base, settings: on, lastPrimaryAt: last, now})).toMatchObject({due: false, isBaseline: false});
   });
 
   it('after the baseline: due at exactly 14 days', () => {
     const last = new Date('2026-11-02T10:00:00Z');
     const now = new Date(last.getTime() + CHECK_IN_INTERVAL_MS);
-    expect(
-      computeCheckInState({...base, settings: on, lastWho5At: last, now}),
-    ).toMatchObject({due: true, isBaseline: false});
+    expect(computeCheckInState({...base, settings: on, lastPrimaryAt: last, now})).toMatchObject({due: true, isBaseline: false});
   });
 
-  it('walks the study: baseline, then due again at days 14, 28, 42 and 56', () => {
+  it('walks the study: due at days 0, 14, 28, 42 and 56, not the day after each', () => {
     let last: Date | null = null;
     for (const day of [0, 14, 28, 42, 56]) {
       const now = new Date(SWITCH.getTime() + day * 86_400_000);
-      expect(
-        computeCheckInState({...base, settings: on, lastWho5At: last, now}).due,
-      ).toBe(true);
+      expect(computeCheckInState({...base, settings: on, lastPrimaryAt: last, now}).due).toBe(true);
       last = now;
-      expect(
-        computeCheckInState({...base, settings: on, lastWho5At: last, now: new Date(now.getTime() + 86_400_000)}).due,
-      ).toBe(false);
+      const nextDay = new Date(now.getTime() + 86_400_000);
+      expect(computeCheckInState({...base, settings: on, lastPrimaryAt: last, now: nextDay}).due).toBe(false);
     }
   });
 
   it('asks for consent only while no decision is recorded', () => {
-    expect(
-      computeCheckInState({...base, settings: on, lastWho5At: null, hasConsentDecision: false, now: SWITCH}).consentNeeded,
-    ).toBe(true);
-    expect(
-      computeCheckInState({...base, settings: on, lastWho5At: null, hasConsentDecision: true, now: SWITCH}).consentNeeded,
-    ).toBe(false);
+    expect(computeCheckInState({...base, settings: on, lastPrimaryAt: null, hasConsentDecision: false, now: SWITCH}).consentNeeded).toBe(true);
+    expect(computeCheckInState({...base, settings: on, lastPrimaryAt: null, hasConsentDecision: true, now: SWITCH}).consentNeeded).toBe(false);
   });
 });
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm test src/assessment/domain/check-in-state.spec.ts`
-Expected: FAIL, the module is not found.
+Run: `pnpm test src/assessment/domain/result-rules.spec.ts src/assessment/domain/check-in-state.spec.ts`
+Expected: FAIL, the modules are not found.
 
 - [ ] **Step 3: Write the implementation**
+
+```ts
+// src/assessment/domain/result-rules.ts
+// Product rules, not clinical thresholds (spec section 5.1). TREND_THRESHOLD
+// is a placeholder until day-14 data gives the smallest detectable change.
+export type Trend = 'first' | 'lighter' | 'about_same' | 'heavier';
+
+export const TREND_THRESHOLD = 10;
+export const SUPPORT_SCORE_MAX = 25;
+export const SUPPORT_DROP = 30;
+
+export function trendFor(current: number, previous: number | null): Trend {
+  if (previous === null) return 'first';
+  const change = current - previous;
+  if (change > TREND_THRESHOLD) return 'lighter';
+  if (change < -TREND_THRESHOLD) return 'heavier';
+  return 'about_same';
+}
+
+export function showSupportCardFor(current: number, previous: number | null): boolean {
+  if (current <= SUPPORT_SCORE_MAX) return true;
+  return previous !== null && previous - current >= SUPPORT_DROP;
+}
+```
 
 ```ts
 // src/assessment/domain/check-in-state.ts
 import type {AssessmentSettings} from './assessment.repository.interface';
 import type {InstrumentSet} from './instruments';
 
-/** WHO-5 asks about the last two weeks, so asking more often is not valid. */
+/** The questionnaire asks about the past 14 days, so asking more often is not valid. */
 export const CHECK_IN_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
 
 export interface CheckInStateInput {
   settings: AssessmentSettings;
   /** The existing PHQ/GAD rule, computed exactly as today by the caller. */
   legacyDue: boolean;
-  lastWho5At: Date | null;
+  lastPrimaryAt: Date | null;
   hasConsentDecision: boolean;
   now: Date;
 }
@@ -1059,39 +1069,37 @@ export interface CheckInState {
 }
 
 export function computeCheckInState(input: CheckInStateInput): CheckInState {
-  const {settings, legacyDue, lastWho5At, hasConsentDecision, now} = input;
+  const {settings, legacyDue, lastPrimaryAt, hasConsentDecision, now} = input;
   if (settings.activeInstrumentSet === 'phq9_gad7') {
     return {instrumentSet: 'phq9_gad7', due: legacyDue, isBaseline: false, consentNeeded: false};
   }
   const switchedAt = settings.switchedAt ?? new Date(0);
-  const baselineDone = lastWho5At !== null && lastWho5At >= switchedAt;
-  const due =
-    !baselineDone || now.getTime() - lastWho5At!.getTime() >= CHECK_IN_INTERVAL_MS;
-  return {
-    instrumentSet: 'who5_ucla3',
-    due,
-    isBaseline: !baselineDone,
-    consentNeeded: !hasConsentDecision,
-  };
+  const baselineDone = lastPrimaryAt !== null && lastPrimaryAt >= switchedAt;
+  const due = !baselineDone || now.getTime() - lastPrimaryAt!.getTime() >= CHECK_IN_INTERVAL_MS;
+  return {instrumentSet: 'wellbeing_v1', due, isBaseline: !baselineDone, consentNeeded: !hasConsentDecision};
 }
 ```
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm test src/assessment/domain/check-in-state.spec.ts`
-Expected: PASS.
+Run the same command. Expected: PASS.
 
 - [ ] **Step 5: Mutate the behaviour**
 
-Replace `lastWho5At >= switchedAt` with `lastWho5At !== null`. That is "any old WHO-5 counts", written differently. Run the spec. Expected: "a WHO-5 from BEFORE the latest switch does not count as this baseline" FAILS. Restore with `git checkout --` on the file.
+Apply each change, run the specs, then restore the file:
 
-Replace `>= CHECK_IN_INTERVAL_MS` with `> CHECK_IN_INTERVAL_MS`. Expected: "due at exactly 14 days" FAILS. Restore.
+| Change | Test that must fail |
+|---|---|
+| `change > TREND_THRESHOLD` → `change >= TREND_THRESHOLD` | "treats a change of exactly 10 either way as about_same" |
+| `lastPrimaryAt >= switchedAt` → `lastPrimaryAt !== null` | "a check-in from BEFORE the latest switch does not count as this baseline" |
+| `>= CHECK_IN_INTERVAL_MS` → `> CHECK_IN_INTERVAL_MS` | "due at exactly 14 days" |
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit** (Claude, after review)
 
 ```bash
-git add src/assessment/domain/check-in-state.ts src/assessment/domain/check-in-state.spec.ts
-git commit -m "feat(assessment): check-in due, baseline and consent rules"
+git add src/assessment/domain/result-rules.ts src/assessment/domain/result-rules.spec.ts \
+  src/assessment/domain/check-in-state.ts src/assessment/domain/check-in-state.spec.ts
+git commit -m "feat(assessment): trend, support card and due rules"
 ```
 
 ---
@@ -1104,18 +1112,20 @@ git commit -m "feat(assessment): check-in due, baseline and consent rules"
 
 **Interfaces:**
 - Consumes: Tasks 1-3.
-- Produces `AssessmentService` with:
-  - `getSettings(): Promise<AssessmentSettings>`
-  - `setActiveInstrumentSet(set: InstrumentSet): Promise<AssessmentSettings>`
-  - `getCheckInState(userId: string, legacyDue: boolean): Promise<CheckInState>`
+- Produces `AssessmentService`:
+  - `getSettings()`
+  - `setActiveInstrumentSet(set)`
+  - `getCheckInState(userId, legacyDue): Promise<CheckInState>`
   - `getQuestions(): Promise<QuestionsView>`
-  - `submitCheckIn(userId: string, checkInId: string, answers: unknown): Promise<CheckInResult>`
-  - `getHistory(userId: string): Promise<HistoryView>`
-  - `recordConsent(userId: string, decision: 'consented' | 'declined', ageConfirmed18: boolean): Promise<void>`
-  - `withdrawConsent(userId: string): Promise<void>`
-  - `exportStudy(salt: string): Promise<ExportRow[]>`
-  - errors `CheckInClosedError` and `InvalidAnswersError` (re-exported)
-  - constants `STUDY_KEY = 'who5-ucla3-2026'` and `CONSENT_VERSION = 'v1'`
+  - `submitCheckIn(userId, checkInId, answers: unknown): Promise<CheckInResult>`
+  - `getHistory(userId): Promise<HistoryView>`
+  - `recordConsent(userId, decision, ageConfirmed18)`
+  - `withdrawConsent(userId)`
+  - `exportStudy(salt): Promise<ExportRow[]>`
+- Also produces:
+  - `CheckInResult = {checkInId, trend: Trend, showSupportCard: boolean}`, which carries no scores;
+  - `CheckInClosedError`, plus a re-export of `InvalidAnswersError`;
+  - `STUDY_KEY = 'murror-wellbeing-2026'` and `CONSENT_VERSION = 'v1'`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1133,19 +1143,18 @@ import {AssessmentService, CheckInClosedError, STUDY_KEY} from './assessment.ser
 
 class MemoryRepo implements AssessmentRepository {
   // A minute ago, so rows the tests create (stamped "now") fall after the switch.
-  settings: AssessmentSettings = {activeInstrumentSet: 'who5_ucla3', switchedAt: new Date(Date.now() - 60_000)};
+  settings: AssessmentSettings = {activeInstrumentSet: 'wellbeing_v1', switchedAt: new Date(Date.now() - 60_000)};
   rows: StoredResponse[] = [];
   consents = new Map<string, ConsentRecord>();
   async getSettings() { return this.settings; }
   async setActiveInstrumentSet(set: any, now: Date) {
     if (this.settings.activeInstrumentSet !== set) {
-      this.settings = {activeInstrumentSet: set, switchedAt: set === 'who5_ucla3' ? now : this.settings.switchedAt};
+      this.settings = {activeInstrumentSet: set, switchedAt: set === 'wellbeing_v1' ? now : this.settings.switchedAt};
     }
     return this.settings;
   }
   async lastResponseAt(userId: string, instrument: string) {
-    const r = this.rows.filter(x => x.userId === userId && x.instrument === instrument).at(-1);
-    return r?.createdAt ?? null;
+    return this.rows.filter(x => x.userId === userId && x.instrument === instrument).at(-1)?.createdAt ?? null;
   }
   async findCheckIn(userId: string, checkInId: string) {
     return this.rows.filter(r => r.userId === userId && r.checkInId === checkInId);
@@ -1168,75 +1177,83 @@ class MemoryRepo implements AssessmentRepository {
   }
 }
 
-const answers = {
-  WHO5: {who5_1: 3, who5_2: 3, who5_3: 3, who5_4: 3, who5_5: 3},
-  UCLA3: {ucla3_1: 2, ucla3_2: 2, ucla3_3: 2},
-};
+const mw = (n: number) => ({mw_1: n, mw_2: n, mw_3: n, mw_4: n, mw_5: n, mw_6: n});
+const answers = (n = 2) => ({
+  MURROR_WB: mw(n),
+  ONS_LIFESAT: {ons_lifesat_1: 7},
+  UCLA3: {ucla3_1: 2, ucla3_2: 1, ucla3_3: 1},
+  ONS_LONELY: {ons_lonely_1: 2},
+});
 const ID1 = '11111111-1111-4111-8111-111111111111';
 const ID2 = '22222222-2222-4222-8222-222222222222';
 
 describe('AssessmentService.submitCheckIn', () => {
-  it('stores one WHO-5 row and one UCLA-3 row and returns both scores', async () => {
+  it('stores one row per instrument and returns trend words, never scores', async () => {
     const repo = new MemoryRepo();
-    const result = await new AssessmentService(repo).submitCheckIn('u1', ID1, answers);
-    expect(repo.rows).toHaveLength(2);
-    expect(result.who5).toMatchObject({normalizedScore: 60, band: 'fine', higherIsBetter: true});
-    expect(result.ucla3).toMatchObject({rawScore: 6, band: 'lonely', higherIsBetter: false});
-    expect(result.who5Change).toBeNull();
+    const result = await new AssessmentService(repo).submitCheckIn('u1', ID1, answers());
+    expect(repo.rows.map(r => r.instrument)).toEqual(['MURROR_WB', 'ONS_LIFESAT', 'UCLA3', 'ONS_LONELY']);
+    expect(result).toEqual({checkInId: ID1, trend: 'first', showSupportCard: false});
   });
 
   it('a double-submit with the same checkInId stores once and returns the same result', async () => {
     const repo = new MemoryRepo();
     const svc = new AssessmentService(repo);
-    const first = await svc.submitCheckIn('u1', ID1, answers);
-    const second = await svc.submitCheckIn('u1', ID1, answers);
-    expect(repo.rows).toHaveLength(2);
+    const first = await svc.submitCheckIn('u1', ID1, answers());
+    const second = await svc.submitCheckIn('u1', ID1, answers());
+    expect(repo.rows).toHaveLength(4);
     expect(second).toEqual(first);
   });
 
-  it('reports the WHO-5 change against the previous check-in', async () => {
-    const repo = new MemoryRepo();
-    const svc = new AssessmentService(repo);
-    await svc.submitCheckIn('u1', ID1, answers);
-    const better = {...answers, WHO5: {who5_1: 4, who5_2: 4, who5_3: 4, who5_4: 4, who5_5: 4}};
-    expect((await svc.submitCheckIn('u1', ID2, better)).who5Change).toBe(20);
+  it('says lighter when the wellbeing score rose by more than 10', async () => {
+    const svc = new AssessmentService(new MemoryRepo());
+    await svc.submitCheckIn('u1', ID1, answers(2)); // 50
+    expect((await svc.submitCheckIn('u1', ID2, answers(3))).trend).toBe('lighter'); // 75
   });
 
-  it('rejects a partial check-in and stores nothing', async () => {
+  it('shows the support card for a low wellbeing score', async () => {
+    const result = await new AssessmentService(new MemoryRepo()).submitCheckIn('u1', ID1, answers(1)); // 25
+    expect(result.showSupportCard).toBe(true);
+  });
+
+  it('rejects a check-in missing an instrument and stores nothing', async () => {
     const repo = new MemoryRepo();
-    await expect(
-      new AssessmentService(repo).submitCheckIn('u1', ID1, {WHO5: answers.WHO5}),
-    ).rejects.toThrow(InvalidAnswersError);
+    const {ONS_LONELY: _dropped, ...partial} = answers();
+    await expect(new AssessmentService(repo).submitCheckIn('u1', ID1, partial)).rejects.toThrow(InvalidAnswersError);
     expect(repo.rows).toHaveLength(0);
   });
 
   it('rejects any check-in while the switch is phq9_gad7', async () => {
     const repo = new MemoryRepo();
     repo.settings = {activeInstrumentSet: 'phq9_gad7', switchedAt: null};
-    await expect(new AssessmentService(repo).submitCheckIn('u1', ID1, answers)).rejects.toThrow(CheckInClosedError);
+    await expect(new AssessmentService(repo).submitCheckIn('u1', ID1, answers())).rejects.toThrow(CheckInClosedError);
   });
 });
 
 describe('AssessmentService consent and export', () => {
   it('withdrawal removes the person from every later export but keeps their history', async () => {
-    const repo = new MemoryRepo();
-    const svc = new AssessmentService(repo);
+    const svc = new AssessmentService(new MemoryRepo());
     await svc.recordConsent('u1', 'consented', true);
-    await svc.submitCheckIn('u1', ID1, answers);
-    expect(await svc.exportStudy('salt')).toHaveLength(2);
+    await svc.submitCheckIn('u1', ID1, answers());
+    expect(await svc.exportStudy('salt')).toHaveLength(4);
     await svc.withdrawConsent('u1');
     expect(await svc.exportStudy('salt')).toHaveLength(0);
-    expect((await svc.getHistory('u1')).who5.points).toHaveLength(1);
+    expect((await svc.getHistory('u1')).wellbeing.points).toHaveLength(1);
+  });
+
+  it('a decline or a missing 18+ confirmation never reaches the export', async () => {
+    const svc = new AssessmentService(new MemoryRepo());
+    await svc.recordConsent('u1', 'consented', false);
+    await svc.submitCheckIn('u1', ID1, answers());
+    expect(await svc.exportStudy('salt')).toHaveLength(0);
   });
 
   it('exports a stable pseudonymous study id, never the user id', async () => {
-    const repo = new MemoryRepo();
-    const svc = new AssessmentService(repo);
+    const svc = new AssessmentService(new MemoryRepo());
     await svc.recordConsent('u1', 'consented', true);
-    await svc.submitCheckIn('u1', ID1, answers);
+    await svc.submitCheckIn('u1', ID1, answers());
     const rows = await svc.exportStudy('salt');
     expect(JSON.stringify(rows)).not.toContain('u1');
-    expect(rows[0].studyId).toBe(rows[1].studyId);
+    expect(new Set(rows.map(r => r.studyId)).size).toBe(1);
     expect(rows[0]).toMatchObject({cohort: 'main', dayFromBaseline: 0, studyKey: STUDY_KEY});
   });
 
@@ -1266,40 +1283,41 @@ import {
 } from '../domain/assessment.repository.interface';
 import {CheckInState, computeCheckInState} from '../domain/check-in-state';
 import {
+  Instrument,
   INSTRUMENT_ORDER,
   INSTRUMENTS,
-  InstrumentScore,
   InstrumentSet,
   InvalidAnswersError,
+  PRIMARY_INSTRUMENT,
   scoreInstrument,
   validateAnswers,
 } from '../domain/instruments';
+import {showSupportCardFor, Trend, trendFor} from '../domain/result-rules';
 
 export {InvalidAnswersError};
 
-export const STUDY_KEY = 'who5-ucla3-2026';
+export const STUDY_KEY = 'murror-wellbeing-2026';
 export const CONSENT_VERSION = 'v1';
 const DAY_MS = 86_400_000;
 const MAIN_COHORT_WINDOW_MS = 14 * DAY_MS;
 
 export class CheckInClosedError extends Error {
   constructor() {
-    super('The WHO-5 and UCLA-3 check-in is not active');
+    super('The wellbeing check-in is not active');
     this.name = 'CheckInClosedError';
   }
 }
 
+/** What the person sees. No scores, by design (spec section 2). */
 export interface CheckInResult {
   checkInId: string;
-  who5: InstrumentScore;
-  ucla3: InstrumentScore;
-  /** Percentage points vs the previous WHO-5, or null for a first check-in. */
-  who5Change: number | null;
+  trend: Trend;
+  showSupportCard: boolean;
 }
 
 export interface QuestionsView {
   instruments: Array<{
-    instrument: 'WHO5' | 'UCLA3';
+    instrument: Instrument;
     version: string;
     stem: string;
     items: readonly {key: string; text: string}[];
@@ -1307,16 +1325,13 @@ export interface QuestionsView {
   }>;
 }
 
-export interface HistoryPoint {
-  checkInId: string;
-  at: Date;
-  score: number;
-  band: string;
-}
-
 export interface HistoryView {
-  who5: {higherIsBetter: true; min: 0; max: 100; points: HistoryPoint[]};
-  ucla3: {higherIsBetter: false; min: 3; max: 9; points: HistoryPoint[]};
+  wellbeing: {
+    higherIsBetter: true;
+    min: 0;
+    max: 100;
+    points: Array<{checkInId: string; at: Date; score: number; band: string}>;
+  };
 }
 
 export interface ExportRow {
@@ -1324,28 +1339,19 @@ export interface ExportRow {
   studyId: string;
   cohort: 'main' | 'rolling';
   consentedOn: string;
-  instrument: 'WHO5' | 'UCLA3';
+  checkInId: string;
+  instrument: Instrument;
   instrumentVersion: string;
+  itemAnswers: Record<string, number>;
   rawScore: number;
   normalizedScore: number | null;
   band: string;
   dayFromBaseline: number;
 }
 
-const toScore = (r: StoredResponse): InstrumentScore => ({
-  instrument: r.instrument,
-  instrumentVersion: r.instrumentVersion,
-  rawScore: r.rawScore,
-  normalizedScore: r.normalizedScore,
-  higherIsBetter: r.higherIsBetter,
-  band: r.band,
-});
-
 @Injectable()
 export class AssessmentService {
-  constructor(
-    @Inject(ASSESSMENT_REPOSITORY) private readonly repo: AssessmentRepository,
-  ) {}
+  constructor(@Inject(ASSESSMENT_REPOSITORY) private readonly repo: AssessmentRepository) {}
 
   getSettings(): Promise<AssessmentSettings> {
     return this.repo.getSettings();
@@ -1358,25 +1364,17 @@ export class AssessmentService {
   async getCheckInState(userId: string, legacyDue: boolean): Promise<CheckInState> {
     const settings = await this.repo.getSettings();
     if (settings.activeInstrumentSet === 'phq9_gad7') {
-      return computeCheckInState({settings, legacyDue, lastWho5At: null, hasConsentDecision: true, now: new Date()});
+      return computeCheckInState({settings, legacyDue, lastPrimaryAt: null, hasConsentDecision: true, now: new Date()});
     }
-    const [lastWho5At, consent] = await Promise.all([
-      this.repo.lastResponseAt(userId, 'WHO5'),
+    const [lastPrimaryAt, consent] = await Promise.all([
+      this.repo.lastResponseAt(userId, PRIMARY_INSTRUMENT),
       this.repo.getConsent(userId, STUDY_KEY),
     ]);
-    return computeCheckInState({
-      settings,
-      legacyDue,
-      lastWho5At,
-      hasConsentDecision: consent !== null,
-      now: new Date(),
-    });
+    return computeCheckInState({settings, legacyDue, lastPrimaryAt, hasConsentDecision: consent !== null, now: new Date()});
   }
 
   async getQuestions(): Promise<QuestionsView> {
-    if ((await this.repo.getSettings()).activeInstrumentSet !== 'who5_ucla3') {
-      throw new CheckInClosedError();
-    }
+    await this.assertOpen();
     return {
       instruments: INSTRUMENT_ORDER.map(i => {
         const d = INSTRUMENTS[i];
@@ -1386,16 +1384,15 @@ export class AssessmentService {
   }
 
   async submitCheckIn(userId: string, checkInId: string, answers: unknown): Promise<CheckInResult> {
-    if ((await this.repo.getSettings()).activeInstrumentSet !== 'who5_ucla3') {
-      throw new CheckInClosedError();
-    }
+    await this.assertOpen();
     const existing = await this.repo.findCheckIn(userId, checkInId);
     if (existing.length > 0) return this.resultFrom(userId, checkInId, existing);
 
     if (answers === null || typeof answers !== 'object' || Array.isArray(answers)) {
-      throw new InvalidAnswersError('WHO5', 'answers must be an object');
+      throw new InvalidAnswersError(PRIMARY_INSTRUMENT, 'answers must be an object');
     }
     const byInstrument = answers as Record<string, unknown>;
+    // Validate every instrument before writing anything: a check-in is all or nothing.
     const scored = INSTRUMENT_ORDER.map(i => {
       const valid = validateAnswers(i, byInstrument[i]);
       return {itemAnswers: valid, ...scoreInstrument(i, valid)};
@@ -1405,42 +1402,37 @@ export class AssessmentService {
     // rows are the truth, so both callers get the same result.
     await this.repo.createCheckIn(userId, checkInId, scored);
     const stored = await this.repo.findCheckIn(userId, checkInId);
-    if (stored.length !== INSTRUMENT_ORDER.length) {
-      throw new Error('Check-in was not stored');
-    }
+    if (stored.length !== INSTRUMENT_ORDER.length) throw new Error('Check-in was not stored');
     return this.resultFrom(userId, checkInId, stored);
   }
 
+  private async assertOpen() {
+    if ((await this.repo.getSettings()).activeInstrumentSet !== 'wellbeing_v1') throw new CheckInClosedError();
+  }
+
   private async resultFrom(userId: string, checkInId: string, rows: StoredResponse[]): Promise<CheckInResult> {
-    const who5 = rows.find(r => r.instrument === 'WHO5')!;
-    const ucla3 = rows.find(r => r.instrument === 'UCLA3')!;
-    const previous = await this.repo.latestBefore(userId, 'WHO5', checkInId);
+    const primary = rows.find(r => r.instrument === PRIMARY_INSTRUMENT)!;
+    const prev = await this.repo.latestBefore(userId, PRIMARY_INSTRUMENT, checkInId);
+    // <= not <: two fast check-ins can share a millisecond in tests.
+    const previous = prev && prev.createdAt <= primary.createdAt ? prev.normalizedScore : null;
     return {
       checkInId,
-      who5: toScore(who5),
-      ucla3: toScore(ucla3),
-      who5Change:
-        // <= not <: two fast check-ins can share a millisecond in tests.
-        previous && previous.createdAt <= who5.createdAt
-          ? who5.normalizedScore! - previous.normalizedScore!
-          : null,
+      trend: trendFor(primary.normalizedScore!, previous),
+      showSupportCard: showSupportCardFor(primary.normalizedScore!, previous),
     };
   }
 
   async getHistory(userId: string): Promise<HistoryView> {
     const rows = await this.repo.listResponses(userId);
-    const points = (instrument: 'WHO5' | 'UCLA3') =>
-      rows
-        .filter(r => r.instrument === instrument)
-        .map(r => ({
-          checkInId: r.checkInId,
-          at: r.createdAt,
-          score: instrument === 'WHO5' ? r.normalizedScore! : r.rawScore,
-          band: r.band,
-        }));
     return {
-      who5: {higherIsBetter: true, min: 0, max: 100, points: points('WHO5')},
-      ucla3: {higherIsBetter: false, min: 3, max: 9, points: points('UCLA3')},
+      wellbeing: {
+        higherIsBetter: true,
+        min: 0,
+        max: 100,
+        points: rows
+          .filter(r => r.instrument === PRIMARY_INSTRUMENT)
+          .map(r => ({checkInId: r.checkInId, at: r.createdAt, score: r.normalizedScore!, band: r.band})),
+      },
     };
   }
 
@@ -1469,44 +1461,40 @@ export class AssessmentService {
 
   async exportStudy(salt: string): Promise<ExportRow[]> {
     if (!salt) throw new Error('STUDY_EXPORT_SALT is not set; refusing to export without a salt');
-    const settings = await this.repo.getSettings();
-    const switchedAt = settings.switchedAt ?? new Date(0);
+    const switchedAt = (await this.repo.getSettings()).switchedAt ?? new Date(0);
     const rows = await this.repo.listConsentedResponses(STUDY_KEY);
     const baselineByUser = new Map<string, Date>();
     for (const r of rows) {
-      if (r.createdAt >= switchedAt && !baselineByUser.has(r.userId)) {
-        baselineByUser.set(r.userId, r.createdAt);
-      }
+      if (r.createdAt >= switchedAt && !baselineByUser.has(r.userId)) baselineByUser.set(r.userId, r.createdAt);
     }
     return rows
       .filter(r => baselineByUser.has(r.userId))
       .map(r => ({
         studyKey: STUDY_KEY,
         studyId: createHmac('sha256', salt).update(r.userId).digest('hex').slice(0, 16),
-        cohort:
-          r.consent.decidedAt.getTime() - switchedAt.getTime() <= MAIN_COHORT_WINDOW_MS
-            ? 'main'
-            : 'rolling',
+        cohort: r.consent.decidedAt.getTime() - switchedAt.getTime() <= MAIN_COHORT_WINDOW_MS ? 'main' : 'rolling',
         consentedOn: r.consent.decidedAt.toISOString().slice(0, 10),
+        checkInId: r.checkInId,
         instrument: r.instrument,
         instrumentVersion: r.instrumentVersion,
+        itemAnswers: r.itemAnswers,
         rawScore: r.rawScore,
         normalizedScore: r.normalizedScore,
         band: r.band,
-        dayFromBaseline: Math.floor(
-          (r.createdAt.getTime() - baselineByUser.get(r.userId)!.getTime()) / DAY_MS,
-        ),
+        dayFromBaseline: Math.floor((r.createdAt.getTime() - baselineByUser.get(r.userId)!.getTime()) / DAY_MS),
       }));
   }
 }
 ```
+
+The export includes `itemAnswers` because the validation analyses in spec section 10 (omega, the factor model, per-item change) need item-level data. `checkInId` is a random uuid and identifies no one.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm test src/assessment/application/assessment.service.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit** (Claude, after review)
 
 ```bash
 git add src/assessment/application
@@ -1517,40 +1505,34 @@ git commit -m "feat(assessment): check-in, history, consent and export use cases
 
 ### Task 5: Make the three existing check-in-due sites switch-aware
 
-There are exactly three sibling sites today. Before editing, confirm the count with:
-
-```bash
-grep -rn "user_checkin_reports" src --include='*.ts' | grep -v spec
-```
-
-The three sites are:
+There are exactly three sibling sites today. Confirm the count first with `grep -rn "user_checkin_reports" src --include='*.ts' | grep -v spec`. The three are:
 - `getUserProfile` in `user-profile.service.ts`, around line 198;
 - the raw-SQL method in the same file, around lines 341-409;
 - `checkReportSubmitted` in `bootstrap-app.use-case.ts`, around line 54.
 
-Any other non-spec hit must be read and either added to this task or noted in the PR as not a due-site.
+Read any other non-spec hit. Either add it to this task, or note in the PR why it is not a due-site.
 
 **Files:**
-- Modify: `src/user-profile/user-profile.service.ts`, `src/user-profile/application/use-cases/bootstrap-app.use-case.ts`, `src/user-profile/dto/user-profile-response.dto.ts`, `src/user-profile/user-profile.module.ts` (import `AssessmentModule`)
+- Modify: `src/user-profile/user-profile.service.ts`, `src/user-profile/application/use-cases/bootstrap-app.use-case.ts`, `src/user-profile/dto/user-profile-response.dto.ts`, `src/user-profile/user-profile.module.ts` (import `AssessmentModule`; Task 6 creates it, so do Task 6 Step 3's module file first if running out of order)
 - Test: `src/user-profile/user-profile.service.assessment-switch.spec.ts`, `src/user-profile/application/use-cases/bootstrap-app.assessment-switch.spec.ts`
 
 **Interfaces:**
-- Consumes: `AssessmentService.getCheckInState(userId, legacyDue)` (Task 4).
+- Consumes: `AssessmentService.getCheckInState(userId, legacyDue)` and `getSettings()` (Task 4).
 - Produces:
-  - profile DTO field `checkIn: CheckInStateDto`, read by Plan 3;
-  - legacy `biWeeklyCheckinAvailable` is `false` whenever the set is `who5_ucla3`;
-  - bootstrap `isReportSubmitted` is `true` whenever the set is `who5_ucla3`, so older builds see nothing due.
+  - profile field `checkIn: CheckInStateDto`;
+  - legacy `biWeeklyCheckinAvailable` is `false` whenever the set is `wellbeing_v1`;
+  - bootstrap `isReportSubmitted` is `true` whenever the set is `wellbeing_v1`.
 
 - [ ] **Step 1: Write the failing tests**
 
-Build each spec by copying the existing test module setup of the nearest spec for that file. Find it with `ls src/user-profile/*.spec.ts`; it provides `PrismaService` and `LegacyPrismaService` mocks. Add `{provide: AssessmentService, useValue: assessment}` and these cases:
+Build each spec by copying the module setup of the nearest existing spec for that file (`ls src/user-profile/*.spec.ts src/user-profile/application/use-cases/*.spec.ts`). Add `{provide: AssessmentService, useValue: assessment}` and these cases:
 
 ```ts
-// in user-profile.service.assessment-switch.spec.ts
-const assessment = {getCheckInState: jest.fn()};
+// user-profile.service.assessment-switch.spec.ts
+const assessment = {getCheckInState: jest.fn(), getSettings: jest.fn()};
 
 it('switch off: biWeeklyCheckinAvailable is unchanged and checkIn mirrors it', async () => {
-  legacyPrisma.user_checkin_reports.findFirst.mockResolvedValue(null); // never checked in
+  legacyPrisma.user_checkin_reports.findFirst.mockResolvedValue(null);
   assessment.getCheckInState.mockImplementation(async (_u: string, legacyDue: boolean) => ({
     instrumentSet: 'phq9_gad7', due: legacyDue, isBaseline: false, consentNeeded: false,
   }));
@@ -1562,49 +1544,45 @@ it('switch off: biWeeklyCheckinAvailable is unchanged and checkIn mirrors it', a
 
 it('switch on: older builds are told nothing is due, new builds get the baseline', async () => {
   legacyPrisma.user_checkin_reports.findFirst.mockResolvedValue(null);
-  assessment.getCheckInState.mockResolvedValue({
-    instrumentSet: 'who5_ucla3', due: true, isBaseline: true, consentNeeded: true,
-  });
+  assessment.getCheckInState.mockResolvedValue({instrumentSet: 'wellbeing_v1', due: true, isBaseline: true, consentNeeded: true});
   const profile = await service.getUserProfile(USER_ID);
   expect(profile.biWeeklyCheckinAvailable).toBe(false);
   expect(profile.checkIn.due).toBe(true);
 });
 ```
 
-Write the same two cases against the raw-SQL profile method. Mock `legacyPrisma.$queryRaw` to resolve `[{biWeeklyCheckinAvailable: true}]`.
-
-For `bootstrap-app.assessment-switch.spec.ts`:
+Write the same two cases against the raw-SQL profile method, mocking `legacyPrisma.$queryRaw` to resolve `[{biWeeklyCheckinAvailable: true}]`. Use the method's real name from the file.
 
 ```ts
+// bootstrap-app.assessment-switch.spec.ts
 it('switch on: isReportSubmitted is true so older builds do not prompt', async () => {
   legacyPrisma.user_checkin_reports.findFirst.mockResolvedValue(null);
-  assessment.getSettings = jest.fn().mockResolvedValue({activeInstrumentSet: 'who5_ucla3', switchedAt: new Date()});
-  const result = await useCase.execute(USER_ID);
-  expect(result.isReportSubmitted).toBe(true);
+  assessment.getSettings.mockResolvedValue({activeInstrumentSet: 'wellbeing_v1', switchedAt: new Date()});
+  expect((await useCase.execute(USER_ID)).isReportSubmitted).toBe(true);
 });
 
 it('switch off: isReportSubmitted keeps the 13-day legacy rule', async () => {
   legacyPrisma.user_checkin_reports.findFirst.mockResolvedValue(null);
-  assessment.getSettings = jest.fn().mockResolvedValue({activeInstrumentSet: 'phq9_gad7', switchedAt: null});
+  assessment.getSettings.mockResolvedValue({activeInstrumentSet: 'phq9_gad7', switchedAt: null});
   expect((await useCase.execute(USER_ID)).isReportSubmitted).toBe(false);
 });
 ```
 
-Use the use-case's real public method name and result shape from `bootstrap-app.use-case.ts`. If it is not `execute`, use that name in the test.
+Use the use case's real public method name and result shape. If it is not `execute`, use that name.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm test src/user-profile -t "switch"`
-Expected: FAIL. The `checkIn` property is undefined, and `biWeeklyCheckinAvailable` is still `true` when the switch is on.
+Expected: FAIL. `checkIn` is undefined, and `biWeeklyCheckinAvailable` is still `true` when the switch is on.
 
 - [ ] **Step 3: Write the implementation**
 
-In `user-profile-response.dto.ts`, add:
+In `user-profile-response.dto.ts`:
 
 ```ts
 export class CheckInStateDto {
-  @ApiProperty({enum: ['phq9_gad7', 'who5_ucla3']})
-  instrumentSet: 'phq9_gad7' | 'who5_ucla3';
+  @ApiProperty({enum: ['phq9_gad7', 'wellbeing_v1']})
+  instrumentSet: 'phq9_gad7' | 'wellbeing_v1';
 
   @ApiProperty()
   due: boolean;
@@ -1617,14 +1595,14 @@ export class CheckInStateDto {
 }
 ```
 
-Then, under the existing `biWeeklyCheckinAvailable` property of `UserProfileResponseDto`, add:
+Under `biWeeklyCheckinAvailable` in `UserProfileResponseDto`, add:
 
 ```ts
   @ApiProperty({type: CheckInStateDto})
   checkIn: CheckInStateDto;
 ```
 
-In `getUserProfile`, replace the block that computes `biWeeklyCheckinAvailable`:
+In `getUserProfile`, replace the `biWeeklyCheckinAvailable` computation:
 
 ```ts
       // Legacy PHQ/GAD rule, unchanged. Older builds read only this field.
@@ -1632,55 +1610,58 @@ In `getUserProfile`, replace the block that computes `biWeeklyCheckinAvailable`:
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
       const legacyDue = !lastCheckin || lastCheckin.created_at < fourteenDaysAgo;
       const checkIn = await this.assessmentService.getCheckInState(userId, legacyDue);
-      // Once WHO-5/UCLA-3 is active, older builds must not collect PHQ/GAD.
-      const biWeeklyCheckinAvailable =
-        checkIn.instrumentSet === 'who5_ucla3' ? false : legacyDue;
+      // Once the wellbeing check-in is active, older builds must not collect PHQ/GAD.
+      const biWeeklyCheckinAvailable = checkIn.instrumentSet === 'wellbeing_v1' ? false : legacyDue;
 ```
 
 Then add `checkIn,` next to `biWeeklyCheckinAvailable,` in the returned object.
 
-In the raw-SQL method, replace the return line with:
-
-```ts
-      biWeeklyCheckinAvailable:
-        checkIn.instrumentSet === 'who5_ucla3' ? false : legacyDue,
-      checkIn,
-```
-
-Above the object being built, add:
+In the raw-SQL method, add above the returned object:
 
 ```ts
     const legacyDue = checkinRows[0]?.biWeeklyCheckinAvailable ?? true;
-    const checkIn = await this.assessmentService.getCheckInState(murrorUser.id, legacyDue);
+    const checkIn = await this.assessmentService.getCheckInState(<that method's user id variable>, legacyDue);
 ```
 
-Use the user id variable that method already uses.
-
-Inject `private readonly assessmentService: AssessmentService` into the `UserProfileService` constructor. Add `AssessmentModule` to `UserProfileModule.imports`.
-
-In `bootstrap-app.use-case.ts`, at the top of `checkReportSubmitted(userId)`, before the legacy query, add:
+Then replace its return line with:
 
 ```ts
-    // With WHO-5/UCLA-3 active, report "submitted" so older builds never prompt
-    // a PHQ/GAD check-in. New builds read profile.checkIn instead.
+      biWeeklyCheckinAvailable: checkIn.instrumentSet === 'wellbeing_v1' ? false : legacyDue,
+      checkIn,
+```
+
+Inject `private readonly assessmentService: AssessmentService` into `UserProfileService`. Add `AssessmentModule` to `UserProfileModule.imports`.
+
+In `bootstrap-app.use-case.ts`, at the top of `checkReportSubmitted(userId)`:
+
+```ts
+    // With the wellbeing check-in active, report "submitted" so older builds
+    // never prompt a PHQ/GAD check-in. New builds read profile.checkIn instead.
     const settings = await this.assessmentService.getSettings();
-    if (settings.activeInstrumentSet === 'who5_ucla3') {
+    if (settings.activeInstrumentSet === 'wellbeing_v1') {
       return true;
     }
 ```
 
-Inject `AssessmentService` into that use case's constructor in the same way.
+Inject `AssessmentService` into that use case's constructor.
 
-- [ ] **Step 4: Run the tests to verify they pass, including every existing user-profile spec**
+- [ ] **Step 4: Run every user-profile spec**
 
 Run: `pnpm test src/user-profile`
-Expected: PASS. Existing specs that build `UserProfileService` without an `AssessmentService` provider fail at construction. In each of those, add `{provide: AssessmentService, useValue: {getCheckInState: async (_u, d) => ({instrumentSet: 'phq9_gad7', due: d, isBaseline: false, consentNeeded: false}), getSettings: async () => ({activeInstrumentSet: 'phq9_gad7', switchedAt: null})}}`. That is the switch-off behaviour, so their assertions stay unchanged.
+Expected: PASS. Existing specs that build these classes without an `AssessmentService` will fail at construction. In each one, add this provider with switch-off behaviour, so their assertions stay unchanged:
+
+```ts
+{provide: AssessmentService, useValue: {
+  getCheckInState: async (_u: string, d: boolean) => ({instrumentSet: 'phq9_gad7', due: d, isBaseline: false, consentNeeded: false}),
+  getSettings: async () => ({activeInstrumentSet: 'phq9_gad7', switchedAt: null}),
+}}
+```
 
 - [ ] **Step 5: Mutate the behaviour**
 
-In `getUserProfile`, change the ternary to `const biWeeklyCheckinAvailable = legacyDue;`. That is "forgot the old builds", written differently. Expected: "switch on: older builds are told nothing is due" FAILS. Restore.
+In `getUserProfile`, write `const biWeeklyCheckinAvailable = legacyDue;`. Expected: "switch on: older builds are told nothing is due" FAILS. Restore.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit** (Claude, after review)
 
 ```bash
 git add src/user-profile
@@ -1692,55 +1673,60 @@ git commit -m "feat(user-profile): switch-aware check-in flags for all 3 due sit
 ### Task 6: User and admin endpoints
 
 **Files:**
-- Create: `src/assessment/presentation/dto/submit-check-in.dto.ts`, `src/assessment/presentation/dto/consent.dto.ts`, `src/assessment/presentation/dto/set-instrument-set.dto.ts`
-- Create: `src/assessment/presentation/assessment.controller.ts`, `src/assessment/presentation/assessment-admin.controller.ts`, `src/assessment/assessment.module.ts`
+- Create: `src/assessment/presentation/dto/submit-check-in.dto.ts`, `dto/consent.dto.ts`, `dto/set-instrument-set.dto.ts`
+- Create: `src/assessment/presentation/assessment.controller.ts`, `assessment-admin.controller.ts`
+- Create: `src/assessment/assessment.module.ts`
 - Modify: `src/app.module.ts`
 - Test: `src/assessment/presentation/assessment.controller.http.spec.ts`
 
 **Interfaces:**
 - Consumes: `AssessmentService` (Task 4).
-- Produces (Plan 3 consumes these routes):
-  - `GET /api/v1/assessments/questions` returns `QuestionsView`; 409 `ASSESSMENT_CHECK_IN_CLOSED` while the switch is off.
-  - `POST /api/v1/assessments/check-ins`, body `{checkInId: uuid, answers: {WHO5: {...}, UCLA3: {...}}}`, returns `CheckInResult`; 400 `ASSESSMENT_ANSWERS_INVALID`; 409 `ASSESSMENT_CHECK_IN_CLOSED`.
-  - `GET /api/v1/assessments/history` returns `HistoryView`.
-  - `POST /api/v1/assessments/consent`, body `{decision: 'consented' | 'declined', ageConfirmed18: boolean}`, returns 204.
-  - `DELETE /api/v1/assessments/consent` withdraws; returns 204.
-  - `PUT /api/v1/admin/assessments/settings`, header `x-admin-key`, body `{activeInstrumentSet}`.
-  - `GET /api/v1/admin/assessments/export`, header `x-admin-key`.
+- Produces the routes Plan 3 consumes:
+  - `GET /api/v1/assessments/questions`. Returns 409 `ASSESSMENT_CHECK_IN_CLOSED` while the switch is off.
+  - `POST /api/v1/assessments/check-ins`, with body `{checkInId: uuid, answers: {MURROR_WB, ONS_LIFESAT, UCLA3, ONS_LONELY}}`. Returns `{checkInId, trend, showSupportCard}`. Errors: 400 `ASSESSMENT_ANSWERS_INVALID`, 409 `ASSESSMENT_CHECK_IN_CLOSED`.
+  - `GET /api/v1/assessments/history`
+  - `POST /api/v1/assessments/consent`, with body `{decision: 'consented' | 'declined', ageConfirmed18: boolean}`. Returns 204.
+  - `DELETE /api/v1/assessments/consent`. Returns 204.
+  - `PUT /api/v1/admin/assessments/settings`, with header `x-admin-key` and body `{activeInstrumentSet: 'phq9_gad7' | 'wellbeing_v1'}`.
+  - `GET /api/v1/admin/assessments/export`, with header `x-admin-key`.
 
 - [ ] **Step 1: Write the failing HTTP tests**
 
-Copy the app bootstrapping from `src/checkin/mental-health.controller.answers-errors.http.spec.ts`: Nest testing module, `AuthGuard` overridden to set `req.user = {id: 'u1'}`, global `ValidationPipe` exactly as `main.ts` configures it, supertest. Provide `AssessmentService` as a jest mock. Cases:
+Copy the bootstrapping from `src/checkin/mental-health.controller.answers-errors.http.spec.ts`:
+- a Nest testing module;
+- `AuthGuard` overridden to set `req.user = {id: 'u1'}`;
+- the global `ValidationPipe` exactly as `main.ts` configures it;
+- supertest.
+
+Provide `AssessmentService` as a jest mock, then add these cases:
 
 ```ts
+const ID1 = '11111111-1111-4111-8111-111111111111';
+const answers = {
+  MURROR_WB: {mw_1: 2, mw_2: 2, mw_3: 2, mw_4: 2, mw_5: 2, mw_6: 2},
+  ONS_LIFESAT: {ons_lifesat_1: 7},
+  UCLA3: {ucla3_1: 1, ucla3_2: 1, ucla3_3: 1},
+  ONS_LONELY: {ons_lonely_1: 2},
+};
+
 it('POST check-ins: a non-uuid checkInId is 400 and the service is never called', async () => {
-  await request(app.getHttpServer())
-    .post('/v1/assessments/check-ins')
-    .send({checkInId: 'abc', answers: {}})
-    .expect(400);
+  await request(app.getHttpServer()).post('/v1/assessments/check-ins').send({checkInId: 'abc', answers}).expect(400);
   expect(service.submitCheckIn).not.toHaveBeenCalled();
 });
 
 it('POST check-ins: InvalidAnswersError maps to 400 ASSESSMENT_ANSWERS_INVALID', async () => {
-  service.submitCheckIn.mockRejectedValue(new InvalidAnswersError('WHO5', 'x'));
-  const res = await request(app.getHttpServer())
-    .post('/v1/assessments/check-ins')
-    .send({checkInId: ID1, answers: {WHO5: {}, UCLA3: {}}})
-    .expect(400);
+  service.submitCheckIn.mockRejectedValue(new InvalidAnswersError('MURROR_WB', 'x'));
+  const res = await request(app.getHttpServer()).post('/v1/assessments/check-ins').send({checkInId: ID1, answers}).expect(400);
   expect(res.body.errorCode ?? res.body.error?.errorCode).toBe('ASSESSMENT_ANSWERS_INVALID');
 });
 
-it('POST check-ins: switch off maps to 409 ASSESSMENT_CHECK_IN_CLOSED', async () => {
+it('POST check-ins: switch off maps to 409', async () => {
   service.submitCheckIn.mockRejectedValue(new CheckInClosedError());
-  await request(app.getHttpServer())
-    .post('/v1/assessments/check-ins')
-    .send({checkInId: ID1, answers: {WHO5: {}, UCLA3: {}}})
-    .expect(409);
+  await request(app.getHttpServer()).post('/v1/assessments/check-ins').send({checkInId: ID1, answers}).expect(409);
 });
 
 it('POST check-ins: the answers object reaches the service intact (not stripped)', async () => {
-  service.submitCheckIn.mockResolvedValue({checkInId: ID1});
-  const answers = {WHO5: {who5_1: 3, who5_2: 3, who5_3: 3, who5_4: 3, who5_5: 3}, UCLA3: {ucla3_1: 1, ucla3_2: 1, ucla3_3: 1}};
+  service.submitCheckIn.mockResolvedValue({checkInId: ID1, trend: 'first', showSupportCard: false});
   await request(app.getHttpServer()).post('/v1/assessments/check-ins').send({checkInId: ID1, answers}).expect(201);
   expect(service.submitCheckIn).toHaveBeenCalledWith('u1', ID1, answers);
 });
@@ -1748,18 +1734,16 @@ it('POST check-ins: the answers object reaches the service intact (not stripped)
 it('PUT admin settings without x-admin-key is 401', async () => {
   await request(app.getHttpServer())
     .put('/v1/admin/assessments/settings')
-    .send({activeInstrumentSet: 'who5_ucla3'})
+    .send({activeInstrumentSet: 'wellbeing_v1'})
     .expect(401);
   expect(service.setActiveInstrumentSet).not.toHaveBeenCalled();
 });
 ```
 
-The "not stripped" test pins the ValidationPipe trap. If `answers` were not declared on the DTO, the pipe would strip it to `undefined`.
-
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm test src/assessment/presentation`
-Expected: FAIL with 404s, because the routes do not exist yet.
+Expected: FAIL with 404s.
 
 - [ ] **Step 3: Write the DTOs, controllers and module**
 
@@ -1773,9 +1757,9 @@ export class SubmitCheckInDto {
   @IsUUID('4')
   checkInId: string;
 
-  // Shape and ranges are checked by the domain (validateAnswers), which knows
+  // Shapes and ranges are checked by the domain (validateAnswers), which knows
   // each instrument's items. Declared here so ValidationPipe does not strip it.
-  @ApiProperty({example: {WHO5: {who5_1: 3}, UCLA3: {ucla3_1: 2}}})
+  @ApiProperty({example: {MURROR_WB: {mw_1: 2}, ONS_LIFESAT: {ons_lifesat_1: 7}, UCLA3: {ucla3_1: 1}, ONS_LONELY: {ons_lonely_1: 2}}})
   @IsObject()
   answers: Record<string, unknown>;
 }
@@ -1803,9 +1787,9 @@ import {ApiProperty} from '@nestjs/swagger';
 import {IsIn} from 'class-validator';
 
 export class SetInstrumentSetDto {
-  @ApiProperty({enum: ['phq9_gad7', 'who5_ucla3']})
-  @IsIn(['phq9_gad7', 'who5_ucla3'])
-  activeInstrumentSet: 'phq9_gad7' | 'who5_ucla3';
+  @ApiProperty({enum: ['phq9_gad7', 'wellbeing_v1']})
+  @IsIn(['phq9_gad7', 'wellbeing_v1'])
+  activeInstrumentSet: 'phq9_gad7' | 'wellbeing_v1';
 }
 ```
 
@@ -1827,11 +1811,7 @@ import {ApiBearerAuth, ApiTags} from '@nestjs/swagger';
 
 import {AuthGuard} from '../../auth/guards/auth.guard';
 import {ResponseFactory} from '../../common/factories/response.factory';
-import {
-  AssessmentService,
-  CheckInClosedError,
-  InvalidAnswersError,
-} from '../application/assessment.service';
+import {AssessmentService, CheckInClosedError, InvalidAnswersError} from '../application/assessment.service';
 import {ConsentDto} from './dto/consent.dto';
 import {SubmitCheckInDto} from './dto/submit-check-in.dto';
 
@@ -1867,9 +1847,7 @@ export class AssessmentController {
   @Post('check-ins')
   async submit(@Request() req: AuthenticatedRequest, @Body() body: SubmitCheckInDto) {
     return this.responseFactory.success(
-      await this.service
-        .submitCheckIn(req.user.id, body.checkInId, body.answers)
-        .catch(mapAssessmentError),
+      await this.service.submitCheckIn(req.user.id, body.checkInId, body.answers).catch(mapAssessmentError),
     );
   }
 
@@ -1913,16 +1891,12 @@ export class AssessmentAdminController {
 
   @Put('settings')
   async setSettings(@Body() body: SetInstrumentSetDto) {
-    return this.responseFactory.success(
-      await this.service.setActiveInstrumentSet(body.activeInstrumentSet),
-    );
+    return this.responseFactory.success(await this.service.setActiveInstrumentSet(body.activeInstrumentSet));
   }
 
   @Get('export')
   async export() {
-    return this.responseFactory.success({
-      rows: await this.service.exportStudy(process.env.STUDY_EXPORT_SALT ?? ''),
-    });
+    return this.responseFactory.success({rows: await this.service.exportStudy(process.env.STUDY_EXPORT_SALT ?? '')});
   }
 }
 ```
@@ -1942,23 +1916,20 @@ import {AssessmentController} from './presentation/assessment.controller';
 @Module({
   imports: [AuthModule, CommonModule],
   controllers: [AssessmentController, AssessmentAdminController],
-  providers: [
-    AssessmentService,
-    {provide: ASSESSMENT_REPOSITORY, useClass: PrismaAssessmentRepository},
-  ],
+  providers: [AssessmentService, {provide: ASSESSMENT_REPOSITORY, useClass: PrismaAssessmentRepository}],
   exports: [AssessmentService],
 })
 export class AssessmentModule {}
 ```
 
-Add `AssessmentModule` to the `imports` array of `src/app.module.ts`, next to `CheckinModule`. If `PrismaService` is not provided globally, copy the import that `CheckinModule`'s repository relies on.
+Add `AssessmentModule` to `src/app.module.ts` imports, next to `CheckinModule`. If `PrismaService` is not global, copy the import `CheckinModule`'s repository relies on.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm test src/assessment`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit** (Claude, after review)
 
 ```bash
 git add src/assessment src/app.module.ts
@@ -1967,29 +1938,29 @@ git commit -m "feat(assessment): user and admin endpoints"
 
 ---
 
-### Task 7: Privacy proof, full gate, PR, dark deploy
+### Task 7: Privacy proof, full gate, PR, dark deploy, US sync handoff
 
 **Files:**
 - Test: `src/common/utils/sentry-scrub.util.spec.ts` (append)
 
 - [ ] **Step 1: Write the scrub test**
 
-Open `sentry-scrub.util.spec.ts` and use the scrub function and event shape its existing tests use. Append:
+Use the scrub function and event-builder helpers that `sentry-scrub.util.spec.ts` already uses. Append:
 
 ```ts
 it('drops check-in scores, bands and answers from every Sentry surface', () => {
   const sensitive = {
-    rawScore: 9, normalizedScore: 28, band: 'lonely',
-    itemAnswers: {ucla3_1: 3}, who5: {normalizedScore: 28}, ucla3: {rawScore: 9},
+    rawScore: 9, normalizedScore: 25, band: 'often_lonely',
+    itemAnswers: {mw_1: 0, ons_lonely_1: 5}, trend: 'heavier', showSupportCard: true,
   };
   const out = JSON.stringify(scrubUnderTest(eventWith(sensitive)));
-  for (const leaked of ['rawScore', 'normalizedScore', 'lonely', 'itemAnswers', 'ucla3_1']) {
+  for (const leaked of ['rawScore', 'normalizedScore', 'often_lonely', 'itemAnswers', 'mw_1', 'ons_lonely_1', 'heavier']) {
     expect(out).not.toContain(leaked);
   }
 });
 ```
 
-Replace `scrubUnderTest` and `eventWith` with the spec's real helpers. The scrubber is allow-list based, so this should pass with no production change. If it fails, the leaking key's surface must be added to the scrubber's drop path before continuing.
+Replace `scrubUnderTest` and `eventWith` with the spec's real helpers. The scrubber is allow-list based, so this should pass with no production change. If it fails, add the leaking surface to the drop path before continuing.
 
 - [ ] **Step 2: Run the full local gate**
 
@@ -2002,14 +1973,14 @@ pnpm format-check
 for c in test/*.contract.sh; do echo "== $c"; bash "$c" || exit 1; done
 ```
 
-Expected: every command exits 0, and the test count goes up by the new specs only. For the baseline, run `pnpm test 2>&1 | tail -5` on `origin/staging` in a separate worktree first, and record both numbers in the PR.
+Expected: every command exits 0. Tests read **690+N suites, 8879+M tests passed**, where N and M are only the new specs, and the skipped counts are unchanged (15 / 151).
 
 - [ ] **Step 3: Prove "dark" by effect locally**
 
-Start Postgres with `docker compose up` and apply migrations with `pnpm prisma:migrate`. Then call the profile route the app uses for a test user. Find it with `grep -rn "getUserProfile(" src --include='*.controller.ts'`.
+Run `docker compose up` and `pnpm prisma:migrate`. Find the profile route with `grep -rn "getUserProfile(" src --include='*.controller.ts'` and call it for a test user.
 
 Expected:
-- `biWeeklyCheckinAvailable` has the same value as on `origin/staging`;
+- `biWeeklyCheckinAvailable` matches `origin/staging`;
 - `checkIn.instrumentSet` is `"phq9_gad7"`;
 - `GET /api/v1/assessments/questions` returns 409.
 
@@ -2018,29 +1989,41 @@ Expected:
 ```bash
 git push -u origin feat/assessment-who5-ucla3
 gh pr create -R Murror/murror-api --base staging \
-  --title "feat(assessment): WHO-5 and UCLA-3 foundation, ships dark" \
-  --body-file /tmp/pr-body.md
+  --title "feat(assessment): wellbeing check-in foundation, ships dark" \
+  --body-file <scratchpad>/pr-body.md
 ```
 
 The PR body covers:
 - the spec link;
 - "ships dark: the seed row is PHQ9_GAD7";
-- the licence sources from Task 1, Step 0;
+- the instrument sources and licences (Murror original; ONS under the Open Government Licence v3.0; UCLA-3 pending clearance, with the flip gated on it);
 - the 3-sibling count;
 - the mutation results;
 - the before and after test counts;
-- the line "Adds env var STUDY_EXPORT_SALT (needed only for export)".
+- "adds env var STUDY_EXPORT_SALT (needed only for export)";
+- the Claude Code attribution line.
 
-It ends with the Claude Code attribution line. Do not add the `run-ci` label without Astro.
+Do not add `run-ci` without Astro.
 
-- [ ] **Step 5: After merge, deploy to staging and verify by effect**
+- [ ] **Step 5: After merge, verify staging by effect**
 
 A merge to `staging` auto-deploys staging; do not also dispatch. Check:
 - the migration applied;
 - `/api/health` is OK;
 - a test account's profile shows `checkIn.instrumentSet: "phq9_gad7"`.
 
-Production promotion follows the CLAUDE.md promotion steps, with the switch still `PHQ9_GAD7`. Set `STUDY_EXPORT_SALT` in both namespaces before any export.
+Set `STUDY_EXPORT_SALT` in both namespaces before any export.
+
+- [ ] **Step 6: The moment the migration reaches Singapore PROD, hand the tables to the US sync**
+
+The prod sync from Singapore to the US uses a fixed table list (publication `murror_move`, `puballtables = false`), so new tables are not synced. On 2026-10-04 a prod migration that skipped the US broke the sync and forced a 70-minute re-copy.
+
+Message the **DB Migration** session with `20261004120000_add_assessments`. It then:
+1. creates the 3 enums and 3 tables in the US;
+2. adds the tables to the publication;
+3. refreshes the subscription.
+
+Production promotion otherwise follows the CLAUDE.md steps, with the switch still `PHQ9_GAD7`.
 
 ---
 
@@ -2048,11 +2031,12 @@ Production promotion follows the CLAUDE.md promotion steps, with the switch stil
 
 | Spec section | Covered by |
 |---|---|
-| 5 Instruments (items, scales, bands, direction, version keys) | Task 1 |
-| 6.1 Data (three tables, deletion) | Task 2 |
-| 6.2 API (new endpoints, DTOs declared, profile `checkIn`, `due` rules, older builds false, history) | Tasks 3, 4, 5, 6 |
-| 7 Safety, item 4 (legacy item-9 intact) | The legacy controller is untouched; Task 7, Step 2 keeps every existing spec green |
-| 8 Privacy (deletion, scrubbing, withdrawal, under-18 exclusion) | Tasks 2, 4, 7 |
-| 10 Study export (pseudonymous id, cohort, day from baseline, withdrawn excluded) | Task 4 |
-| 11 Testing (direction mutation, boundary, baseline-on-switch, old-build) | Tasks 1, 3, 5 |
-| 6.3 / 6.4 / 6.5, safety items 1-3, flip | Plans 2-4, out of scope here |
+| 5.1-5.4 Instruments (items, scales, bands, direction, versions, order, no WHO-5 wording) | Task 1 |
+| 5.1 Trend words, support card, thresholds | Task 3 |
+| 6.1 Data, deletion, US sync | Tasks 2 and 7 |
+| 6.2 API (endpoints, no scores in the result, DTOs declared, `checkIn`, `due`, legacy flags, history) | Tasks 3-6 |
+| 7 Safety, item 4 (legacy item-9 intact) | The legacy controller is untouched; the full suite stays green (Task 7) |
+| 8 Privacy (deletion, scrubbing, withdrawal, 18+, pseudonymous export) | Tasks 2, 4 and 7 |
+| 10 Export (item-level data for validation, cohort, day from baseline) | Task 4 |
+| 11 Testing (direction mutation, boundaries, baseline-on-switch, old builds) | Tasks 1, 3 and 5 |
+| 6.3-6.5, safety items 1-3, the flip | Plans 2-4 |
