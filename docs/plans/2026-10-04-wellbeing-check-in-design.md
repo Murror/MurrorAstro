@@ -1,6 +1,6 @@
 # Murror wellbeing check-in as the primary measure: design
 
-- **Status:** BUILT 2026-10-04/05, dark for real users. murror-api #1243 + #1247 in production (promotion #1248); viasr #851 in production (promotion #854); MurrorMobile #1980 merged to `staging-environment-setup` at ff275c75, so build 515 includes it. Live only for the prod preview accounts (`ASSESSMENT_PREVIEW_USER_IDS`). The flip (Plan 4) waits on the UCLA-3 licence and the chat-crisis proof.
+- **Status:** BUILT 2026-10-04/05, dark for real users. murror-api #1243 + #1247 in production (promotion #1248); viasr #851 in production (promotion #854); MurrorMobile #1980 merged to `staging-environment-setup` at ff275c75, so build 515 includes it. Live only for the prod preview accounts (`ASSESSMENT_PREVIEW_USER_IDS`). The flip (Plan 4) waits on the chat-crisis proof. 2026-10-05: UCLA-3 replaced by Murror's own connection questions (section 5.3), because no commercial licence; the app half rides build 516.
 - **Owner:** Astro (decisions). Claude drives and reviews; Codex builds.
 - **Surface map:** https://claude.ai/artifact/AAZND28Ncfk3Bo5EJBqhbz (private until shared)
 - **Code read:** `prod/` checkouts. MurrorMobile is from 2026-10-03; murror-api and viasr-api are `production` from 2026-10-01. `Murror/<repo>` is a stale July checkout, so do not plan from it.
@@ -11,7 +11,7 @@ Replace PHQ-9 + GAD-7 (symptom severity) with a new check-in made of four parts:
 
 - **Murror's own 6-question wellbeing questionnaire.** This is the primary measure.
 - **The ONS life-satisfaction question**, used as a reference point. It is not part of the score.
-- **UCLA-3 + the ONS direct loneliness question**, which measure loneliness.
+- **Murror's own 3 connection questions + the ONS direct loneliness question**, which measure connection and loneliness. (UCLA-3 was dropped on 2026-10-05: no commercial licence.)
 
 The check-in is the primary measure for an 8-week internal study with real users. One global server switch turns the old pair off and the new check-in on.
 
@@ -24,7 +24,7 @@ The check-in is the primary measure for an 8-week internal study with real users
 | What "validation" means | A study with real users: a baseline, then a check-in every 14 days |
 | Wellbeing measure | Murror's own 6 questions (section 5.1), not WHO-5 |
 | Reference point | Add the ONS life-satisfaction question. It is not part of the score. |
-| Loneliness | ONS direct question + UCLA-3. If UCLA-3 cannot be cleared for commercial use before the flip, drop it and keep the direct question. |
+| Loneliness | ONS direct question + Murror's own 3 connection questions (Astro, 2026-10-05). UCLA-3 dropped: no commercial licence. Wording approved on the review page; swap UCLA-3 out and the new questions in at the same time. |
 | Self-harm safety net | Rely on chat crisis detection. The check-in has no structured self-harm question. |
 | How the switch applies | One global switch. It flips before the study starts and stays frozen until the study ends. |
 | Home popup (Astro 4 Oct, D2/D2b) | Root-cause fix: a due check-in no longer blocks its own popup. For wellbeing users the connections-intro suppression (since Feb 2026) no longer applies. |
@@ -59,7 +59,7 @@ The check-in is the primary measure for an 8-week internal study with real users
 
 ## 5. Instruments
 
-The check-in asks the four parts below in this order. Asking the loneliness questions last keeps them from colouring the wellbeing answers. Within loneliness, UCLA-3 comes before the direct question so the word "lonely" is not primed (verify against the ONS guidance before the flip). It takes about 70 seconds.
+The check-in asks the four parts below in this order. Asking the loneliness questions last keeps them from colouring the wellbeing answers. Within loneliness, the indirect connection questions come before the direct question so the word "lonely" is not primed (verify against the ONS guidance before the flip). It takes about 70 seconds.
 
 ### 5.1 Murror wellbeing (primary; key `MURROR_WB`, version `murror-wellbeing-v1`)
 
@@ -96,13 +96,21 @@ The check-in asks the four parts below in this order. Asking the loneliness ques
 - **Not in the score, and never shown to the user.**
 - **Licence:** ONS content is under the Open Government Licence v3.0, which allows commercial use with attribution. Verify the attribution wording before the flip.
 
-### 5.3 UCLA-3 (key `UCLA3`, version `ucla3-hughes2004-3pt`)
+### 5.3 Murror connection (key `MURROR_CONNECT`, version `murror-connection-v1`)
 
-- **Stem:** "How often do you feel"
-- **Items:** "that you lack companionship?", "left out?", "isolated from others?"
-- **Options:** Hardly ever or never (1), Some of the time (2), Often (3). This wording is from the ONS national guidance.
-- **Scoring:** total 3-9; **higher is lonelier.** Band `lonely` at 6 or more.
-- **Licence:** unconfirmed. The scale is copyrighted (Russell / Hughes et al. 2004). The flip is gated on clearance. If it is not cleared, remove UCLA-3 and keep 5.4.
+Replaced UCLA-3 on 2026-10-05 (Astro). UCLA-3 is copyrighted (Russell / Hughes et al. 2004) and no commercial licence is available; the ONS-adapted wording does not help, because ONS credits the items to the UCLA authors and the Open Government Licence excludes third-party rights. Rows already stored as `UCLA3` (preview testing only) stay readable and are never used in analysis.
+
+- **Stem:** "Past 14 days · how true was this?" (served by the server; matches the app's short MURROR_WB stem)
+- **Items (verbatim, Murror's own; never reword towards UCLA or De Jong Gierveld):**
+  - `mc_1` "I had someone to share the small moments of my day with." (companionship)
+  - `mc_2` "I felt I had a place among the people in my life." (belonging; the opposite of feeling left out)
+  - `mc_3` "Even on quiet days, I felt connected to other people." (felt connection; the opposite of feeling isolated)
+- **Options, scored 0-4:** same as MURROR_WB. **Higher is more connected.**
+- **Scoring:** total 0-12, normalized 0-100. Band `low` at 25 or less, otherwise `ok`: descriptive only, not a validated cut-off, read by no user-facing logic.
+- **Why these:** 13 score levels (a single item has 5) give room to show change across 4-5 check-ins. Each item names something present, not missing, so "Not at all true" never labels anyone. Feelings, not actions, so they do not double count mw_5.
+- **Checks in our own data (section 10):** internal consistency of the 3; correlation with 5.4 at baseline; whether change scores move together; the share of people at the floor.
+- **Claims:** "Murror's own connection questions, checked against the ONS loneliness question in our own data." Never "a validated loneliness scale", "based on UCLA", or that Murror reduces loneliness.
+- **Backup if ever needed:** the US federal (public domain) CDC BRFSS / Census Household Pulse items. Never ask both their "lonely" item and 5.4.
 
 ### 5.4 ONS direct loneliness (key `ONS_LONELY`)
 
@@ -150,7 +158,7 @@ The check-in asks the four parts below in this order. Asking the loneliness ques
   - Answers and past scores are not shown back, and no reward depends on the answers.
 - **Flow:**
   - A one-time consent screen.
-  - Then 6 wellbeing items, the life-satisfaction item, the 3 UCLA-3 items, and the direct question. One item per screen, with Back allowed.
+  - Then 6 wellbeing items, the life-satisfaction item, the 3 Murror connection items, and the direct question. One item per screen, with Back allowed.
 - **Result screen:**
   - The trend words for `first`, `lighter`, `about_same` and `heavier`.
   - The support card when `showSupportCard` is true.
@@ -216,7 +224,7 @@ The reflection check-in card follows the same rules as the app.
 - **Primary:** the mean change in the Murror wellbeing score from baseline to day 56, among people with both measurements.
 - **Secondary:**
   - the share of people better vs worse on wellbeing, using the smallest detectable change from the day-0 vs day-14 data, fixed before day 28;
-  - the change in UCLA-3 and in the direct loneliness answer;
+  - the change in the Murror connection score and in the direct loneliness answer;
   - change for each item, especially mw_4 (self-kindness, which the AI coaches) and mw_6 (the dependency guard);
   - whether clarity (mw_1) moves before loneliness does.
 
@@ -253,7 +261,7 @@ The reflection check-in card follows the same rules as the app.
 
 ## 12. To verify before the flip
 
-- UCLA-3 commercial-use clearance. If it is not cleared, remove UCLA-3.
+- ~~UCLA-3 commercial-use clearance.~~ Resolved 2026-10-05: replaced by Murror's own connection questions (5.3).
 - The ONS attribution wording (Open Government Licence v3.0) and the recommended loneliness question order.
 - How the murror-backend bi-weekly reminder cron behaves, whether any V1 `weekly-*` route is still live, and who reads `current_status`.
 - That the privacy policy covers internal research use.
@@ -274,6 +282,6 @@ The reflection check-in card follows the same rules as the app.
 | The questionnaire does not measure wellbeing well | Anchor item, validation analyses, honest "not validated" labelling |
 | Scores move from answering nicely or picking up the AI's vocabulary | Concrete items, no numbers shown back, administered away from chats, life-satisfaction anchor |
 | Old builds mix instruments | Legacy flags turned off after the flip |
-| Licence exposure | Original items; ONS under the Open Government Licence; UCLA-3 gated on clearance |
+| Licence exposure | Original items (wellbeing and connection); ONS under the Open Government Licence; UCLA-3 removed 2026-10-05 |
 | Data leaks | Scrubbing, no score properties, two-account test |
 | Heavy drop-off | About 70 seconds per check-in, 14-day spacing, attrition reported |
