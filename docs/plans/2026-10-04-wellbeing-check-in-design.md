@@ -1,6 +1,6 @@
 # Murror wellbeing check-in as the primary measure: design
 
-- **Status:** design, approved in conversation 2026-10-04. Revised the same day after the WHO-5 licence check. Nothing is built.
+- **Status:** BUILT 2026-10-04/05, dark for real users. murror-api #1243 + #1247 in production (promotion #1248); viasr #851 in production (promotion #854); MurrorMobile #1980 merged to `staging-environment-setup` at ff275c75, so build 515 includes it. Live only for the prod preview accounts (`ASSESSMENT_PREVIEW_USER_IDS`). The flip (Plan 4) waits on the UCLA-3 licence and the chat-crisis proof.
 - **Owner:** Astro (decisions). Claude drives and reviews; Codex builds.
 - **Surface map:** https://claude.ai/artifact/AAZND28Ncfk3Bo5EJBqhbz (private until shared)
 - **Code read:** `prod/` checkouts. MurrorMobile is from 2026-10-03; murror-api and viasr-api are `production` from 2026-10-01. `Murror/<repo>` is a stale July checkout, so do not plan from it.
@@ -27,6 +27,7 @@ The check-in is the primary measure for an 8-week internal study with real users
 | Loneliness | ONS direct question + UCLA-3. If UCLA-3 cannot be cleared for commercial use before the flip, drop it and keep the direct question. |
 | Self-harm safety net | Rely on chat crisis detection. The check-in has no structured self-harm question. |
 | How the switch applies | One global switch. It flips before the study starts and stays frozen until the study ends. |
+| Home popup (Astro 4 Oct, D2/D2b) | Root-cause fix: a due check-in no longer blocks its own popup. For wellbeing users the connections-intro suppression (since Feb 2026) no longer applies. |
 | Result view | **Trend words, no numbers.** "This is your starting point", "a little lighter", "about the same", "a little heavier", plus the support card when needed. (This replaced "score 0-100 + trend" to reduce the pull to answer nicely.) |
 | Baseline | On switch day, everyone active is asked right away, whatever their 14-day clock says |
 | Low wellbeing | A gentle support card triggered by a product rule (section 5.1). It is not a clinical threshold, not the crisis banner, and not an upsell. |
@@ -165,6 +166,8 @@ The check-in asks the four parts below in this order. Asking the loneliness ques
 - **Analytics:** check-in started, completed and abandoned. No scores, no answers.
 
 ### 6.4 AI (viasr-api)
+
+> **Scope change (2026-10-04, Plan 2 evidence):** notification tone was NOT moved to the MURROR_WB band. The scheduled notification path is dormant: `NOTIFICATION_SCHEDULING_ENABLED` is unset, `phq9_score` is hard-coded to 0, the LLM message is discarded, and `/notification/decide` has no callers. Shipped instead: the chat prompt no longer names PHQ-9/GAD-7, and the LLM-guessed `current_status` score is retired from every prompt.
 
 - **Notification tone:** comes from the latest `MURROR_WB` band. A missing score means "unknown", never 0. Goes through compassion review.
 - **Server AI switch:** scores reach viasr only when the user's server-side AI setting allows it.
