@@ -1,5 +1,38 @@
 # Murror Progress
 
+## 2026-10-26 CM21 (Mac21)
+
+Summary: second worker (Mac21) lanes for 26 Oct, written 4:16 PM PDT. CM21 opens PRs and sends GO; Debug on Mac26 reviews and merges. States read from `gh pr view` at about 4:15 PM PDT. Full write-up: `docs/plans/2026-10-26-cm21-mac21-lanes.md`.
+
+### Shipped (merged into staging bases, not yet released)
+- murror-api #1475 (b64dd504, 1:40 PM): care pack rebuilt under the owner lock.
+- MurrorMobile #2219 (3f9657bf9, 2:02 PM): Notes one read per reply, honest errors, shimmer only while noting.
+- MurrorMobile #2217 (c027b02b3, 3:22 PM): Thread calendar stops re-rendering and re-parsing.
+- murror-api #1479 (6d66fc49, 3:28 PM): care pack reuse rechecks consent and the privacy token under the owner lock.
+- viasr-api #1067 (efe1137c, 4:13 PM): AI Chat card actions at every safety level; crisis reply unchanged.
+
+### Open PRs
+- murror-api #1474 (b893234e): no-gates server, CI green, GO sent.
+- MurrorMobile #2218 (d8c045823): no-gates app, CI running.
+- murror-api #1480 (1ec2c02f): Notes Lane N, now sends `explicit_confirmation` for a real tap; needs viasr `feat/notes-explicit-tap-admission`.
+- MurrorMobile #2214 (c3e09d084): Notes sheet polish, Return saves in a new chat.
+- MurrorMobile #2224 (129048d2f): journal specs wait for real readiness.
+- murror-api #1481 (2e3939c8): crisis week connections, CI green, HOLD until the viasr crisis-week PR.
+- murror-api #1482 (cfeca058): crisis week Memory Room and circles, HOLD until the viasr crisis-week PR; CI ESLint out of heap.
+
+### Not pushed yet
+- viasr `fix/crisis-week-show-everything` (0e95da12, 9c3e28a6), viasr `feat/notes-explicit-tap-admission` (46484967), murror-api `fix/crisis-week-care` (ff33521e), MurrorMobile `fix/crisis-week-app` (50fdd8897).
+
+### Operating notes
+- zsh: brace refs (`"${C}:refs/heads/x"`), no word-splitting of `$VAR`.
+- pgrep waiters must not match their own command line.
+- Squash-merged stacked PRs: rebuild the upper branch by cherry-pick.
+- Sentinel caught two viasr privacy and coverage gaps before shipping (shared reflections read crisis chats; circle card whole-card block).
+- Graph refresh skipped (Mac21 is not the builder); graph used little this session; answers came from reading source.
+
+---
+
+
 ## 2026-06-11 (PDT) — Staging web app: the log view becomes deep chat, 5 QA batches, a backend emotion fix, the voice diary ported, and a persona showcase world
 
 Driver: Astro — iterative QA on the staging web app (`apps/web-client`, staging.app.murror.app). Astro tested in rounds and sent findings with screenshots; each batch was root-caused against the MOBILE source (MurrorMobile is always ground truth), fixed, gate-checked (tsc + full vitest), harness-verified end-to-end against live staging, deployed (CI image -> helm, nsp-staging-murror), and logged (PARITY_LOOP_LOG.md + Notion Engineering Log). Staging only; production untouched. 7 web deploys (helm rev 78-84), 1 viasr backend PR, 4 showcase accounts.
