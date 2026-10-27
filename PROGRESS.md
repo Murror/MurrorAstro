@@ -1,5 +1,28 @@
 # Murror Progress
 
+## 2026-10-26 CM21 (Mac21), update 8:23 PM PDT
+
+Summary: Mac21 work after the 6:48 PM write-up. States read from `gh` and `git` at about 8:22 PM PDT. Detail: `docs/plans/2026-10-26-cm21-mac21-lanes.md` (Update, 8:23 PM).
+
+### Decisions (Astro, verbatim via Debug)
+- 8:17 PM "leave VT out since i want to save credits there": VT gets no more work.
+- #2207 "Under the reply (Recommended)": Question chats keep chips under the reply; normal chats one row above the input.
+- Crisis media card "Keep the AI line": r6 dropped.
+- Reminder hook "Yes, fix it".
+
+### Fixed (not in git)
+- Mac21 predoc hook: `RESET_BELOW = THRESHOLD // 2` (was 500_000, re-fired every other turn). Same as Mac26.
+
+### In flight
+- viasr crisis-week r1-r5 local (r5 2935b91c, 7:04 PM). #1073 merged 7:11 PM; merge staging, then one PR without r6.
+- MurrorMobile #2207 r3 (659d87a4c) + base merge (c9d04e656, 8:21 PM); push + run-ci pending; Debug sim check before merge.
+- New lane: Learning box taps post a chat message (sim 5:37 PM); research on trunk vs #2218.
+
+### Operating notes
+- Graph refresh skipped (Mac21 is not the builder). Graph not used; every item came from gh, git and the hook file.
+
+---
+
 ## 2026-10-26 CM21 (Mac21), update 6:48 PM PDT
 
 Summary: Mac21 work after the 6:05 PM write-up. States read from `gh` and `git` at about 6:47 PM PDT. Detail: `docs/plans/2026-10-26-cm21-mac21-lanes.md` (Update, 6:48 PM).
