@@ -1,5 +1,36 @@
 # Murror Progress
 
+## 2026-10-26 CM21 (Mac21), update 6:05 PM PDT
+
+Summary: Mac21 work after the 4:16 PM write-up. States read from `gh` and `git` at about 6:00 PM PDT. Detail: `docs/plans/2026-10-26-cm21-mac21-lanes.md` (Update, 6:05 PM).
+
+### Shipped (merged into staging bases, not yet released)
+- MurrorMobile #2224 (78d5b738b, 4:48 PM): Journal specs wait for real readiness, tests only.
+- murror-api #1484 (62bb5f40e, 5:27 PM): ESLint step gets a 6 GB heap; proven by #1482 run 40427155851 passing Run ESLint at 5:36 PM.
+
+### GO sent, waiting for Debug
+- MurrorMobile #2214 (c3e09d084, GO 4:53 PM): Notes Return and X keep words before the first message; Debug reruns sim check B.
+- murror-api #1480 (b88779efc, GO 5:20 PM): Lane N Notes server; fails closed until viasr #1071 is live.
+- murror-api #1485 (bd3f8aacf, GO 5:26 PM): crisis week no longer stops Care, Today's note or the streak reminder.
+
+### Opened, CI running
+- murror-api #1486 (8dc87e2f0): follow-up pings keep going in a crisis week (1/15 callers).
+- viasr-api #1071 (f058de811): Notes admission accepts an explicit tap with patterns off; full pytest 38,664 passed.
+
+### Decisions (Astro via Debug)
+- Follow-up pings in a crisis week: "Yes, same as Care (Recommended)". Care goal from a crisis chat: "Allow it".
+
+### Caught / in flight
+- Sentinel FAIL on #2207 option D (crisis nudge 72pt higher in Question mode); r2 running, nothing pushed.
+- viasr crisis-week r3 a9096079 local (circle card no longer dropped for the whole circle); r4 uncommitted; one viasr PR to come.
+- #2218 waits on a fresh Sentinel of r3; #1481/#1482/#1486 wait for the viasr crisis-week PR.
+
+### Operating notes
+- A CI-only PR's own green run can lint nothing; prove it on a PR that exercises the step.
+- Graph refresh skipped (Mac21 is not the builder; Debug refreshed at 5:11 PM). Graph not used for this write-up; every item came from gh and git.
+
+---
+
 ## 2026-10-26 CM21 (Mac21)
 
 Summary: second worker (Mac21) lanes for 26 Oct, written 4:16 PM PDT. CM21 opens PRs and sends GO; Debug on Mac26 reviews and merges. States read from `gh pr view` at about 4:15 PM PDT. Full write-up: `docs/plans/2026-10-26-cm21-mac21-lanes.md`.
