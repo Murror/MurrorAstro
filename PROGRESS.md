@@ -1,5 +1,23 @@
 # Murror Progress
 
+## 2026-10-26 CM21 (Mac21), update 6:48 PM PDT
+
+Summary: Mac21 work after the 6:05 PM write-up. States read from `gh` and `git` at about 6:47 PM PDT. Detail: `docs/plans/2026-10-26-cm21-mac21-lanes.md` (Update, 6:48 PM).
+
+### Shipped (merged into staging base, not yet released)
+- murror-api #1486 (18916458f, 6:44 PM, by Debug): follow-up pings keep going in a crisis week; quiet hours, own off switch and teen night hold still apply. viasr keeps its own pause until the viasr crisis-week PR ships.
+
+### In flight
+- viasr crisis-week r1-r4 local (last 6d54c15e), staging merged (c7ad2c1d); r5 test adaptation after #1065 changed the ping sender. Not pushed.
+- MurrorMobile #2207 option D r2 local (88066d881, crisis nudge position); r3 running after Sentinel found chips squashed in Question mode.
+- viasr CI red until #1073 (date-frozen test) merges; #1071 waits.
+- Debug queue: #1485 merging when green, #1480 next.
+
+### Operating notes
+- Graph refresh skipped (Mac21 is not the builder). Graph not used; every item came from gh and git.
+
+---
+
 ## 2026-10-26 CM21 (Mac21), update 6:05 PM PDT
 
 Summary: Mac21 work after the 4:16 PM write-up. States read from `gh` and `git` at about 6:00 PM PDT. Detail: `docs/plans/2026-10-26-cm21-mac21-lanes.md` (Update, 6:05 PM).
